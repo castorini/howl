@@ -1,14 +1,14 @@
 import logging
 
 from .args import ArgumentParserBuilder, opt
-from ww4ff.data.dataset import MozillaWakeWordLoader, MozillaCommonVoiceLoader, FlatWavDatasetWriter
+from ww4ff.data.dataset import MozillaWakeWordLoader, MozillaCommonVoiceLoader, FlatWavDatasetWriter, AudioClipDataset
 from ww4ff.settings import SETTINGS
 from ww4ff.utils.hash import sha256_int
 
 
-def print_lengths(header: str, *datasets):
+def print_stats(header: str, *datasets: AudioClipDataset):
     for ds in datasets:
-        logging.info(f'{header} ({ds.set_type}): {len(ds)} examples')
+        logging.info(f'{header} ({ds.set_type}) statistics: {ds.compute_statistics()}')
 
 
 def main():
@@ -30,16 +30,16 @@ def main():
     cv_train_ds = cv_train_ds.filter(filter_fn)
     cv_dev_ds = cv_dev_ds.filter(filter_fn)
     cv_test_ds = cv_test_ds.filter(filter_fn)
-    print_lengths('Filtered Common Voice dataset', cv_train_ds, cv_dev_ds, cv_test_ds)
+    print_stats('Filtered Common Voice dataset', cv_train_ds, cv_dev_ds, cv_test_ds)
 
     loader = MozillaWakeWordLoader(split_by_speaker=args.split_type == 'speaker')
     ww_train_ds, ww_dev_ds, ww_test_ds = loader.load_splits(SETTINGS.raw_dataset.wake_word_dataset_path, **ds_kwargs)
-    print_lengths('Wake word dataset', ww_train_ds, ww_dev_ds, ww_test_ds)
+    print_stats('Wake word dataset', ww_train_ds, ww_dev_ds, ww_test_ds)
 
     ww_train_ds.extend(cv_train_ds)
     ww_dev_ds.extend(cv_dev_ds)
     ww_test_ds.extend(cv_test_ds)
-    print_lengths('Combined dataset', ww_train_ds, ww_dev_ds, ww_test_ds)
+    print_stats('Combined dataset', ww_train_ds, ww_dev_ds, ww_test_ds)
 
     for ds in ww_train_ds, ww_dev_ds, ww_test_ds:
         FlatWavDatasetWriter(ds).write(SETTINGS.dataset.dataset_path)

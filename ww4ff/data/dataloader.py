@@ -1,40 +1,29 @@
-import torch
-import numpy as np
-from torch.utils.data import DataLoader
+import multiprocessing as mp
+
 import torch.utils.data as tud
 
-from ww4ff.utils.audio_preprocessor import AudioPreprocessor, FetaureExtractionType
+from ww4ff.data.dataset import TypedAudioDataset, DatasetType
 
 
-class AudioDataLoader(tud.DataLoader):
-
+class StandardAudioDataLoaderBuilder:
     def __init__(self,
-                 dataset: tud.Dataset,
-                 audio_preprocessing: FetaureExtractionType = FetaureExtractionType.MFCC,
-                 **kwargs):
-
+                 dataset: TypedAudioDataset,
+                 num_workers=mp.cpu_count(),
+                 collate_fn=None):
         self.dataset = dataset
-        self.audio_preprocessing = audio_preprocessing
-        self.audio_processor = AudioPreprocessor(n_mels=303) # 3 * 101
+        self.num_workers = num_workers
+        self.collate_fn = collate_fn
 
-        super().__init__(dataset=self.dataset, 
-                         collate_fn=self.collate_fn, 
-                         **kwargs)
-
-    def collate_fn(self, batch):
-        data = []
-        targets = []
-        for sample in batch:
-            audio_data = np.array(sample.audio_data[:sample.sample_rate])
-            if len(audio_data) < sample.sample_rate:
-                audio_data = np.concatenate((audio_data, np.zeros(sample.sample_rate - len(audio_data))))
-
-            if self.audio_preprocessing == FetaureExtractionType.MFCC:
-                # TODO:: take in audio length and subsample
-                audio_tensor = torch.from_numpy(self.audio_processor.compute_mfccs(audio_data).reshape(3, -1, 101)) # [3, 101, 101]
-            data.append(audio_tensor)
-            targets.append(sample.metadata.transcription == 'Hey Firefox')
-
-        data = torch.stack(data, dim=0) 
-        targets = torch.FloatTensor(targets)
-        return data, targets
+    def build(self, batch_size: int) -> tud.DataLoader:
+        if self.dataset.set_type == DatasetType.TRAINING:
+            return tud.DataLoader(self.dataset,
+                                  batch_size=batch_size,
+                                  drop_last=True,
+                                  shuffle=True,
+                                  num_workers=self.num_workers,
+                                  collate_fn=self.collate_fn)
+        else:
+            return tud.DataLoader(self.dataset,
+                                  batch_size=batch_size,
+                                  num_workers=self.num_workers,
+                                  collate_fn=self.collate_fn)
