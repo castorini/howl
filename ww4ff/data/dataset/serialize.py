@@ -1,106 +1,19 @@
-from dataclasses import dataclass
-from functools import lru_cache, partial
-from typing import Mapping, Any, List, Tuple, Optional, Callable
+from functools import partial
+from typing import Tuple
 from pathlib import Path
-import enum
 import json
 import logging
-import warnings
 
-from pydantic import BaseModel
 from tqdm import tqdm
-import librosa
 import pandas as pd
 import soundfile
-import torch
-import torch.utils.data as tud
 
+from .base import DatasetType, AudioClipMetadata
+from .dataset import AudioClipDataset
 from ww4ff.utils.hash import sha256_int
 
 
-class AudioClipMetadata(BaseModel):
-    path: Path
-    transcription: str = ''
-    raw: Optional[Mapping[str, Any]]
-
-
-@dataclass
-class AudioClipExample:
-    metadata: AudioClipMetadata
-    audio_data: torch.Tensor
-    sample_rate: int
-
-    def pin_memory(self):
-        self.audio_data.pin_memory()
-
-
-class DatasetType(enum.Enum):
-    TRAINING = enum.auto()
-    DEV = enum.auto()
-    TEST = enum.auto()
-    UNSPECIFIED = enum.auto()
-
-
-class TypedDataset(tud.Dataset):
-    def __init__(self, set_type: DatasetType = DatasetType.UNSPECIFIED):
-        self.set_type = set_type
-
-    @property
-    def is_training(self):
-        return self.set_type == DatasetType.TRAINING
-
-    @property
-    def is_eval(self):
-        return not self.is_training and self.set_type != DatasetType.UNSPECIFIED
-
-
-class SingleListAttrMixin:
-    list_attr = None
-
-    def filter(self, predicate_fn: Callable[[Any], bool]):
-        data_list = self._list_attr
-        self._list_attr = list(filter(predicate_fn, data_list))
-        return self
-
-    def extend(self, other_dataset: 'SingleListAttrMixin'):
-        self._list_attr.extend(other_dataset._list_attr)
-        return self
-
-    @property
-    def _list_attr(self) -> List[Any]:
-        return getattr(self, self.list_attr)
-
-    @_list_attr.setter
-    def _list_attr(self, value):
-        setattr(self, self.list_attr, value)
-
-
-class AudioClipDataset(SingleListAttrMixin, TypedDataset):
-    list_attr = 'metadata_list'
-
-    def __init__(self,
-                 metadata_list: List[AudioClipMetadata],
-                 sr: int = 16000,
-                 mono: bool = False,
-                 **kwargs):
-        super().__init__(**kwargs)
-        self.metadata_list = metadata_list
-        self.mono = mono
-        self.sr = sr
-
-    def __len__(self):
-        return len(self.metadata_list)
-
-    def load(self, path: Path):
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore')
-            return librosa.core.load(path, sr=self.sr, mono=self.mono)[0]
-
-    @lru_cache(maxsize=512)
-    def __getitem__(self, idx) -> AudioClipExample:
-        metadata = self.metadata_list[idx]
-        audio_data = self.load(metadata.path)
-        return AudioClipExample(metadata=metadata, audio_data=torch.from_numpy(audio_data), sample_rate=self.sr)
+__all__ = ['FlatWavDatasetWriter', 'FlatWavDatasetLoader', 'MozillaWakeWordLoader', 'MozillaCommonVoiceLoader']
 
 
 class FlatWavDatasetWriter:
@@ -137,6 +50,7 @@ class FlatWavDatasetLoader(PathDatasetLoader):
                 for json_str in iter(f.readline, ''):
                     metadata = AudioClipMetadata(**json.loads(json_str))
                     metadata.path = (path / 'audio' / metadata.path).absolute()
+                    metadata_list.append(metadata)
                 return metadata_list
 
         logging.info(f'Loading flat dataset from {path}...')
