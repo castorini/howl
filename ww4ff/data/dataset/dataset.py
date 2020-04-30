@@ -141,5 +141,5 @@ class WakeWordEvaluationDataset(TypedAudioDataset, tud.IterableDataset):
         self.stride_size = stride_size
         self.dataset = wake_word_dataset
 
-    def __iter__(self) -> Iterator:
+    def __iter__(self) -> 'WakeWordEvaluationDataset.Iterator':
         return self.Iterator(self)
