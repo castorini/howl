@@ -22,9 +22,8 @@ class TrainingSettings(BaseSettings):
     learning_rate: float = 1e-3
     device: str = 'cuda:0'
     batch_size: int = 16
-    eval_batch_size: int = 16
-    max_window_size_seconds: float = 2
-    eval_window_size_seconds: float = 2
+    max_window_size_seconds: float = 3
+    eval_window_size_seconds: float = 3
     eval_stride_size_seconds: float = 0.1
 
 

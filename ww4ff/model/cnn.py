@@ -1,10 +1,13 @@
 from torchvision.models import MobileNetV2, mobilenet_v2
 import torch.nn as nn
 
+from .base import register_model
+
 
 __all__ = ['MobileNetClassifier']
 
 
+@register_model('mobilenet')
 class MobileNetClassifier(nn.Module):
     def __init__(self):
         super().__init__()
