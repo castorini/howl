@@ -8,4 +8,7 @@ Wake word detection modeling for Firefox.
 2. Install our Anaconda environment: `conda env create -f environment.yml && conda activate ww4ff`
 
 3. Install [PyTorch](https://pytorch.org).
-  
+
+## Training
+
+python -m run.train

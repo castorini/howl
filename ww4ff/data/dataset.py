@@ -137,6 +137,7 @@ class FlatWavDatasetLoader(PathDatasetLoader):
                 for json_str in iter(f.readline, ''):
                     metadata = AudioClipMetadata(**json.loads(json_str))
                     metadata.path = (path / 'audio' / metadata.path).absolute()
+                    metadata_list.append(metadata)
                 return metadata_list
 
         logging.info(f'Loading flat dataset from {path}...')
