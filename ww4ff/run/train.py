@@ -8,12 +8,13 @@ import torch
 import torch.nn as nn
 import torch.utils.data as tud
 
+from .args import ArgumentParserBuilder, opt
 from .preprocess_dataset import print_stats
 from ww4ff.data.dataset import FlatWavDatasetLoader, WakeWordTrainingDataset, WakeWordEvaluationDataset
 from ww4ff.data.dataloader import StandardAudioDataLoaderBuilder
 from ww4ff.data.transform import compose, ZmuvTransform, StandardAudioTransform, batchify, random_slice
 from ww4ff.settings import SETTINGS
-from ww4ff.model import MobileNetClassifier
+from ww4ff.model import find_model, model_names
 from ww4ff.utils.random import set_seed
 
 
@@ -24,7 +25,8 @@ def main():
         c = Counter()
         for batch in pbar:
             batch.to(device)
-            scores = model(zmuv_transform(std_transform(batch.audio_data)), batch.lengths)
+            scores = model(zmuv_transform(std_transform(batch.audio_data)),
+                           std_transform.compute_lengths(batch.lengths))
             preds = scores.max(1)[1].view(-1).tolist()
             for pred, label in zip(preds, batch.labels.tolist()):
                 if pred == 1 and label == 1:
@@ -40,6 +42,11 @@ def main():
             pbar.set_postfix(dict(measure=f'{c}'))
         logging.info(f'{c}')
 
+    apb = ArgumentParserBuilder()
+    apb.add_options(opt('--model', type=str, choices=model_names(), default='las'))
+    args = apb.parser.parse_args()
+
+    set_seed(SETTINGS.training.seed)
     ww = SETTINGS.training.wake_word
     logging.info(f'Using {ww}')
     loader = FlatWavDatasetLoader()
@@ -62,10 +69,10 @@ def main():
     eval_comp = compose(batchify)
     prep_dl = StandardAudioDataLoaderBuilder(ww_train_ds, collate_fn=eval_comp).build(1)
     train_dl = StandardAudioDataLoaderBuilder(ww_train_ds, collate_fn=train_comp).build(SETTINGS.training.batch_size)
-    dev_dl = StandardAudioDataLoaderBuilder(ww_dev_ds, collate_fn=eval_comp).build(SETTINGS.training.eval_batch_size)
-    test_dl = StandardAudioDataLoaderBuilder(ww_test_ds, collate_fn=eval_comp).build(SETTINGS.training.eval_batch_size)
+    dev_dl = StandardAudioDataLoaderBuilder(ww_dev_ds, collate_fn=eval_comp).build(1)
+    test_dl = StandardAudioDataLoaderBuilder(ww_test_ds, collate_fn=eval_comp).build(1)
 
-    model = MobileNetClassifier().to(device)
+    model = find_model(args.model)().to(device)
     params = list(filter(lambda x: x.requires_grad, model.parameters()))
     optimizer = AdamW(params, SETTINGS.training.learning_rate)
     criterion = nn.CrossEntropyLoss()
@@ -83,15 +90,17 @@ def main():
                     leave=True)
         for batch in pbar:
             batch.to(device)
-            scores = model(zmuv_transform(std_transform(batch.audio_data)), batch.lengths)
+            scores = model(zmuv_transform(std_transform(batch.audio_data)),
+                           std_transform.compute_lengths(batch.lengths))
             optimizer.zero_grad()
             model.zero_grad()
             loss = criterion(scores, batch.labels)
             loss.backward()
             optimizer.step()
             pbar.set_postfix(dict(loss=f'{loss.item():.3}'))
-        evaluate(dev_dl, 'Dev')
+    evaluate(dev_dl, 'Dev')
     evaluate(test_dl, 'Test')
+
 
 if __name__ == '__main__':
     main()

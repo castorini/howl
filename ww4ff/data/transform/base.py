@@ -105,6 +105,10 @@ class StandardAudioTransform(nn.Module):
         self.spec_transform = MelSpectrogram(n_mels=80, sample_rate=sample_rate, **mel_kwargs)
         self.delta_transform = ComputeDeltas()
 
+    @torch.no_grad()
+    def compute_lengths(self, length: torch.Tensor):
+        return ((length - self.spec_transform.win_length) / self.spec_transform.hop_length + 1).long()
+
     def forward(self, audio):
         with torch.no_grad():
             log_mels = self.spec_transform(audio).add_(1e-7).log_().contiguous()
