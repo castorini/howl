@@ -14,12 +14,12 @@ class InferenceEngine:
     def __init__(self,
                  model: nn.Module,
                  zmuv_transform: ZmuvTransform,
-                 history_length: int = 10,
+                 history_length: int = 5,
                  threshold: float = 0.7):
         self.model = model
         self.zmuv = zmuv_transform
         self.std = StandardAudioTransform()
-        self.prob_outputs = deque()
+        self.prob_outputs = deque([0] * history_length)
         self.history_length = history_length
         self.threshold = threshold
 
