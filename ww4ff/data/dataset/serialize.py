@@ -25,7 +25,7 @@ class FlatWavDatasetWriter:
     def write(self, folder: Path):
         def process(metadata: AudioClipMetadata):
             audio_data = silent_load(str(metadata.path), self.dataset.sr, self.dataset.mono)
-            metadata.path = metadata.path.with_suffix('.wav').name
+            metadata.path = audio_folder / metadata.path.with_suffix('.wav').name
             soundfile.write(str(metadata.path), audio_data, self.dataset.sr)
 
         logging.info(f'Writing flat dataset to {folder}...')
