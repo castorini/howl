@@ -46,7 +46,7 @@ def main():
 
     ww_train_ds.extend(rej_train_ds)
     ww_dev_ds.extend(rej_dev_ds)
-    ww_test_ds.extend(ww_test_ds)
+    ww_test_ds.extend(rej_test_ds)
     print_stats('Combined dataset', ww_train_ds, ww_dev_ds, ww_test_ds, skip_length=True)
 
     for ds in ww_train_ds, ww_dev_ds, ww_test_ds:
