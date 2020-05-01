@@ -4,6 +4,7 @@ import logging
 
 from tqdm import trange, tqdm
 from torch.optim.adamw import AdamW
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 import torch
 import torch.nn as nn
 
@@ -11,7 +12,8 @@ from .args import ArgumentParserBuilder, opt
 from .preprocess_dataset import print_stats
 from ww4ff.data.dataset import FlatWavDatasetLoader, WakeWordTrainingDataset, WakeWordEvaluationDataset
 from ww4ff.data.dataloader import StandardAudioDataLoaderBuilder
-from ww4ff.data.transform import compose, ZmuvTransform, StandardAudioTransform, batchify, random_slice
+from ww4ff.data.transform import compose, ZmuvTransform, StandardAudioTransform, batchify, random_slice,\
+    NoiseTransform, TimestretchTransform, TimeshiftTransform, trim
 from ww4ff.settings import SETTINGS
 from ww4ff.model import find_model, model_names, InferenceEngine
 from ww4ff.utils.random import set_seed
@@ -20,6 +22,7 @@ from ww4ff.utils.random import set_seed
 def main():
     def evaluate(dataset: WakeWordEvaluationDataset, prefix: str):
         model.eval()
+        std_transform.eval()
         ds_iter = iter(dataset)
         c = Counter()
         engine = InferenceEngine(model, zmuv_transform)
@@ -33,6 +36,7 @@ def main():
                 if last_idx != ds_iter.curr_file_idx:
                     engine.reset()
                     last_idx = ds_iter.curr_file_idx
+                example = trim([example])[0]
                 pred = engine.infer(example.audio_data.to(device))
                 label = example.contains_wake_word
                 if pred and label:
@@ -66,16 +70,21 @@ def main():
     ww_test_ds = WakeWordEvaluationDataset(WakeWordTrainingDataset(ww_test_ds, ww), ws, ss)
 
     device = torch.device(SETTINGS.training.device)
-    std_transform = StandardAudioTransform(sr).to(device)
+    std_transform = StandardAudioTransform(sr).to(device).eval()
     zmuv_transform = ZmuvTransform().to(device)
-    train_comp = compose(partial(random_slice, max_window_size=int(SETTINGS.training.max_window_size_seconds * sr)),
+    train_comp = compose(trim,
+                         partial(random_slice, max_window_size=int(SETTINGS.training.max_window_size_seconds * sr)),
+                         TimeshiftTransform().train(),
+                         TimestretchTransform().train(),
+                         NoiseTransform().train(),
                          batchify)
-    prep_dl = StandardAudioDataLoaderBuilder(ww_train_ds, collate_fn=batchify).build(1)
+    prep_dl = StandardAudioDataLoaderBuilder(ww_train_ds, collate_fn=compose(trim, batchify)).build(1)
     train_dl = StandardAudioDataLoaderBuilder(ww_train_ds, collate_fn=train_comp).build(SETTINGS.training.batch_size)
 
     model = find_model(args.model)().to(device)
     params = list(filter(lambda x: x.requires_grad, model.parameters()))
     optimizer = AdamW(params, SETTINGS.training.learning_rate)
+    logging.info(f'{sum(p.numel() for p in params)} parameters')
     criterion = nn.CrossEntropyLoss()
 
     for batch in tqdm(prep_dl, desc='Constructing ZMUV'):
@@ -84,6 +93,7 @@ def main():
 
     for _ in trange(SETTINGS.training.num_epochs, position=0, leave=True):
         model.train()
+        std_transform.train()
         pbar = tqdm(train_dl,
                     total=len(train_dl),
                     position=1,
@@ -99,6 +109,8 @@ def main():
             loss.backward()
             optimizer.step()
             pbar.set_postfix(dict(loss=f'{loss.item():.3}'))
+        for group in optimizer.param_groups:
+            group['lr'] *= 0.75
         evaluate(ww_dev_ds, 'Dev')
     evaluate(ww_test_ds, 'Test')
 

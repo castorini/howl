@@ -56,7 +56,6 @@ class SingleListAttrMixin:
 
 
 class AudioDatasetStatisticsMixin:
-
     def compute_statistics(self, skip_length=False) -> AudioDatasetStatistics:
         seconds = 0
         if not skip_length:

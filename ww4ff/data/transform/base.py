@@ -1,20 +1,20 @@
 from typing import Sequence, Iterable
 import random
 
-from torchaudio.transforms import ComputeDeltas, MelSpectrogram
+import librosa.effects as effects
 import torch
 import torch.nn as nn
 
-from ww4ff.data.dataset import WakeWordClipExample, ClassificationBatch
+from ww4ff.data.dataset import WakeWordClipExample, ClassificationBatch, EmplacableExample
 
 
 __all__ = ['Composition',
            'compose',
-           'StandardAudioTransform',
            'ZmuvTransform',
            'random_slice',
            'batchify',
-           'identity']
+           'identity',
+           'trim']
 
 
 class Composition(nn.Module):
@@ -40,6 +40,11 @@ class IdentityTransform(nn.Module):
 
 def compose(*collate_modules):
     return Composition(collate_modules)
+
+
+def trim(examples: Sequence[EmplacableExample], top_db: int = 40):
+    return [ex.emplaced_audio_data(torch.from_numpy(effects.trim(ex.audio_data.cpu().numpy(),
+                                                                 top_db=top_db)[0])) for ex in examples]
 
 
 def random_slice(examples: Sequence[WakeWordClipExample],
@@ -97,21 +102,3 @@ class ZmuvTransform(nn.Module):
 
     def forward(self, x):
         return (x - self.mean) / self.std
-
-
-class StandardAudioTransform(nn.Module):
-    def __init__(self, sample_rate=16000, **mel_kwargs):
-        super().__init__()
-        self.spec_transform = MelSpectrogram(n_mels=80, sample_rate=sample_rate, **mel_kwargs)
-        self.delta_transform = ComputeDeltas()
-
-    @torch.no_grad()
-    def compute_lengths(self, length: torch.Tensor):
-        return ((length - self.spec_transform.win_length) / self.spec_transform.hop_length + 1).long()
-
-    def forward(self, audio):
-        with torch.no_grad():
-            log_mels = self.spec_transform(audio).add_(1e-7).log_().contiguous()
-            deltas = self.delta_transform(log_mels)
-            accels = self.delta_transform(deltas)
-            return torch.stack((log_mels, deltas, accels), 1)
