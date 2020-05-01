@@ -57,10 +57,11 @@ class SingleListAttrMixin:
 
 class AudioDatasetStatisticsMixin:
 
-    def compute_statistics(self) -> AudioDatasetStatistics:
+    def compute_statistics(self, skip_length=False) -> AudioDatasetStatistics:
         seconds = 0
-        for ex in self:
-            seconds += ex.audio_data.size(-1) / self.sr
+        if not skip_length:
+            for ex in self:
+                seconds += ex.audio_data.size(-1) / self.sr
         return AudioDatasetStatistics(len(self), seconds)
 
 
@@ -141,5 +142,5 @@ class WakeWordEvaluationDataset(TypedAudioDataset, tud.IterableDataset):
         self.stride_size = stride_size
         self.dataset = wake_word_dataset
 
-    def __iter__(self) -> Iterator:
+    def __iter__(self) -> 'WakeWordEvaluationDataset.Iterator':
         return self.Iterator(self)

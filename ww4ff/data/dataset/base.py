@@ -12,7 +12,11 @@ __all__ = ['AudioClipExample',
            'DatasetType',
            'WakeWordClipExample',
            'ClassificationBatch',
-           'AudioDatasetStatistics']
+           'AudioDatasetStatistics',
+           'UNKNOWN_TRANSCRIPTION']
+
+
+UNKNOWN_TRANSCRIPTION = '[UNKNOWN]'
 
 
 @dataclass

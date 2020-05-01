@@ -8,8 +8,9 @@ from tqdm import tqdm
 import pandas as pd
 import soundfile
 
-from .base import DatasetType, AudioClipMetadata
+from .base import DatasetType, AudioClipMetadata, UNKNOWN_TRANSCRIPTION
 from .dataset import AudioClipDataset
+from ww4ff.utils.audio import silent_load
 from ww4ff.utils.hash import sha256_int
 
 
@@ -23,8 +24,8 @@ class FlatWavDatasetWriter:
 
     def write(self, folder: Path):
         def process(metadata: AudioClipMetadata):
-            audio_data = self.dataset.load(metadata.path)
-            metadata.path = metadata.path.with_suffix('.wav').name
+            audio_data = silent_load(str(metadata.path), self.dataset.sr, self.dataset.mono)
+            metadata.path = audio_folder / metadata.path.with_suffix('.wav').name
             soundfile.write(str(metadata.path), audio_data, self.dataset.sr)
 
         logging.info(f'Writing flat dataset to {folder}...')
@@ -81,27 +82,35 @@ class MozillaCommonVoiceLoader(PathDatasetLoader):
 
 
 class MozillaWakeWordLoader(PathDatasetLoader):
-    def __init__(self, training_pct=80, dev_pct=10, test_pct=10, split_by_speaker=False):
+    def __init__(self, training_pct=80, dev_pct=10, test_pct=10, split_by_speaker=False, split='verified'):
         self.split_by_speaker = split_by_speaker
         total = training_pct + dev_pct + test_pct
         training_pct = 100 * training_pct / total
         dev_pct = 100 * dev_pct / total
         test_pct = 100 * test_pct / total
         self.cutoffs = (training_pct, dev_pct + training_pct, training_pct + dev_pct + test_pct)
+        self.split = split
 
     def load_splits(self, path: Path, **dataset_kwargs) -> Tuple[AudioClipDataset, AudioClipDataset, AudioClipDataset]:
         assert path.exists(), 'dataset path doesn\'t exist'
-        verified_path = path / 'verified'
-        assert verified_path.exists(), 'dataset malformed'
+        if self.split in {'verified', 'rejected'}:
+            audio_path = path / self.split
+        else:
+            raise ValueError('Split ill-defined.')
+        assert audio_path.exists(), 'dataset malformed'
 
-        sound_file_paths = verified_path.glob('*/*.ogg')
+        sound_file_paths = audio_path.glob('*/*.ogg')
         metadatas = ([], [], [])
         logging.info('Loading wake word dataset...')
+        using_verified = self.split == 'verified'
         for sound_fp in sound_file_paths:
             sound_id = sound_fp.stem
             speaker_id = sound_fp.parent.name
-            with open(str((sound_fp.parent / sound_id).with_suffix('.txt'))) as f:
-                transcription = f.read()
+            if using_verified:
+                with open(str((sound_fp.parent / sound_id).with_suffix('.txt'))) as f:
+                    transcription = f.read()
+            else:
+                transcription = UNKNOWN_TRANSCRIPTION
             metadata = AudioClipMetadata(path=sound_fp.absolute(), transcription=transcription)
             bucket = sha256_int(speaker_id) if self.split_by_speaker else sha256_int(sound_id)
             bucket %= 100
