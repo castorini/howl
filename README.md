@@ -11,4 +11,4 @@ Wake word detection modeling for Firefox.
 
 ## Training
 
-python -m run.train
+Detailed instructions coming soon.
