@@ -13,6 +13,7 @@ __all__ = ['AudioClipExample',
            'WakeWordClipExample',
            'ClassificationBatch',
            'AudioDatasetStatistics',
+           'EmplacableExample',
            'UNKNOWN_TRANSCRIPTION']
 
 
@@ -31,8 +32,15 @@ class AudioClipMetadata(BaseModel):
     raw: Optional[Mapping[str, Any]]
 
 
-@dataclass
-class AudioClipExample:
+class EmplacableExample:
+    audio_data: torch.Tensor
+
+    def emplaced_audio_data(self, audio_data: torch.Tensor) -> 'EmplacableExample':
+        raise NotImplementedError
+
+
+@dataclass(frozen=True)
+class AudioClipExample(EmplacableExample):
     metadata: AudioClipMetadata
     audio_data: torch.Tensor
     sample_rate: int
@@ -62,8 +70,8 @@ class ClassificationBatch:
         return self
 
 
-@dataclass
-class WakeWordClipExample:
+@dataclass(frozen=True)
+class WakeWordClipExample(EmplacableExample):
     metadata: AudioClipMetadata
     audio_data: torch.Tensor
     contains_wake_word: bool

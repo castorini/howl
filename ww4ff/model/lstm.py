@@ -16,20 +16,20 @@ __all__ = ['LASEncoderConfig',
 
 class LASEncoderConfig(BaseSettings):
     num_spec_channels: int = 3
-    num_latent_channels: int = 32
-    hidden_size: int = 256
+    num_latent_channels: int = 4
+    hidden_size: int = 64
     num_layers: int = 1
-    use_maxpool: bool = True
+    use_maxpool: bool = False
 
 
 class FixedAttentionModuleConfig(BaseSettings):
-    num_heads: int = 8
-    hidden_size: int = 256
+    num_heads: int = 4
+    hidden_size: int = 64
 
 
 class LASClassifierConfig(BaseSettings):
-    dnn_size: int = 512
-    dropout: float = 0.2
+    dnn_size: int = 256
+    dropout: float = 0.1
     las_config: LASEncoderConfig = LASEncoderConfig()
     fixed_attn_config: FixedAttentionModuleConfig = FixedAttentionModuleConfig()
 
@@ -67,7 +67,6 @@ class LASEncoder(nn.Module):
 
 
 class FixedAttentionModule(nn.Module):
-
     def __init__(self, config: FixedAttentionModuleConfig):
         super().__init__()
         self.context_vec = nn.Parameter(torch.Tensor(config.hidden_size * 2).uniform_(-0.25, 0.25), requires_grad=True)
@@ -92,7 +91,6 @@ class FixedAttentionModule(nn.Module):
 
 @register_model('las')
 class LASClassifier(nn.Module):
-
     def __init__(self, config: LASClassifierConfig = LASClassifierConfig()):
         super().__init__()
         self.encoder = LASEncoder(config.las_config)

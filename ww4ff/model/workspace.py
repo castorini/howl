@@ -7,7 +7,7 @@ from torch.utils.tensorboard import SummaryWriter
 import torch
 import torch.nn as nn
 
-from .dataclass import gather_dict
+from ww4ff.utils.dataclass import gather_dict
 
 
 @dataclass

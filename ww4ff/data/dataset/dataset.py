@@ -1,3 +1,4 @@
+from collections import deque
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import Any, List, Callable, Iterator, Union
@@ -6,6 +7,7 @@ import torch
 import torch.utils.data as tud
 
 from .base import DatasetType, AudioClipMetadata, AudioClipExample, WakeWordClipExample, AudioDatasetStatistics
+from ww4ff.data.transform import trim
 from ww4ff.settings import SETTINGS
 from ww4ff.utils.audio import silent_load
 
@@ -56,12 +58,12 @@ class SingleListAttrMixin:
 
 
 class AudioDatasetStatisticsMixin:
-
-    def compute_statistics(self, skip_length=False) -> AudioDatasetStatistics:
+    def compute_statistics(self, skip_length: bool = False, use_trim: bool = True) -> AudioDatasetStatistics:
         seconds = 0
         if not skip_length:
             for ex in self:
-                seconds += ex.audio_data.size(-1) / self.sr
+                audio_data = trim([ex])[0].audio_data if use_trim else ex.audio_data
+                seconds += audio_data.size(-1) / self.sr
         return AudioDatasetStatistics(len(self), seconds)
 
 
