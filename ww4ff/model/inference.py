@@ -14,17 +14,17 @@ class InferenceEngine:
     def __init__(self,
                  model: nn.Module,
                  zmuv_transform: ZmuvTransform,
-                 history_length: int = 5,
-                 threshold: float = 0.7):
+                 alpha: float = 0.9,
+                 threshold: float = 0.8):
         self.model = model
         self.zmuv = zmuv_transform
         self.std = StandardAudioTransform()
-        self.prob_outputs = deque([0] * history_length)
-        self.history_length = history_length
+        self.alpha = alpha
         self.threshold = threshold
+        self.value = 0
 
     def reset(self):
-        self.prob_outputs = deque()
+        self.value = 0
 
     @torch.no_grad()
     def infer(self, x: torch.Tensor, lengths: torch.Tensor = None) -> bool:
@@ -34,9 +34,5 @@ class InferenceEngine:
         lengths = self.std.compute_lengths(lengths)
         x = self.zmuv(self.std(x.unsqueeze(0)))
         p = self.model(x, lengths).softmax(-1)[0, 1].item()
-        self.prob_outputs.append(p)
-        if len(self.prob_outputs) > self.history_length:
-            self.prob_outputs.popleft()
-
-        mean_val = np.mean(list(self.prob_outputs))
-        return mean_val > self.threshold
+        self.value = self.value * (1 - self.alpha) + self.alpha * p
+        return self.value > self.threshold

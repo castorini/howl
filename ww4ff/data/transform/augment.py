@@ -78,8 +78,6 @@ class TimeshiftTransform(AugmentModule):
 
     @torch.no_grad()
     def augment(self, param: AugmentationParameter, examples: Sequence[EmplacableExample], **kwargs):
-        if not self.training:
-            return examples
         new_examples = []
         for example in examples:
             w = min(int(random.random() * param.magnitude * self.sr), int(0.5 * example.audio_data.size(-1)))
@@ -96,8 +94,6 @@ class TimestretchTransform(AugmentModule):
 
     @torch.no_grad()
     def augment(self, param, examples: Sequence[EmplacableExample], **kwargs):
-        if not self.training:
-            return examples
         rate = np.clip(np.random.normal(1, param.magnitude), 0.75, 1.25)
         new_examples = []
         for example in examples:
@@ -114,8 +110,6 @@ class NoiseTransform(AugmentModule):
 
     @torch.no_grad()
     def augment(self, param, examples: Sequence[EmplacableExample], **kwargs):
-        if not self.training:
-            return examples
         new_examples = []
         for example in examples:
             waveform = example.audio_data

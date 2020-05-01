@@ -15,7 +15,7 @@ from ww4ff.data.dataloader import StandardAudioDataLoaderBuilder
 from ww4ff.data.transform import compose, ZmuvTransform, StandardAudioTransform, batchify, random_slice,\
     NoiseTransform, TimestretchTransform, TimeshiftTransform, trim
 from ww4ff.settings import SETTINGS
-from ww4ff.model import find_model, model_names, InferenceEngine, Workspace
+from ww4ff.model import find_model, model_names, InferenceEngine, Workspace, ConfusionMatrix
 from ww4ff.utils.random import set_seed
 
 
@@ -24,40 +24,27 @@ def main():
         model.eval()
         std_transform.eval()
         ds_iter = iter(dataset)
-        c = Counter()
         engine = InferenceEngine(model, zmuv_transform)
-        last_idx = None
+        conf_matrix = ConfusionMatrix()
         with tqdm(position=1, desc=prefix, leave=True) as pbar:
             while True:
                 try:
                     example = next(ds_iter)
                 except StopIteration:
                     break
-                if last_idx != ds_iter.curr_file_idx:
-                    engine.reset()
-                    last_idx = ds_iter.curr_file_idx
                 example = trim([example])[0]
                 pred = engine.infer(example.audio_data.to(device))
                 label = example.contains_wake_word
-                if pred and label:
-                    c['tp'] += 1
-                elif pred and not label:
-                    c['fp'] += 1
-                elif not pred and label:
-                    c['fn'] += 1
-                elif not pred and not label:
-                    c['tn'] += 1
-                pbar.set_postfix(dict(measure=f'{c}'))
-        logging.info(f'{c}')
-        for metric in c:
-            count = c[metric]
-            writer.add_scalar(f'{prefix}/Metric/{metric}', count, epoch_idx)
+                conf_matrix.increment(pred, label)
+                pbar.set_postfix(dict(measure=f'{conf_matrix.mcc}'))
+        logging.info(f'{conf_matrix}')
+        writer.add_scalar(f'{prefix}/Metric/mcc', conf_matrix.mcc, epoch_idx)
         if dataset.set_type == DatasetType.DEV:
-            ws.increment_model(model, -c['fp'])
+            ws.increment_model(model, conf_matrix.mcc)
 
     apb = ArgumentParserBuilder()
     apb.add_options(opt('--model', type=str, choices=model_names(), default='las'),
-                    opt('--workspace', type=str, choices=model_names(), default=str(Path('workspaces') / 'default')),
+                    opt('--workspace', type=str, default=str(Path('workspaces') / 'default')),
                     opt('--eval', action='store_true'))
     args = apb.parser.parse_args()
 
@@ -118,7 +105,6 @@ def main():
                     position=1,
                     desc='Training',
                     leave=True)
-        losses = []
         for batch in pbar:
             batch.to(device)
             scores = model(zmuv_transform(std_transform(batch.audio_data)),
@@ -129,10 +115,10 @@ def main():
             loss.backward()
             optimizer.step()
             pbar.set_postfix(dict(loss=f'{loss.item():.3}'))
+            writer.add_scalar('Training/Loss', loss.item(), epoch_idx)
 
         for group in optimizer.param_groups:
             group['lr'] *= 0.75
-        writer.add_scalar('Training/Loss', torch.cat(losses, dim=1).mean(), epoch_idx)
         evaluate(ww_dev_ds, 'Dev')
     evaluate(ww_test_ds, 'Test')
 
