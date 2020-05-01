@@ -1,12 +1,12 @@
 from collections import Counter
 from functools import partial
+from pathlib import Path
 import logging
 
 from tqdm import trange, tqdm
 from torch.optim.adamw import AdamW
 import torch
 import torch.nn as nn
-import torch.utils.data as tud
 
 from .args import ArgumentParserBuilder, opt
 from .preprocess_dataset import print_stats
@@ -14,38 +14,43 @@ from ww4ff.data.dataset import FlatWavDatasetLoader, WakeWordTrainingDataset, Wa
 from ww4ff.data.dataloader import StandardAudioDataLoaderBuilder
 from ww4ff.data.transform import compose, ZmuvTransform, StandardAudioTransform, batchify, random_slice
 from ww4ff.settings import SETTINGS
-from ww4ff.model import find_model, model_names
+from ww4ff.model import find_model, model_names, InferenceEngine
 from ww4ff.utils.workspace import Workspace
 from ww4ff.utils.random import set_seed
 
 
 def main():
-    def evaluate(data_loader, prefix: str):
+    def evaluate(dataset: WakeWordEvaluationDataset, prefix: str):
         model.eval()
-        pbar = tqdm(data_loader, position=1, desc=prefix, leave=True)
+        ds_iter = iter(dataset)
         c = Counter()
-        for batch in pbar:
-            batch.to(device)
-            scores = model(zmuv_transform(std_transform(batch.audio_data)),
-                           std_transform.compute_lengths(batch.lengths))
-            preds = scores.max(1)[1].view(-1).tolist()
-            for pred, label in zip(preds, batch.labels.tolist()):
-                if pred == 1 and label == 1:
+        engine = InferenceEngine(model, zmuv_transform)
+        last_idx = None
+        with tqdm(position=1, desc=prefix, leave=True) as pbar:
+            while True:
+                try:
+                    example = next(ds_iter)
+                except StopIteration:
+                    break
+                if last_idx != ds_iter.curr_file_idx:
+                    engine.reset()
+                    last_idx = ds_iter.curr_file_idx
+                pred = engine.infer(example.audio_data.to(device))
+                label = example.contains_wake_word
+                if pred and label:
                     c['tp'] += 1
-                elif pred == 1 and label == 0:
+                elif pred and not label:
                     c['fp'] += 1
-                elif pred == 0 and label == 1:
+                elif not pred and label:
                     c['fn'] += 1
-                elif pred == 0 and label == 0:
+                elif not pred and not label:
                     c['tn'] += 1
-                else:
-                    raise ValueError('wrong label values')
-            pbar.set_postfix(dict(measure=f'{c}'))
+                pbar.set_postfix(dict(measure=f'{c}'))
         logging.info(f'{c}')
         for metric in c:
             count = c[metric]
             writer.add_scalar(f'{prefix}/Metric/{metric}', count, epoch_idx)
-        if data_loader.dataset.set_type == DatasetType.DEV
+        if data_loader.dataset.set_type == DatasetType.DEV:
             ws.increment_model(model, -c['fp'])
 
 
@@ -80,11 +85,8 @@ def main():
     zmuv_transform = ZmuvTransform().to(device)
     train_comp = compose(partial(random_slice, max_window_size=int(SETTINGS.training.max_window_size_seconds * sr)),
                          batchify)
-    eval_comp = compose(batchify)
-    prep_dl = StandardAudioDataLoaderBuilder(ww_train_ds, collate_fn=eval_comp).build(1)
+    prep_dl = StandardAudioDataLoaderBuilder(ww_train_ds, collate_fn=batchify).build(1)
     train_dl = StandardAudioDataLoaderBuilder(ww_train_ds, collate_fn=train_comp).build(SETTINGS.training.batch_size)
-    dev_dl = StandardAudioDataLoaderBuilder(ww_dev_ds, collate_fn=eval_comp).build(1)
-    test_dl = StandardAudioDataLoaderBuilder(ww_test_ds, collate_fn=eval_comp).build(1)
 
     model = find_model(args.model)().to(device)
     params = list(filter(lambda x: x.requires_grad, model.parameters()))

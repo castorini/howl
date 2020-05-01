@@ -27,8 +27,8 @@ class Workspace(object):
         return str(self.path / f'model{"-best" if best else ""}.pt.bin')
 
     def write_setting(self, setting):
-        with open(self.path / 'config.json', 'w') as f:
-            json.dump(gather_dict(config), f, indent=2)
+        with open(self.path / 'setting.json', 'w') as f:
+            json.dump(gather_dict(setting), f, indent=2)
 
     def write_args(self, args):
         with open(self.path / 'cmd-args.json', 'w') as f:
