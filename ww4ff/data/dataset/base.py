@@ -39,7 +39,7 @@ class EmplacableExample:
         raise NotImplementedError
 
 
-@dataclass(frozen=True)
+@dataclass
 class AudioClipExample(EmplacableExample):
     metadata: AudioClipMetadata
     audio_data: torch.Tensor
@@ -70,7 +70,7 @@ class ClassificationBatch:
         return self
 
 
-@dataclass(frozen=True)
+@dataclass
 class WakeWordClipExample(EmplacableExample):
     metadata: AudioClipMetadata
     audio_data: torch.Tensor

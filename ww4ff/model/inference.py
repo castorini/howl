@@ -1,26 +1,28 @@
-from collections import deque
-
-import numpy as np
+from pydantic import BaseSettings
 import torch
 import torch.nn as nn
 
 from ww4ff.data.transform import ZmuvTransform, StandardAudioTransform
 
 
-__all__ = ['InferenceEngine']
+__all__ = ['InferenceEngine', 'InferenceEngineSettings']
+
+
+class InferenceEngineSettings(BaseSettings):
+    inference_threshold: float = 0.5
+    inference_alpha: float = 0.9
 
 
 class InferenceEngine:
     def __init__(self,
                  model: nn.Module,
                  zmuv_transform: ZmuvTransform,
-                 alpha: float = 0.9,
-                 threshold: float = 0.8):
+                 settings: InferenceEngineSettings = InferenceEngineSettings()):
         self.model = model
         self.zmuv = zmuv_transform
-        self.std = StandardAudioTransform()
-        self.alpha = alpha
-        self.threshold = threshold
+        self.std = StandardAudioTransform().eval()
+        self.alpha = settings.inference_alpha
+        self.threshold = settings.inference_threshold
         self.value = 0
 
     def reset(self):

@@ -1,4 +1,3 @@
-from collections import Counter
 from functools import partial
 from pathlib import Path
 import logging
@@ -15,40 +14,45 @@ from ww4ff.data.dataloader import StandardAudioDataLoaderBuilder
 from ww4ff.data.transform import compose, ZmuvTransform, StandardAudioTransform, batchify, random_slice,\
     NoiseTransform, TimestretchTransform, TimeshiftTransform, trim
 from ww4ff.settings import SETTINGS
-from ww4ff.model import find_model, model_names, InferenceEngine, Workspace, ConfusionMatrix
+from ww4ff.model import find_model, model_names, Workspace, ConfusionMatrix
+from ww4ff.model.inference import InferenceEngine
 from ww4ff.utils.random import set_seed
 
 
 def main():
     def evaluate(dataset: WakeWordEvaluationDataset, prefix: str):
-        model.eval()
         std_transform.eval()
         ds_iter = iter(dataset)
         engine = InferenceEngine(model, zmuv_transform)
+        model.eval()
         conf_matrix = ConfusionMatrix()
         with tqdm(position=1, desc=prefix, leave=True) as pbar:
             while True:
                 try:
                     example = next(ds_iter)
+                    pbar.update(1)
                 except StopIteration:
                     break
                 example = trim([example])[0]
                 pred = engine.infer(example.audio_data.to(device))
                 label = example.contains_wake_word
                 conf_matrix.increment(pred, label)
-                pbar.set_postfix(dict(measure=f'{conf_matrix.mcc}'))
+                if pbar.n % 10 == 9:
+                    pbar.set_postfix(dict(mcc=f'{conf_matrix.mcc}'))
         logging.info(f'{conf_matrix}')
-        writer.add_scalar(f'{prefix}/Metric/mcc', conf_matrix.mcc, epoch_idx)
-        if dataset.set_type == DatasetType.DEV:
+        if dataset.set_type == DatasetType.DEV and not args.eval:
+            writer.add_scalar(f'{prefix}/Metric/mcc', conf_matrix.mcc, epoch_idx)
             ws.increment_model(model, conf_matrix.mcc)
 
     apb = ArgumentParserBuilder()
     apb.add_options(opt('--model', type=str, choices=model_names(), default='las'),
                     opt('--workspace', type=str, default=str(Path('workspaces') / 'default')),
+                    opt('--load-weights', action='store_true'),
                     opt('--eval', action='store_true'))
     args = apb.parser.parse_args()
 
-    ws = Workspace(Path(args.workspace))
+    ws = Workspace(Path(args.workspace), delete_existing=not args.eval)
+    writer = ws.summary_writer
     set_seed(SETTINGS.training.seed)
     ww = SETTINGS.training.wake_word
     logging.info(f'Using {ww}')
@@ -64,11 +68,6 @@ def main():
     ww_dev_ds = WakeWordEvaluationDataset(WakeWordTrainingDataset(ww_dev_ds, ww), wind_sz, stri_sz)
     ww_test_ds = WakeWordEvaluationDataset(WakeWordTrainingDataset(ww_test_ds, ww), wind_sz, stri_sz)
 
-    workspace = Workspace(Path(args.workspace), delete_existing=not args.eval)
-    workspace.write_args(args)
-    workspace.write_setting(SETTINGS)
-    writer = workspace.summary_writer
-
     device = torch.device(SETTINGS.training.device)
     std_transform = StandardAudioTransform(sr).to(device).eval()
     zmuv_transform = ZmuvTransform().to(device)
@@ -79,24 +78,32 @@ def main():
                          NoiseTransform().train(),
                          batchify)
     prep_dl = StandardAudioDataLoaderBuilder(ww_train_ds, collate_fn=compose(trim, batchify)).build(1)
+    prep_dl.shuffle = True
     train_dl = StandardAudioDataLoaderBuilder(ww_train_ds, collate_fn=train_comp).build(SETTINGS.training.batch_size)
 
     model = find_model(args.model)().to(device)
     params = list(filter(lambda x: x.requires_grad, model.parameters()))
-    writer.add_scalar('Meta/Parameters', sum(p.numel() for p in params))
-    optimizer = AdamW(params, SETTINGS.training.learning_rate)
+    optimizer = AdamW(params, SETTINGS.training.learning_rate, weight_decay=SETTINGS.training.weight_decay)
     logging.info(f'{sum(p.numel() for p in params)} parameters')
     criterion = nn.CrossEntropyLoss()
 
-    for batch in tqdm(prep_dl, desc='Constructing ZMUV'):
+    for idx, batch in enumerate(tqdm(prep_dl, desc='Constructing ZMUV')):
         batch.to(device)
         zmuv_transform.update(std_transform(batch.audio_data))
+        if idx == 2000:  # TODO: quick debugging, remove later
+            break
 
+    if args.load_weights:
+        ws.load_model(model, best=True)
     if args.eval:
-        ws.load_model(model, best=False)
+        ws.load_model(model, best=True)
+        evaluate(ww_dev_ds, 'Dev')
         evaluate(ww_test_ds, 'Test')
         return
 
+    ws.write_args(args)
+    ws.write_setting(SETTINGS)
+    writer.add_scalar('Meta/Parameters', sum(p.numel() for p in params))
     for epoch_idx in trange(SETTINGS.training.num_epochs, position=0, leave=True):
         model.train()
         std_transform.train()

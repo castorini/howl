@@ -25,6 +25,7 @@ class TrainingSettings(BaseSettings):
     max_window_size_seconds: float = 2.5
     eval_window_size_seconds: float = 2.5
     eval_stride_size_seconds: float = 0.1
+    weight_decay: float = 0
 
 
 class RawDatasetSettings(BaseSettings):

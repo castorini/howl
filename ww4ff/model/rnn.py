@@ -16,15 +16,16 @@ __all__ = ['LASEncoderConfig',
 
 class LASEncoderConfig(BaseSettings):
     num_spec_channels: int = 3
-    num_latent_channels: int = 4
-    hidden_size: int = 64
+    num_latent_channels: int = 32
+    hidden_size: int = 128
     num_layers: int = 1
-    use_maxpool: bool = False
+    use_maxpool: bool = True
+    num_labels: int = 2
 
 
 class FixedAttentionModuleConfig(BaseSettings):
     num_heads: int = 4
-    hidden_size: int = 64
+    hidden_size: int = 128
 
 
 class LASClassifierConfig(BaseSettings):
@@ -32,6 +33,41 @@ class LASClassifierConfig(BaseSettings):
     dropout: float = 0.1
     las_config: LASEncoderConfig = LASEncoderConfig()
     fixed_attn_config: FixedAttentionModuleConfig = FixedAttentionModuleConfig()
+
+
+@register_model('gru')
+class SimpleGRU(nn.Module):
+    def __init__(self, config: LASEncoderConfig = LASEncoderConfig()):
+        super().__init__()
+        conv1 = nn.Conv2d(1, config.num_latent_channels, 3, padding=1)
+        conv2 = nn.Conv2d(config.num_latent_channels, 1, 3, padding=1)
+        self.conv_encoder = nn.Sequential(conv1,
+                                          nn.BatchNorm2d(config.num_latent_channels),
+                                          nn.ReLU(),
+                                          nn.MaxPool2d((1, 2 if config.use_maxpool else 1)),
+                                          conv2,
+                                          nn.ReLU(),
+                                          nn.BatchNorm2d(1))
+        self.use_maxpool = config.use_maxpool
+        self.lstm_encoder = nn.GRU(80, config.hidden_size, bidirectional=True)
+        self.dnn = nn.Sequential(nn.Linear(2 * config.hidden_size, int(4 * config.hidden_size)),
+                                 nn.ReLU(),
+                                 nn.Dropout(0.2),
+                                 nn.Linear(int(4 * config.hidden_size), config.num_labels))
+
+    def forward(self, x, lengths):
+        if lengths is None:
+            lengths = torch.tensor([x.size(-1)] * x.size(0)).to(x.device)
+        x = x[:, :1]  # Use log-Mels only
+        x = self.conv_encoder(x).squeeze(1)
+        if self.use_maxpool:
+            lengths = (lengths.float() / 2).floor()
+        x = x.permute(2, 0, 1).contiguous()
+        rnn_seq, rnn_out = self.lstm_encoder(pack_padded_sequence(x, lengths))
+        if rnn_out.dim() > 2:
+            bsz = rnn_out.size(1)
+            rnn_out = rnn_out.permute(1, 0, 2).contiguous().view(bsz, -1)
+        return self.dnn(rnn_out)
 
 
 class LASEncoder(nn.Module):
@@ -53,6 +89,8 @@ class LASEncoder(nn.Module):
         self.lstm_encoder = nn.LSTM(out_channels * 84, hidden_size, config.num_layers, bias=True, bidirectional=True)
 
     def forward(self, x, lengths):
+        if lengths is None:
+            lengths = torch.tensor([x.size(-1)] * x.size(0)).to(x.device)
         x = self.conv_encoder(x)
         x = x.permute(3, 0, 1, 2).contiguous()
         x = x.view(-1, x.size(1), x.size(2) * x.size(3))
