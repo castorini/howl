@@ -92,6 +92,7 @@ def main():
         zmuv_transform.update(std_transform(batch.audio_data))
         if idx == 2000:  # TODO: quick debugging, remove later
             break
+    logging.info(dict(zmuv_mean=zmuv_transform.mean, zmuv_std=zmuv_transform.std))
 
     if args.load_weights:
         ws.load_model(model, best=True)
