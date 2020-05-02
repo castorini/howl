@@ -1,13 +1,13 @@
-from collections import deque
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import Any, List, Callable, Iterator, Union
+from typing import Any, List, Callable
 
 import torch
 import torch.utils.data as tud
 
-from .base import DatasetType, AudioClipMetadata, AudioClipExample, WakeWordClipExample, AudioDatasetStatistics
-from ww4ff.data.transform import trim
+from .base import DatasetType, AudioClipMetadata, AudioClipExample, WakeWordClipExample, AudioDatasetStatistics, \
+    AlignedAudioClipMetadata
+
 from ww4ff.settings import SETTINGS
 from ww4ff.utils.audio import silent_load
 
@@ -59,6 +59,7 @@ class SingleListAttrMixin:
 
 class AudioDatasetStatisticsMixin:
     def compute_statistics(self, skip_length: bool = False, use_trim: bool = True) -> AudioDatasetStatistics:
+        from ww4ff.data.transform import trim
         seconds = 0
         if not skip_length:
             for ex in self:
@@ -87,22 +88,32 @@ class WakeWordTrainingDataset(AudioDatasetStatisticsMixin, SingleListAttrMixin, 
     list_attr = 'metadata_list'
 
     def __init__(self,
-                 audio_clip_dataset: AudioClipDataset,
-                 wake_word: str):
-        super().__init__(sr=audio_clip_dataset.sr,
-                         mono=audio_clip_dataset.mono,
-                         set_type=audio_clip_dataset.set_type)
-        self.metadata_list = audio_clip_dataset.metadata_list
-        self.ds = audio_clip_dataset
-        self.wake_word = wake_word
+                 metadata_list: List[AlignedAudioClipMetadata],
+                 words: List[str],
+                 **kwargs):
+        super().__init__(**kwargs)
+        self.metadata_list = metadata_list
+        self.words = words
+        self.vocab = {v: k for k, v in enumerate(words)}
 
     @lru_cache(maxsize=SETTINGS.cache.cache_size)
     def __getitem__(self, idx) -> WakeWordClipExample:
-        ex = self.ds[idx]
-        return WakeWordClipExample(metadata=ex.metadata,
-                                   audio_data=ex.audio_data,
+        metadata = self.metadata_list[idx]
+        audio_data = silent_load(str(metadata.path), self.sr, self.mono)
+        start = 0
+        t = f' {metadata.transcription.transcription}'
+        frame_labels = dict()
+        for idx, word in enumerate(self.words):
+            while True:
+                try:
+                    start = t.index(word, start)
+                except ValueError:
+                    break
+                frame_labels[metadata.transcription.end_timestamps[start - 1]] = idx
+        return WakeWordClipExample(metadata=metadata,
+                                   audio_data=audio_data,
                                    sample_rate=self.sr,
-                                   contains_wake_word=self.wake_word in ex.metadata.transcription)
+                                   frame_labels=frame_labels)
 
 
 class WakeWordEvaluationDataset(TypedAudioDataset, tud.IterableDataset):

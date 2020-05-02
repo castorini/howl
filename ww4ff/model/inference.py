@@ -9,8 +9,8 @@ __all__ = ['InferenceEngine', 'InferenceEngineSettings']
 
 
 class InferenceEngineSettings(BaseSettings):
-    inference_threshold: float = 0.5
-    inference_alpha: float = 0.9
+    inference_threshold: float = 100
+    inference_alpha: float = 0.3
 
 
 class InferenceEngine:
@@ -37,4 +37,7 @@ class InferenceEngine:
         x = self.zmuv(self.std(x.unsqueeze(0)))
         p = self.model(x, lengths).softmax(-1)[0, 1].item()
         self.value = self.value * (1 - self.alpha) + self.alpha * p
+        print(self.value)
         return self.value > self.threshold
+
+

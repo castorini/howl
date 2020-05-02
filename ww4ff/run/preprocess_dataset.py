@@ -13,10 +13,17 @@ def print_stats(header: str, *datasets: AudioClipDataset, skip_length=False):
 
 def main():
     def filter_fn(x):
-        return sha256_int(x.path.stem) % 100 < args.filter_pct
+        bucket = sha256_int(x.path.stem) % 100
+        if bucket < args.filter_pct:
+            return True
+        elif bucket < args.target_pct:
+            return any(word in f' {x.transcription.lower()}' for word in args.target_words)
+        return False
 
     apb = ArgumentParserBuilder()
     apb.add_options(opt('--filter-pct', type=int, default=1, help='The percentage of the Common Voice dataset to use.'),
+                    opt('--target-words', type=str, nargs='+', default=[' hey', 'fire', 'fox']),
+                    opt('--target-pct', type=int, default=100),
                     opt('--split-type',
                         type=str,
                         default='sound',

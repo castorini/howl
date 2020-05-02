@@ -1,9 +1,11 @@
+from copy import deepcopy
 from functools import partial
 from typing import Tuple
 from pathlib import Path
 import json
 import logging
 
+from pydantic import BaseModel
 from tqdm import tqdm
 import pandas as pd
 import soundfile
@@ -14,7 +16,29 @@ from ww4ff.utils.audio import silent_load
 from ww4ff.utils.hash import sha256_int
 
 
-__all__ = ['FlatWavDatasetWriter', 'FlatWavDatasetLoader', 'MozillaWakeWordLoader', 'MozillaCommonVoiceLoader']
+__all__ = ['FlatWavDatasetWriter',
+           'FlatWavDatasetLoader',
+           'MozillaWakeWordLoader',
+           'MozillaCommonVoiceLoader',
+           'FlatWavDatasetMetadataWriter']
+
+
+class FlatWavDatasetMetadataWriter:
+    def __init__(self, dataset_path: Path, set_type: DatasetType, prefix: str = '', mode: str = 'w'):
+        self.filename = str(dataset_path / f'{prefix}metadata-{set_type.name.lower()}.jsonl')
+        self.mode = mode
+
+    def __enter__(self):
+        self.f = open(self.filename, self.mode)
+        return self
+
+    def write(self, metadata: BaseModel):
+        metadata = deepcopy(metadata)
+        metadata.path = metadata.path.name
+        self.f.write(metadata.json() + '\n')
+
+    def __exit__(self, *args):
+        self.f.close()
 
 
 class FlatWavDatasetWriter:
@@ -32,10 +56,14 @@ class FlatWavDatasetWriter:
         folder.mkdir(exist_ok=True)
         audio_folder = folder / 'audio'
         audio_folder.mkdir(exist_ok=True)
-        with open(str(folder / f'metadata-{self.dataset.set_type.name.lower()}.jsonl'), 'w') as f:
+        with FlatWavDatasetMetadataWriter(audio_folder, self.dataset.set_type) as writer:
             for metadata in tqdm(self.dataset.metadata_list, disable=not self.print_progress, desc='Writing files'):
-                process(metadata)
-                f.write(metadata.json() + '\n')
+                try:
+                    process(metadata)
+                except EOFError:
+                    logging.warning(f'Skipping bad file {metadata.path}')
+                    continue
+                writer.write(metadata)
 
 
 class PathDatasetLoader:
@@ -44,7 +72,10 @@ class PathDatasetLoader:
 
 
 class FlatWavDatasetLoader(PathDatasetLoader):
-    def load_splits(self, path: Path, **dataset_kwargs) -> Tuple[AudioClipDataset, AudioClipDataset, AudioClipDataset]:
+    def load_splits(self,
+                    path: Path,
+                    prefix: str = '',
+                    **dataset_kwargs) -> Tuple[AudioClipDataset, AudioClipDataset, AudioClipDataset]:
         def load(jsonl_name):
             metadata_list = []
             with open(jsonl_name) as f:
@@ -55,9 +86,9 @@ class FlatWavDatasetLoader(PathDatasetLoader):
                 return metadata_list
 
         logging.info(f'Loading flat dataset from {path}...')
-        training_path = path / f'metadata-{DatasetType.TRAINING.name.lower()}.jsonl'
-        dev_path = path / f'metadata-{DatasetType.DEV.name.lower()}.jsonl'
-        test_path = path / f'metadata-{DatasetType.TEST.name.lower()}.jsonl'
+        training_path = path / f'{prefix}metadata-{DatasetType.TRAINING.name.lower()}.jsonl'
+        dev_path = path / f'{prefix}metadata-{DatasetType.DEV.name.lower()}.jsonl'
+        test_path = path / f'{prefix}metadata-{DatasetType.TEST.name.lower()}.jsonl'
         return (AudioClipDataset(load(training_path), set_type=DatasetType.TRAINING, **dataset_kwargs),
                 AudioClipDataset(load(dev_path), set_type=DatasetType.DEV, **dataset_kwargs),
                 AudioClipDataset(load(test_path), set_type=DatasetType.TEST, **dataset_kwargs))

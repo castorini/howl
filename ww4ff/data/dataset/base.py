@@ -1,10 +1,12 @@
 from dataclasses import dataclass
-from typing import Mapping, Any, Optional
+from typing import Mapping, Any, Optional, List, Tuple
 from pathlib import Path
 import enum
 
 from pydantic import BaseModel
 import torch
+
+from ww4ff.asr import AlignedTranscription
 
 
 __all__ = ['AudioClipExample',
@@ -14,6 +16,7 @@ __all__ = ['AudioClipExample',
            'ClassificationBatch',
            'AudioDatasetStatistics',
            'EmplacableExample',
+           'AlignedAudioClipMetadata',
            'UNKNOWN_TRANSCRIPTION']
 
 
@@ -30,6 +33,11 @@ class AudioClipMetadata(BaseModel):
     path: Path
     transcription: str = ''
     raw: Optional[Mapping[str, Any]]
+
+
+class AlignedAudioClipMetadata(BaseModel):
+    path: Path
+    transcription: AlignedTranscription
 
 
 class EmplacableExample:
@@ -72,13 +80,13 @@ class ClassificationBatch:
 
 @dataclass
 class WakeWordClipExample(EmplacableExample):
-    metadata: AudioClipMetadata
+    metadata: AlignedAudioClipMetadata
     audio_data: torch.Tensor
-    contains_wake_word: bool
     sample_rate: int
+    frame_labels: Mapping[float, int]
 
     def emplaced_audio_data(self, audio_data: torch.Tensor) -> 'WakeWordClipExample':
-        return WakeWordClipExample(self.metadata, audio_data, self.contains_wake_word, self.sample_rate)
+        return WakeWordClipExample(self.metadata, audio_data, self.sample_rate)
 
 
 class DatasetType(enum.Enum):

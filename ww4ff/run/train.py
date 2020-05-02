@@ -12,7 +12,7 @@ from .preprocess_dataset import print_stats
 from ww4ff.data.dataset import FlatWavDatasetLoader, WakeWordTrainingDataset, WakeWordEvaluationDataset, DatasetType
 from ww4ff.data.dataloader import StandardAudioDataLoaderBuilder
 from ww4ff.data.transform import compose, ZmuvTransform, StandardAudioTransform, batchify, random_slice,\
-    NoiseTransform, TimestretchTransform, TimeshiftTransform, trim
+    NoiseTransform, TimestretchTransform, TimeshiftTransform, trim, NegativeSampleTransform
 from ww4ff.settings import SETTINGS
 from ww4ff.model import find_model, model_names, Workspace, ConfusionMatrix
 from ww4ff.model.inference import InferenceEngine
@@ -87,12 +87,16 @@ def main():
     logging.info(f'{sum(p.numel() for p in params)} parameters')
     criterion = nn.CrossEntropyLoss()
 
-    for idx, batch in enumerate(tqdm(prep_dl, desc='Constructing ZMUV')):
-        batch.to(device)
-        zmuv_transform.update(std_transform(batch.audio_data))
-        if idx == 2000:  # TODO: quick debugging, remove later
-            break
-    logging.info(dict(zmuv_mean=zmuv_transform.mean, zmuv_std=zmuv_transform.std))
+    if (ws.path / 'zmuv.pt.bin').exists():
+        zmuv_transform.load_state_dict(torch.load(str(ws.path / 'zmuv.pt.bin')))
+    else:
+        for idx, batch in enumerate(tqdm(prep_dl, desc='Constructing ZMUV')):
+            batch.to(device)
+            zmuv_transform.update(std_transform(batch.audio_data))
+            if idx == 2000:  # TODO: quick debugging, remove later
+                break
+        logging.info(dict(zmuv_mean=zmuv_transform.mean, zmuv_std=zmuv_transform.std))
+    torch.save(zmuv_transform.state_dict(), str(ws.path / 'zmuv.pt.bin'))
 
     if args.load_weights:
         ws.load_model(model, best=True)

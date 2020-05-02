@@ -71,7 +71,7 @@ class AugmentModule(nn.Module):
 class NegativeSampleTransform(AugmentModule):
     @property
     def default_params(self):
-        return AugmentationParameter([0.1, 0.2, 0.3, 0.4], 'chunk_size', 1, prob=0.25),
+        return AugmentationParameter([0.2, 0.3, 0.4, 0.5], 'chunk_size', 1, prob=0.3),
 
     @torch.no_grad()
     def augment(self, param: AugmentationParameter, examples: Sequence[WakeWordClipExample], **kwargs):
