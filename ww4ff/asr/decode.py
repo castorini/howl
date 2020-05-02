@@ -38,7 +38,7 @@ class TranscriptionAligner:
         curr_idx = 0
         for length, start, end in intervals:
             interval_ms = (end - start) / length
-            align_end_ms_list.extend((alignment[curr_idx:curr_idx + length] * interval_ms + interval_ms).tolist())
+            align_end_ms_list.extend((alignment[curr_idx:curr_idx + length] * interval_ms + start).tolist())
             curr_idx += length
         return AlignedTranscription(transcription=''.join(transcription), end_timestamps=align_end_ms_list)
 

@@ -13,7 +13,7 @@ from ww4ff.settings import SETTINGS
 def work(idx, transcriptions, paths, dataset_path, set_type, lock: Lock):
     with FlatWavDatasetMetadataWriter(dataset_path, set_type, 'aligned-', mode='a') as writer:
         for text, result, path in zip(transcriptions,
-                                      tqdm(compute_raw_scores(list(map(str, paths))), total=len(paths), position=idx),
+                                      tqdm(compute_raw_scores(list(map(str, paths))),total=len(paths), position=idx),
                                       paths):
             try:
                 aligned = TranscriptionAligner().align(result, text)
@@ -33,10 +33,11 @@ def main(_):
     train_ds, dev_ds, test_ds = loader.load_splits(SETTINGS.dataset.dataset_path, **ds_kwargs)
     num_workers = FLAGS.num_workers
     lock = Lock()
+    refresh_length = 20  # might be smaller for computers with less RAM
 
     for ds in train_ds, dev_ds, test_ds:
         paths = [m.path for m in ds.metadata_list]
-        transcriptions = [m.transcription for m in ds.metadata_list]
+        transcriptions = [m.transcription.replace('firefox', 'fire fox') for m in ds.metadata_list]
         transcript_chunks = []
         path_chunks = []
         chunk_len = len(transcriptions) // num_workers
@@ -45,12 +46,22 @@ def main(_):
             transcript_chunks.append(transcriptions[idx * chunk_len:last])
             path_chunks.append(paths[idx * chunk_len:last])
 
-        processes = [Process(target=work, args=(idx, t, p, SETTINGS.dataset.dataset_path, ds.set_type, lock))
-                     for idx, (t, p) in enumerate(zip(transcript_chunks, path_chunks))]
-        for process in processes:
-            process.start()
-        for process in processes:
-            process.join()
+        while transcript_chunks:
+            processes = [Process(target=work, args=(idx,
+                                                    t[:refresh_length],
+                                                    p[:refresh_length],
+                                                    SETTINGS.dataset.dataset_path,
+                                                    ds.set_type,
+                                                    lock))
+                         for idx, (t, p) in enumerate(zip(transcript_chunks, path_chunks))]
+            for process in processes:
+                process.start()
+            for process in processes:
+                process.join()
+            transcript_chunks = [x[refresh_length:] for x in transcript_chunks]
+            transcript_chunks = list(filter(lambda x: len(x) > 0, transcript_chunks))
+            path_chunks = [x[refresh_length:] for x in path_chunks]
+            path_chunks = list(filter(lambda x: len(x) > 0, path_chunks))
 
 
 if __name__ == '__main__':
