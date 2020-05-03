@@ -1,23 +1,48 @@
+from copy import deepcopy
 from functools import partial
 from typing import Tuple
 from pathlib import Path
 import json
 import logging
 
+from pydantic import BaseModel
 from tqdm import tqdm
 import pandas as pd
 import soundfile
 
-from .base import DatasetType, AudioClipMetadata, UNKNOWN_TRANSCRIPTION
-from .dataset import AudioClipDataset
+from .base import DatasetType, AudioClipMetadata, UNKNOWN_TRANSCRIPTION, AlignedAudioClipMetadata
+from .dataset import AudioClipDataset, WakeWordDataset
 from ww4ff.utils.audio import silent_load
 from ww4ff.utils.hash import sha256_int
 
 
-__all__ = ['FlatWavDatasetWriter', 'FlatWavDatasetLoader', 'MozillaWakeWordLoader', 'MozillaCommonVoiceLoader']
+__all__ = ['AudioClipDatasetWriter',
+           'AudioClipDatasetLoader',
+           'MozillaWakeWordLoader',
+           'MozillaCommonVoiceLoader',
+           'FlatWavDatasetMetadataWriter',
+           'WakeWordDatasetLoader']
 
 
-class FlatWavDatasetWriter:
+class FlatWavDatasetMetadataWriter:
+    def __init__(self, dataset_path: Path, set_type: DatasetType, prefix: str = '', mode: str = 'w'):
+        self.filename = str(dataset_path / f'{prefix}metadata-{set_type.name.lower()}.jsonl')
+        self.mode = mode
+
+    def __enter__(self):
+        self.f = open(self.filename, self.mode)
+        return self
+
+    def write(self, metadata: BaseModel):
+        metadata = deepcopy(metadata)
+        metadata.path = metadata.path.name
+        self.f.write(metadata.json() + '\n')
+
+    def __exit__(self, *args):
+        self.f.close()
+
+
+class AudioClipDatasetWriter:
     def __init__(self, dataset: AudioClipDataset, print_progress: bool = True):
         self.dataset = dataset
         self.print_progress = print_progress
@@ -32,10 +57,14 @@ class FlatWavDatasetWriter:
         folder.mkdir(exist_ok=True)
         audio_folder = folder / 'audio'
         audio_folder.mkdir(exist_ok=True)
-        with open(str(folder / f'metadata-{self.dataset.set_type.name.lower()}.jsonl'), 'w') as f:
+        with FlatWavDatasetMetadataWriter(audio_folder, self.dataset.set_type) as writer:
             for metadata in tqdm(self.dataset.metadata_list, disable=not self.print_progress, desc='Writing files'):
-                process(metadata)
-                f.write(metadata.json() + '\n')
+                try:
+                    process(metadata)
+                except EOFError:
+                    logging.warning(f'Skipping bad file {metadata.path}')
+                    continue
+                writer.write(metadata)
 
 
 class PathDatasetLoader:
@@ -43,24 +72,44 @@ class PathDatasetLoader:
         raise NotImplementedError
 
 
-class FlatWavDatasetLoader(PathDatasetLoader):
-    def load_splits(self, path: Path, **dataset_kwargs) -> Tuple[AudioClipDataset, AudioClipDataset, AudioClipDataset]:
+class MetadataLoaderMixin:
+    dataset_class = None
+    metadata_class = None
+    default_prefix = ''
+
+    def load_splits(self,
+                    path: Path,
+                    prefix: str = None,
+                    **dataset_kwargs):
         def load(jsonl_name):
             metadata_list = []
             with open(jsonl_name) as f:
                 for json_str in iter(f.readline, ''):
-                    metadata = AudioClipMetadata(**json.loads(json_str))
+                    metadata = self.metadata_class(**json.loads(json_str))
                     metadata.path = (path / 'audio' / metadata.path).absolute()
                     metadata_list.append(metadata)
                 return metadata_list
 
+        if prefix is None:
+            prefix = self.default_prefix
         logging.info(f'Loading flat dataset from {path}...')
-        training_path = path / f'metadata-{DatasetType.TRAINING.name.lower()}.jsonl'
-        dev_path = path / f'metadata-{DatasetType.DEV.name.lower()}.jsonl'
-        test_path = path / f'metadata-{DatasetType.TEST.name.lower()}.jsonl'
-        return (AudioClipDataset(load(training_path), set_type=DatasetType.TRAINING, **dataset_kwargs),
-                AudioClipDataset(load(dev_path), set_type=DatasetType.DEV, **dataset_kwargs),
-                AudioClipDataset(load(test_path), set_type=DatasetType.TEST, **dataset_kwargs))
+        training_path = path / f'{prefix}metadata-{DatasetType.TRAINING.name.lower()}.jsonl'
+        dev_path = path / f'{prefix}metadata-{DatasetType.DEV.name.lower()}.jsonl'
+        test_path = path / f'{prefix}metadata-{DatasetType.TEST.name.lower()}.jsonl'
+        return (self.dataset_class(load(training_path), set_type=DatasetType.TRAINING, **dataset_kwargs),
+                self.dataset_class(load(dev_path), set_type=DatasetType.DEV, **dataset_kwargs),
+                self.dataset_class(load(test_path), set_type=DatasetType.TEST, **dataset_kwargs))
+
+
+class AudioClipDatasetLoader(MetadataLoaderMixin, PathDatasetLoader):
+    dataset_class = AudioClipMetadata
+    metadata_class = AudioClipMetadata
+
+
+class WakeWordDatasetLoader(MetadataLoaderMixin, PathDatasetLoader):
+    default_prefix = 'aligned-'
+    dataset_class = WakeWordDataset
+    metadata_class = AlignedAudioClipMetadata
 
 
 class MozillaCommonVoiceLoader(PathDatasetLoader):

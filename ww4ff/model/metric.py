@@ -24,4 +24,6 @@ class ConfusionMatrix:
         tp, tn, fp, fn = self.tp, self.tn, self.fp, self.fn
         num = tp * tn - fp * fn
         denom = math.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))
+        if denom == 0:
+            denom = 1
         return num / denom

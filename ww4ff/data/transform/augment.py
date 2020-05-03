@@ -9,7 +9,7 @@ import librosa
 import torch
 import torch.nn as nn
 
-from ww4ff.data.dataset import EmplacableExample
+from ww4ff.data.dataset import EmplacableExample, WakeWordClipExample
 
 
 __all__ = ['AugmentationParameter',
@@ -18,7 +18,8 @@ __all__ = ['AugmentationParameter',
            'TimestretchTransform',
            'NoiseTransform',
            'StandardAudioTransform',
-           'SpecAugmentTransform']
+           'SpecAugmentTransform',
+           'NegativeSampleTransform']
 
 
 @dataclass
@@ -65,6 +66,22 @@ class AugmentModule(nn.Module):
             else:
                 x = self.passthrough(x, **kwargs)
         return x
+
+
+class NegativeSampleTransform(AugmentModule):
+    @property
+    def default_params(self):
+        return AugmentationParameter([0.2, 0.3, 0.4, 0.5], 'chunk_size', 1, prob=0.3),
+
+    @torch.no_grad()
+    def augment(self, param: AugmentationParameter, examples: Sequence[WakeWordClipExample], **kwargs):
+        new_examples = []
+        for example in examples:
+            audio_data = example.audio_data[..., :int(example.audio_data.size(-1) * param.magnitude)]
+            example = example.emplaced_audio_data(audio_data)
+            example.contains_wake_word = False
+            new_examples.append(example)
+        return new_examples
 
 
 class TimeshiftTransform(AugmentModule):

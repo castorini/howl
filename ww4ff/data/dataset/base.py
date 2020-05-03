@@ -1,10 +1,12 @@
 from dataclasses import dataclass
-from typing import Mapping, Any, Optional
+from typing import Mapping, Any, Optional, List, Tuple
 from pathlib import Path
 import enum
 
 from pydantic import BaseModel
 import torch
+
+from ww4ff.asr import AlignedTranscription
 
 
 __all__ = ['AudioClipExample',
@@ -14,6 +16,7 @@ __all__ = ['AudioClipExample',
            'ClassificationBatch',
            'AudioDatasetStatistics',
            'EmplacableExample',
+           'AlignedAudioClipMetadata',
            'UNKNOWN_TRANSCRIPTION']
 
 
@@ -32,6 +35,25 @@ class AudioClipMetadata(BaseModel):
     raw: Optional[Mapping[str, Any]]
 
 
+class AlignedAudioClipMetadata(BaseModel):
+    path: Path
+    transcription: AlignedTranscription
+
+    def compute_frame_labels(self, words: List[str]):
+        frame_labels = dict()
+        t = f' {self.transcription.transcription}'
+        start = 0
+        for idx, word in enumerate(words):
+            while True:
+                try:
+                    start = t.index(word, start)
+                except ValueError:
+                    break
+                frame_labels[self.transcription.end_timestamps[start + len(word) - 2]] = idx
+                start += 1
+        return frame_labels
+
+
 class EmplacableExample:
     audio_data: torch.Tensor
 
@@ -39,7 +61,7 @@ class EmplacableExample:
         raise NotImplementedError
 
 
-@dataclass(frozen=True)
+@dataclass
 class AudioClipExample(EmplacableExample):
     metadata: AudioClipMetadata
     audio_data: torch.Tensor
@@ -55,8 +77,12 @@ class AudioClipExample(EmplacableExample):
 @dataclass
 class ClassificationBatch:
     audio_data: torch.Tensor
-    labels: torch.Tensor
+    labels: Optional[torch.Tensor]
     lengths: torch.Tensor
+
+    @classmethod
+    def from_single(cls, audio_clip: torch.Tensor, label: int) -> 'ClassificationBatch':
+        return cls(audio_clip.unsqueeze(0), torch.tensor([label]), torch.tensor([audio_clip.size(-1)]))
 
     def pin_memory(self):
         self.audio_data.pin_memory()
@@ -65,20 +91,21 @@ class ClassificationBatch:
 
     def to(self, device: torch.device) -> 'ClassificationBatch':
         self.audio_data = self.audio_data.to(device)
-        self.labels = self.labels.to(device)
+        if self.labels is not None:
+            self.labels = self.labels.to(device)
         self.lengths = self.lengths.to(device)
         return self
 
 
-@dataclass(frozen=True)
+@dataclass
 class WakeWordClipExample(EmplacableExample):
-    metadata: AudioClipMetadata
+    metadata: AlignedAudioClipMetadata
     audio_data: torch.Tensor
-    contains_wake_word: bool
     sample_rate: int
+    frame_labels: Mapping[float, int]
 
     def emplaced_audio_data(self, audio_data: torch.Tensor) -> 'WakeWordClipExample':
-        return WakeWordClipExample(self.metadata, audio_data, self.contains_wake_word, self.sample_rate)
+        return WakeWordClipExample(self.metadata, audio_data, self.sample_rate, self.frame_labels)
 
 
 class DatasetType(enum.Enum):
