@@ -15,7 +15,8 @@ class AlignedTranscription(BaseModel):
 
 
 class TranscriptionAligner:
-    def __init__(self, alphabet: str = ' abcdefghijklmnopqrstuvwxyz\''):
+    def __init__(self,
+                 alphabet: str = ' abcdefghijklmnopqrstuvwxyz\''):
         self.alphabet = alphabet
         self.alphabet_set = set(alphabet)
 
@@ -33,7 +34,7 @@ class TranscriptionAligner:
             intervals.append((probs.shape[0], start, end))
         probs = np.concatenate(all_probs, 0)
         scores = ctc_forward(probs, labels)
-        alignment = compute_max_alignment(scores)
+        alignment = compute_simple_max_alignment(scores)
         align_end_ms_list = []
         curr_idx = 0
         for length, start, end in intervals:
@@ -43,7 +44,7 @@ class TranscriptionAligner:
         return AlignedTranscription(transcription=''.join(transcription), end_timestamps=align_end_ms_list)
 
 
-def compute_max_alignment(scores: np.ndarray):
+def compute_simple_max_alignment(scores: np.ndarray):
     scores = scores[:, 1::2] + scores[:, 2::2]
     return np.argmax(scores, 0)
 

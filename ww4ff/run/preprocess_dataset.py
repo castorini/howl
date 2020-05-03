@@ -1,7 +1,7 @@
 import logging
 
 from .args import ArgumentParserBuilder, opt
-from ww4ff.data.dataset import MozillaWakeWordLoader, MozillaCommonVoiceLoader, FlatWavDatasetWriter, AudioClipDataset
+from ww4ff.data.dataset import MozillaWakeWordLoader, MozillaCommonVoiceLoader, AudioClipDatasetWriter, AudioClipDataset
 from ww4ff.settings import SETTINGS
 from ww4ff.utils.hash import sha256_int
 
@@ -57,7 +57,7 @@ def main():
     print_stats('Combined dataset', ww_train_ds, ww_dev_ds, ww_test_ds, skip_length=True)
 
     for ds in ww_train_ds, ww_dev_ds, ww_test_ds:
-        FlatWavDatasetWriter(ds).write(SETTINGS.dataset.dataset_path)
+        AudioClipDatasetWriter(ds).write(SETTINGS.dataset.dataset_path)
 
 
 if __name__ == '__main__':

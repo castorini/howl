@@ -39,7 +39,7 @@ class LASClassifierConfig(BaseSettings):
 class SimpleGRU(nn.Module):
     def __init__(self, config: LASEncoderConfig = LASEncoderConfig()):
         super().__init__()
-        conv1 = nn.Conv2d(1, config.num_latent_channels, 3, padding=1)
+        conv1 = nn.Conv2d(1, config.num_latent_channels, 3, padding=(1, 3))
         conv2 = nn.Conv2d(config.num_latent_channels, 1, 3, padding=1)
         self.conv_encoder = nn.Sequential(conv1,
                                           nn.BatchNorm2d(config.num_latent_channels),
@@ -60,6 +60,7 @@ class SimpleGRU(nn.Module):
             lengths = torch.tensor([x.size(-1)] * x.size(0)).to(x.device)
         x = x[:, :1]  # Use log-Mels only
         x = self.conv_encoder(x).squeeze(1)
+        lengths += 4
         if self.use_maxpool:
             lengths = (lengths.float() / 2).floor()
         x = x.permute(2, 0, 1).contiguous()

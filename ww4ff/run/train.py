@@ -9,10 +9,10 @@ import torch.nn as nn
 
 from .args import ArgumentParserBuilder, opt
 from .preprocess_dataset import print_stats
-from ww4ff.data.dataset import FlatWavDatasetLoader, WakeWordTrainingDataset, WakeWordEvaluationDataset, DatasetType
+from ww4ff.data.dataset import WakeWordEvaluationDataset, DatasetType, WakeWordDatasetLoader, ClassificationBatch
 from ww4ff.data.dataloader import StandardAudioDataLoaderBuilder
-from ww4ff.data.transform import compose, ZmuvTransform, StandardAudioTransform, batchify, random_slice,\
-    NoiseTransform, TimestretchTransform, TimeshiftTransform, trim, NegativeSampleTransform
+from ww4ff.data.transform import compose, ZmuvTransform, StandardAudioTransform, WakeWordBatchifier,\
+    NoiseTransform, batchify
 from ww4ff.settings import SETTINGS
 from ww4ff.model import find_model, model_names, Workspace, ConfusionMatrix
 from ww4ff.model.inference import InferenceEngine
@@ -20,64 +20,63 @@ from ww4ff.utils.random import set_seed
 
 
 def main():
-    def evaluate(dataset: WakeWordEvaluationDataset, prefix: str):
+    def evaluate(dataset: WakeWordEvaluationDataset, prefix: str, save: bool = False):
         std_transform.eval()
-        ds_iter = iter(dataset)
-        engine = InferenceEngine(model, zmuv_transform)
+        engine = InferenceEngine(model, zmuv_transform, negative_label=num_labels - 1)
         model.eval()
         conf_matrix = ConfusionMatrix()
-        with tqdm(position=1, desc=prefix, leave=True) as pbar:
-            while True:
-                try:
-                    example = next(ds_iter)
-                    pbar.update(1)
-                except StopIteration:
-                    break
-                example = trim([example])[0]
-                pred = engine.infer(example.audio_data.to(device))
-                label = example.contains_wake_word
-                conf_matrix.increment(pred, label)
-                if pbar.n % 10 == 9:
-                    pbar.set_postfix(dict(mcc=f'{conf_matrix.mcc}'))
+        pbar = tqdm(dataset, desc=prefix)
+        for idx, batch in enumerate(pbar):
+            batch = batch.to(device)  # type: ClassificationBatch
+            pred = engine.infer(batch.audio_data.to(device).squeeze(0))
+            label = batch.labels.item()
+            conf_matrix.increment(pred < num_labels - 1, label < num_labels - 1)
+            if idx % 10 == 9:
+                pbar.set_postfix(dict(mcc=f'{conf_matrix.mcc}', c=f'{conf_matrix}'))
         logging.info(f'{conf_matrix}')
-        if dataset.set_type == DatasetType.DEV and not args.eval:
-            writer.add_scalar(f'{prefix}/Metric/mcc', conf_matrix.mcc, epoch_idx)
+        if save and not args.eval:
+            writer.add_scalar(f'{prefix}/Metric/mcc', conf_matrix.fp, epoch_idx)
             ws.increment_model(model, conf_matrix.mcc)
 
     apb = ArgumentParserBuilder()
     apb.add_options(opt('--model', type=str, choices=model_names(), default='las'),
                     opt('--workspace', type=str, default=str(Path('workspaces') / 'default')),
                     opt('--load-weights', action='store_true'),
+                    opt('--vocab', type=str, nargs='+', default=[' hey', 'fire', 'fox']),
                     opt('--eval', action='store_true'))
     args = apb.parser.parse_args()
 
+    num_labels = len(args.vocab) + 1
     ws = Workspace(Path(args.workspace), delete_existing=not args.eval)
     writer = ws.summary_writer
     set_seed(SETTINGS.training.seed)
     ww = SETTINGS.training.wake_word
     logging.info(f'Using {ww}')
-    loader = FlatWavDatasetLoader()
-    ds_kwargs = dict(sr=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono)
+    loader = WakeWordDatasetLoader()
+    ds_kwargs = dict(sr=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono, words=args.vocab)
     ww_train_ds, ww_dev_ds, ww_test_ds = loader.load_splits(SETTINGS.dataset.dataset_path, **ds_kwargs)
     print_stats('Wake word dataset', ww_train_ds, ww_dev_ds, ww_test_ds)
 
     sr = SETTINGS.audio.sample_rate
     wind_sz = int(SETTINGS.training.eval_window_size_seconds * sr)
     stri_sz = int(SETTINGS.training.eval_stride_size_seconds * sr)
-    ww_train_ds = WakeWordTrainingDataset(ww_train_ds, ww)
-    ww_dev_ds = WakeWordEvaluationDataset(WakeWordTrainingDataset(ww_dev_ds, ww), wind_sz, stri_sz)
-    ww_test_ds = WakeWordEvaluationDataset(WakeWordTrainingDataset(ww_test_ds, ww), wind_sz, stri_sz)
+    ww_dev_pos_ds = ww_dev_ds.filter(lambda x: x.compute_frame_labels(args.vocab), clone=True)
+    ww_dev_neg_ds = ww_dev_ds.filter(lambda x: not x.compute_frame_labels(args.vocab), clone=True)
+    ww_test_pos_ds = ww_test_ds.filter(lambda x: x.compute_frame_labels(args.vocab), clone=True)
+    ww_test_neg_ds = ww_test_ds.filter(lambda x: not x.compute_frame_labels(args.vocab), clone=True)
+
+    ww_dev_pos_ds = WakeWordEvaluationDataset(ww_dev_pos_ds, wind_sz, stri_sz, num_labels - 1)
+    ww_dev_neg_ds = WakeWordEvaluationDataset(ww_dev_neg_ds, wind_sz, stri_sz, num_labels - 1)
+    ww_test_pos_ds = WakeWordEvaluationDataset(ww_test_pos_ds, wind_sz, stri_sz, num_labels - 1)
+    ww_test_neg_ds = WakeWordEvaluationDataset(ww_test_neg_ds, wind_sz, stri_sz, num_labels - 1)
 
     device = torch.device(SETTINGS.training.device)
     std_transform = StandardAudioTransform(sr).to(device).eval()
     zmuv_transform = ZmuvTransform().to(device)
-    train_comp = compose(trim,
-                         partial(random_slice, max_window_size=int(SETTINGS.training.max_window_size_seconds * sr)),
-                         TimeshiftTransform().train(),
-                         TimestretchTransform().train(),
-                         NoiseTransform().train(),
-                         batchify)
-    prep_dl = StandardAudioDataLoaderBuilder(ww_train_ds, collate_fn=compose(trim, batchify)).build(1)
+    batchifier = WakeWordBatchifier(num_labels - 1,
+                                    window_size_ms=int(SETTINGS.training.max_window_size_seconds * 1000))
+    train_comp = compose(NoiseTransform().train(), batchifier)
+    prep_dl = StandardAudioDataLoaderBuilder(ww_train_ds, collate_fn=batchify).build(1)
     prep_dl.shuffle = True
     train_dl = StandardAudioDataLoaderBuilder(ww_train_ds, collate_fn=train_comp).build(SETTINGS.training.batch_size)
 
@@ -131,8 +130,10 @@ def main():
 
         for group in optimizer.param_groups:
             group['lr'] *= 0.75
-        evaluate(ww_dev_ds, 'Dev')
-    evaluate(ww_test_ds, 'Test')
+        evaluate(ww_dev_neg_ds, 'Dev negative', save=True)
+        evaluate(ww_dev_pos_ds, 'Dev positive')
+    evaluate(ww_test_neg_ds, 'Test negative')
+    evaluate(ww_test_pos_ds, 'Test positive')
 
 
 if __name__ == '__main__':

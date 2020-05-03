@@ -10,17 +10,18 @@ from tqdm import tqdm
 import pandas as pd
 import soundfile
 
-from .base import DatasetType, AudioClipMetadata, UNKNOWN_TRANSCRIPTION
-from .dataset import AudioClipDataset
+from .base import DatasetType, AudioClipMetadata, UNKNOWN_TRANSCRIPTION, AlignedAudioClipMetadata
+from .dataset import AudioClipDataset, WakeWordDataset
 from ww4ff.utils.audio import silent_load
 from ww4ff.utils.hash import sha256_int
 
 
-__all__ = ['FlatWavDatasetWriter',
-           'FlatWavDatasetLoader',
+__all__ = ['AudioClipDatasetWriter',
+           'AudioClipDatasetLoader',
            'MozillaWakeWordLoader',
            'MozillaCommonVoiceLoader',
-           'FlatWavDatasetMetadataWriter']
+           'FlatWavDatasetMetadataWriter',
+           'WakeWordDatasetLoader']
 
 
 class FlatWavDatasetMetadataWriter:
@@ -41,7 +42,7 @@ class FlatWavDatasetMetadataWriter:
         self.f.close()
 
 
-class FlatWavDatasetWriter:
+class AudioClipDatasetWriter:
     def __init__(self, dataset: AudioClipDataset, print_progress: bool = True):
         self.dataset = dataset
         self.print_progress = print_progress
@@ -71,27 +72,44 @@ class PathDatasetLoader:
         raise NotImplementedError
 
 
-class FlatWavDatasetLoader(PathDatasetLoader):
+class MetadataLoaderMixin:
+    dataset_class = None
+    metadata_class = None
+    default_prefix = ''
+
     def load_splits(self,
                     path: Path,
-                    prefix: str = '',
-                    **dataset_kwargs) -> Tuple[AudioClipDataset, AudioClipDataset, AudioClipDataset]:
+                    prefix: str = None,
+                    **dataset_kwargs):
         def load(jsonl_name):
             metadata_list = []
             with open(jsonl_name) as f:
                 for json_str in iter(f.readline, ''):
-                    metadata = AudioClipMetadata(**json.loads(json_str))
+                    metadata = self.metadata_class(**json.loads(json_str))
                     metadata.path = (path / 'audio' / metadata.path).absolute()
                     metadata_list.append(metadata)
                 return metadata_list
 
+        if prefix is None:
+            prefix = self.default_prefix
         logging.info(f'Loading flat dataset from {path}...')
         training_path = path / f'{prefix}metadata-{DatasetType.TRAINING.name.lower()}.jsonl'
         dev_path = path / f'{prefix}metadata-{DatasetType.DEV.name.lower()}.jsonl'
         test_path = path / f'{prefix}metadata-{DatasetType.TEST.name.lower()}.jsonl'
-        return (AudioClipDataset(load(training_path), set_type=DatasetType.TRAINING, **dataset_kwargs),
-                AudioClipDataset(load(dev_path), set_type=DatasetType.DEV, **dataset_kwargs),
-                AudioClipDataset(load(test_path), set_type=DatasetType.TEST, **dataset_kwargs))
+        return (self.dataset_class(load(training_path), set_type=DatasetType.TRAINING, **dataset_kwargs),
+                self.dataset_class(load(dev_path), set_type=DatasetType.DEV, **dataset_kwargs),
+                self.dataset_class(load(test_path), set_type=DatasetType.TEST, **dataset_kwargs))
+
+
+class AudioClipDatasetLoader(MetadataLoaderMixin, PathDatasetLoader):
+    dataset_class = AudioClipMetadata
+    metadata_class = AudioClipMetadata
+
+
+class WakeWordDatasetLoader(MetadataLoaderMixin, PathDatasetLoader):
+    default_prefix = 'aligned-'
+    dataset_class = WakeWordDataset
+    metadata_class = AlignedAudioClipMetadata
 
 
 class MozillaCommonVoiceLoader(PathDatasetLoader):

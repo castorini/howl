@@ -6,7 +6,7 @@ from tqdm import tqdm
 import tensorflow as tf
 
 from ww4ff.asr import compute_raw_scores, TranscriptionAligner
-from ww4ff.data.dataset import FlatWavDatasetLoader, FlatWavDatasetMetadataWriter, AlignedAudioClipMetadata
+from ww4ff.data.dataset import AudioClipDatasetLoader, FlatWavDatasetMetadataWriter, AlignedAudioClipMetadata
 from ww4ff.settings import SETTINGS
 
 
@@ -28,16 +28,17 @@ def work(idx, transcriptions, paths, dataset_path, set_type, lock: Lock):
 
 
 def main(_):
-    loader = FlatWavDatasetLoader()
+    loader = AudioClipDatasetLoader()
     ds_kwargs = dict(sr=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono)
     train_ds, dev_ds, test_ds = loader.load_splits(SETTINGS.dataset.dataset_path, **ds_kwargs)
     num_workers = FLAGS.num_workers
     lock = Lock()
-    refresh_length = 20  # might be smaller for computers with less RAM
+    refresh_length = 20  # might need to be smaller for computers with less RAM
 
     for ds in train_ds, dev_ds, test_ds:
         paths = [m.path for m in ds.metadata_list]
-        transcriptions = [m.transcription.replace('firefox', 'fire fox') for m in ds.metadata_list]
+        # TODO: remove dirty fix
+        transcriptions = [m.transcription.lower().replace('firefox', 'fire fox') for m in ds.metadata_list]
         transcript_chunks = []
         path_chunks = []
         chunk_len = len(transcriptions) // num_workers
