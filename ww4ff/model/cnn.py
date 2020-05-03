@@ -10,16 +10,20 @@ from .base import register_model
 __all__ = ['MobileNetClassifier', 'Res8']
 
 
+class MobileNetSettings(BaseSettings):
+    num_labels: int = 2
+
+
 @register_model('mobilenet')
 class MobileNetClassifier(nn.Module):
-    def __init__(self):
+    def __init__(self, settings: MobileNetSettings = MobileNetSettings()):
         super().__init__()
-        self.downsample = nn.Sequential(nn.Conv2d(1, 3, 3, padding=1),
+        self.downsample = nn.Sequential(nn.Conv2d(1, 3, 3, padding=(1, 3)),
                                         nn.BatchNorm2d(3),
                                         nn.ReLU(),
                                         nn.MaxPool2d((1, 2)))
         self.model = mobilenet_v2(pretrained=True)
-        model = MobileNetV2(num_classes=2)
+        model = MobileNetV2(num_classes=settings.num_labels)
         self.model.classifier = model.classifier
 
     def forward(self, x, lengths):

@@ -138,9 +138,24 @@ class WakeWordEvaluationDataset(TypedAudioDataset, tud.IterableDataset):
             self._init_frame_labels()
             return self.dataset.dataset[self.curr_file_idx]
 
+        def emit_next_positive_example(self):
+            example = self.dataset.dataset[self.curr_file_idx]
+            pos_ts, pos_lbl = self.frame_labels[self.label_pointer]
+            self.output_positives.append(pos_ts)
+            b = int(pos_ts / 1000 * self.dataset.dataset.sr)
+            a = max(b - self.dataset.window_size, 0)
+            self.label_pointer += 1
+            return ClassificationBatch.from_single(example.audio_data[..., a:b], pos_lbl)
+
         def __next__(self) -> ClassificationBatch:
             if len(self.dataset.dataset) <= self.curr_file_idx:
                 raise StopIteration
+            if self.dataset.positives_only:
+                while True:
+                    try:
+                        return self.emit_next_positive_example()
+                    except IndexError:
+                        self._inc()
             example = self.dataset.dataset[self.curr_file_idx]
             if example.audio_data.size(-1) < self.dataset.window_size and self.curr_stride_idx != 0:
                 example = self._inc()
@@ -159,12 +174,11 @@ class WakeWordEvaluationDataset(TypedAudioDataset, tud.IterableDataset):
                 else:
                     label = self.dataset.negative_label
                 if timedelta > self.dataset.positive_delta_ms:
-                    self.label_pointer += 1
                     if self.output_positives[-1] != pos_ts:
-                        self.output_positives.append(pos_ts)  # Always output a positive example within an audio clip
-                        b = int(pos_ts / 1000 * self.dataset.dataset.sr)
-                        a = max(b - self.dataset.window_size, 0)
-                        return ClassificationBatch.from_single(example.audio_data[..., a:b], pos_lbl)
+                        # Always output a positive example within an audio clip if not outputted
+                        return self.emit_next_positive_example()
+                    else:
+                        self.label_pointer += 1
             except IndexError:
                 label = self.dataset.negative_label
             self.curr_stride_idx += self.dataset.stride_size
@@ -175,7 +189,8 @@ class WakeWordEvaluationDataset(TypedAudioDataset, tud.IterableDataset):
                  window_size: int,
                  stride_size: int,
                  negative_label: int,
-                 positive_delta_ms: int = 90):
+                 positive_delta_ms: int = 150,
+                 positives_only: bool = False):
         super().__init__(sr=wake_word_dataset.sr,
                          mono=wake_word_dataset.mono,
                          set_type=wake_word_dataset.set_type)
@@ -184,6 +199,7 @@ class WakeWordEvaluationDataset(TypedAudioDataset, tud.IterableDataset):
         self.positive_delta_ms = positive_delta_ms
         self.dataset = wake_word_dataset
         self.negative_label = negative_label
+        self.positives_only = positives_only
 
     def __iter__(self) -> 'WakeWordEvaluationDataset.Iterator':
         return self.Iterator(self)

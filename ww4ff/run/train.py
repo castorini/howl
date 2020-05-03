@@ -20,7 +20,22 @@ from ww4ff.utils.random import set_seed
 
 
 def main():
-    def evaluate(dataset: WakeWordEvaluationDataset, prefix: str, save: bool = False):
+    def evaluate_accuracy(dataset: WakeWordEvaluationDataset, prefix: str, save: bool = False):
+        std_transform.eval()
+        model.eval()
+        pbar = tqdm(dataset, desc=prefix, leave=True)
+        num_corr = 0
+        num_tot = 0
+        for idx, batch in enumerate(pbar):
+            batch = batch.to(device)
+            scores = model(zmuv_transform(std_transform(batch.audio_data)),
+                           std_transform.compute_lengths(batch.lengths))
+            num_tot += scores.size(0)
+            num_corr += (scores.max(1)[1] == batch.labels).float().sum().item()
+            acc = num_corr / num_tot
+            pbar.set_postfix(accuracy=f'{acc:.4}')
+
+    def evaluate_engine(dataset: WakeWordEvaluationDataset, prefix: str, save: bool = False):
         std_transform.eval()
         engine = InferenceEngine(model, zmuv_transform, negative_label=num_labels - 1)
         model.eval()
@@ -65,9 +80,9 @@ def main():
     ww_test_pos_ds = ww_test_ds.filter(lambda x: x.compute_frame_labels(args.vocab), clone=True)
     ww_test_neg_ds = ww_test_ds.filter(lambda x: not x.compute_frame_labels(args.vocab), clone=True)
 
-    ww_dev_pos_ds = WakeWordEvaluationDataset(ww_dev_pos_ds, wind_sz, stri_sz, num_labels - 1)
+    ww_dev_pos_ds = WakeWordEvaluationDataset(ww_dev_pos_ds, wind_sz, stri_sz, num_labels - 1, positives_only=True)
     ww_dev_neg_ds = WakeWordEvaluationDataset(ww_dev_neg_ds, wind_sz, stri_sz, num_labels - 1)
-    ww_test_pos_ds = WakeWordEvaluationDataset(ww_test_pos_ds, wind_sz, stri_sz, num_labels - 1)
+    ww_test_pos_ds = WakeWordEvaluationDataset(ww_test_pos_ds, wind_sz, stri_sz, num_labels - 1, positives_only=True)
     ww_test_neg_ds = WakeWordEvaluationDataset(ww_test_neg_ds, wind_sz, stri_sz, num_labels - 1)
 
     device = torch.device(SETTINGS.training.device)
@@ -98,11 +113,11 @@ def main():
     torch.save(zmuv_transform.state_dict(), str(ws.path / 'zmuv.pt.bin'))
 
     if args.load_weights:
-        ws.load_model(model, best=True)
+        ws.load_model(model, best=False)
     if args.eval:
-        ws.load_model(model, best=True)
-        evaluate(ww_dev_ds, 'Dev')
-        evaluate(ww_test_ds, 'Test')
+        ws.load_model(model, best=False)
+        evaluate_accuracy(ww_dev_pos_ds, 'Dev positive')
+        evaluate_engine(ww_dev_neg_ds, 'Dev negative')
         return
 
     ws.write_args(args)
@@ -130,10 +145,10 @@ def main():
 
         for group in optimizer.param_groups:
             group['lr'] *= 0.75
-        evaluate(ww_dev_neg_ds, 'Dev negative', save=True)
-        evaluate(ww_dev_pos_ds, 'Dev positive')
-    evaluate(ww_test_neg_ds, 'Test negative')
-    evaluate(ww_test_pos_ds, 'Test positive')
+        evaluate_accuracy(ww_dev_pos_ds, 'Dev positive')
+    evaluate_accuracy(ww_test_pos_ds, 'Test positive')
+    evaluate_engine(ww_dev_neg_ds, 'Dev negative', save=True)
+    evaluate_engine(ww_test_neg_ds, 'Test negative')
 
 
 if __name__ == '__main__':
