@@ -7,7 +7,7 @@ __all__ = ['AudioSettings', 'RawDatasetSettings', 'DatasetSettings', 'SETTINGS']
 
 
 class CacheSettings(BaseSettings):
-    cache_size: int = 16384
+    cache_size: int = 128144
 
 
 class AudioSettings(BaseSettings):
@@ -19,9 +19,11 @@ class TrainingSettings(BaseSettings):
     seed: int = 0
     wake_word: str = 'Hey Firefox'
     num_epochs: int = 10
+    num_labels: int = 2
     learning_rate: float = 1e-3
     device: str = 'cuda:0'
     batch_size: int = 16
+    lr_decay: float = 0.75
     max_window_size_seconds: float = 0.75
     eval_window_size_seconds: float = 0.75
     eval_stride_size_seconds: float = 0.25

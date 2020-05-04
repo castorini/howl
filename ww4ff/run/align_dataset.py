@@ -6,12 +6,12 @@ from tqdm import tqdm
 import tensorflow as tf
 
 from ww4ff.asr import compute_raw_scores, TranscriptionAligner
-from ww4ff.data.dataset import AudioClipDatasetLoader, FlatWavDatasetMetadataWriter, AlignedAudioClipMetadata
+from ww4ff.data.dataset import AudioClipDatasetLoader, AudioClipDatasetMetadataWriter, AlignedAudioClipMetadata
 from ww4ff.settings import SETTINGS
 
 
 def work(idx, transcriptions, paths, dataset_path, set_type, lock: Lock):
-    with FlatWavDatasetMetadataWriter(dataset_path, set_type, 'aligned-', mode='a') as writer:
+    with AudioClipDatasetMetadataWriter(dataset_path, set_type, 'aligned-', mode='a') as writer:
         for text, result, path in zip(transcriptions,
                                       tqdm(compute_raw_scores(list(map(str, paths))),total=len(paths), position=idx),
                                       paths):

@@ -15,7 +15,8 @@ __all__ = ['Composition',
            'WakeWordBatchifier',
            'batchify',
            'identity',
-           'trim']
+           'trim',
+           'truncate_length']
 
 
 class Composition(nn.Module):
@@ -60,14 +61,19 @@ def random_slice(examples: Sequence[WakeWordClipExample],
     return new_examples
 
 
-def batchify(examples: Sequence[EmplacableExample]):
+def truncate_length(examples: Sequence[EmplacableExample], length: int = None):
+    return [ex.emplaced_audio_data(ex.audio_data[..., :length]) for ex in examples]
+
+
+def batchify(examples: Sequence[EmplacableExample], label_provider=None):
     examples = sorted(examples, key=lambda x: x.audio_data.size()[-1], reverse=True)
     lengths = torch.tensor([ex.audio_data.size(-1) for ex in examples])
     max_length = max(ex.audio_data.size(-1) for ex in examples)
     audio_tensor = [torch.cat((ex.audio_data.squeeze(), torch.zeros(max_length - ex.audio_data.size(-1))), -1) for
                     ex in examples]
     audio_tensor = torch.stack(audio_tensor)
-    return ClassificationBatch(audio_tensor, None, lengths)
+    labels = torch.tensor(list(map(label_provider, examples))) if label_provider else None
+    return ClassificationBatch(audio_tensor, labels, lengths)
 
 
 class WakeWordBatchifier:

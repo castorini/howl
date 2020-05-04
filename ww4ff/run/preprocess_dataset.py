@@ -46,14 +46,6 @@ def main():
     ww_train_ds.extend(cv_train_ds)
     ww_dev_ds.extend(cv_dev_ds)
     ww_test_ds.extend(cv_test_ds)
-
-    loader = MozillaWakeWordLoader(split_by_speaker=args.split_type == 'speaker', split='rejected')
-    rej_train_ds, rej_dev_ds, rej_test_ds = loader.load_splits(SETTINGS.raw_dataset.wake_word_dataset_path, **ds_kwargs)
-    print_stats('Rejected dataset', rej_train_ds, rej_dev_ds, rej_test_ds, skip_length=True)
-
-    ww_train_ds.extend(rej_train_ds)
-    ww_dev_ds.extend(rej_dev_ds)
-    ww_test_ds.extend(rej_test_ds)
     print_stats('Combined dataset', ww_train_ds, ww_dev_ds, ww_test_ds, skip_length=True)
 
     for ds in ww_train_ds, ww_dev_ds, ww_test_ds:

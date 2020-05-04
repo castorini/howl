@@ -1,4 +1,8 @@
+from typing import List
+import logging
+
 from pydantic import BaseSettings
+import numpy as np
 import torch
 import torch.nn as nn
 
@@ -9,8 +13,9 @@ __all__ = ['InferenceEngine', 'InferenceEngineSettings']
 
 
 class InferenceEngineSettings(BaseSettings):
-    inference_threshold: float = 0.7
+    inference_threshold: float = 0.9
     inference_alpha: float = 0.9
+    inference_weights: List[float] = None
 
 
 class InferenceEngine:
@@ -25,6 +30,8 @@ class InferenceEngine:
         self.alpha = settings.inference_alpha
         self.threshold = settings.inference_threshold
         self.value = 0
+        inference_weights = 1 if settings.inference_weights is None else np.array(settings.inference_weights)
+        self.inference_weights = inference_weights
         self.negative_label = negative_label
 
     def reset(self):
@@ -37,9 +44,12 @@ class InferenceEngine:
             lengths = torch.tensor([x.size(-1)]).to(x.device)
         lengths = self.std.compute_lengths(lengths)
         x = self.zmuv(self.std(x.unsqueeze(0)))
-        p = self.model(x, lengths).softmax(-1)[0]
-        prob = 1 - p[self.negative_label].item()
+        p = self.model(x, lengths).softmax(-1)[0].cpu().numpy()
+        p *= self.inference_weights
+        p = p / p.sum()
+        logging.debug([f'{x:.3f}' for x in p[:4].tolist()])
+        prob = 1 - p[self.negative_label]
         self.value = self.value * (1 - self.alpha) + self.alpha * prob
         if self.value > self.threshold:
-            return p.max(0)[1].item()
+            return np.argmax(p)
         return self.negative_label

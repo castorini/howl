@@ -34,6 +34,9 @@ def main():
             num_corr += (scores.max(1)[1] == batch.labels).float().sum().item()
             acc = num_corr / num_tot
             pbar.set_postfix(accuracy=f'{acc:.4}')
+        if save and not args.eval:
+            writer.add_scalar(f'{prefix}/Metric/acc', acc, epoch_idx)
+            ws.increment_model(model, acc)
 
     def evaluate_engine(dataset: WakeWordEvaluationDataset, prefix: str, save: bool = False):
         std_transform.eval()
@@ -115,7 +118,7 @@ def main():
     if args.load_weights:
         ws.load_model(model, best=False)
     if args.eval:
-        ws.load_model(model, best=False)
+        ws.load_model(model, best=True)
         evaluate_accuracy(ww_dev_pos_ds, 'Dev positive')
         evaluate_engine(ww_dev_neg_ds, 'Dev negative')
         return
@@ -144,10 +147,10 @@ def main():
             writer.add_scalar('Training/Loss', loss.item(), epoch_idx)
 
         for group in optimizer.param_groups:
-            group['lr'] *= 0.75
-        evaluate_accuracy(ww_dev_pos_ds, 'Dev positive')
+            group['lr'] *= SETTINGS.training.lr_decay
+        evaluate_accuracy(ww_dev_pos_ds, 'Dev positive', save=True)
     evaluate_accuracy(ww_test_pos_ds, 'Test positive')
-    evaluate_engine(ww_dev_neg_ds, 'Dev negative', save=True)
+    evaluate_engine(ww_dev_neg_ds, 'Dev negative')
     evaluate_engine(ww_test_neg_ds, 'Test negative')
 
 
