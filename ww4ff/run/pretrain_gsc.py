@@ -55,7 +55,7 @@ def main():
 
     sr = SETTINGS.audio.sample_rate
     device = torch.device(SETTINGS.training.device)
-    std_transform = StandardAudioTransform(sr).to(device).eval()
+    std_transform = StandardAudioTransform().to(device).eval()
     zmuv_transform = ZmuvTransform().to(device)
     batchifier = partial(batchify, label_provider=lambda x: x.label)
     truncater = partial(truncate_length, length=int(SETTINGS.training.max_window_size_seconds * sr))
@@ -120,7 +120,7 @@ def main():
 
         for group in optimizer.param_groups:
             group['lr'] *= SETTINGS.training.lr_decay
-        evaluate_accuracy(dev_dl, 'Dev')
+        evaluate_accuracy(dev_dl, 'Dev', save=True)
     evaluate_accuracy(test_dl, 'Test')
 
 

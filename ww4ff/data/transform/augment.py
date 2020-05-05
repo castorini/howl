@@ -3,6 +3,7 @@ from typing import Sequence
 import math
 import random
 
+from pydantic import BaseSettings
 from torchaudio.transforms import MelSpectrogram, ComputeDeltas
 import numpy as np
 import librosa
@@ -20,6 +21,13 @@ __all__ = ['AugmentationParameter',
            'StandardAudioTransform',
            'SpecAugmentTransform',
            'NegativeSampleTransform']
+
+
+class AudioTransformSettings(BaseSettings):
+    num_fft: int = 512
+    num_mels: int = 80
+    sample_rate: int = 16000
+    hop_length: int = 200
 
 
 @dataclass
@@ -143,10 +151,16 @@ class NoiseTransform(AugmentModule):
 
 
 class StandardAudioTransform(AugmentModule):
-    def __init__(self, sample_rate=16000, n_fft=400):
+    def __init__(self, settings: AudioTransformSettings = AudioTransformSettings()):
         super().__init__()
-        self.spec_transform = MelSpectrogram(n_mels=80, sample_rate=sample_rate, n_fft=n_fft)
-        self.vtlp_transform = apply_vtlp(MelSpectrogram(n_mels=80, sample_rate=sample_rate, n_fft=n_fft))
+        self.spec_transform = MelSpectrogram(n_mels=settings.num_mels,
+                                             sample_rate=settings.sample_rate,
+                                             n_fft=settings.num_fft,
+                                             hop_length=settings.hop_length)
+        self.vtlp_transform = apply_vtlp(MelSpectrogram(n_mels=settings.num_mels,
+                                                        sample_rate=settings.sample_rate,
+                                                        n_fft=settings.num_fft,
+                                                        hop_length=settings.hop_length))
         self.delta_transform = ComputeDeltas()
 
     @property

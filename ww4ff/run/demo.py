@@ -82,6 +82,17 @@ def main():
     ws.load_model(model, best=True)
     engine = InferenceEngine(model, zmuv_transform, len(args.words))
 
+    # import json
+    # from librosa.display import specshow
+    # with open('/home/ralph/Downloads/mels_hey_fire_fix.json') as f:
+    #     x = torch.tensor(json.load(f))
+    #     x = x.cuda()
+    # x = x.view(100, 80, 61).contiguous()
+    # specshow(x[40].cpu().numpy())
+    # for y in x:
+    #     logging.debug(engine.infer(y.unsqueeze(0)))
+    # return
+
     client = InferenceClient(engine, device, args.words)
     client.join()
 

@@ -60,7 +60,7 @@ def main():
     apb.add_options(opt('--model', type=str, choices=model_names(), default='las'),
                     opt('--workspace', type=str, default=str(Path('workspaces') / 'default')),
                     opt('--load-weights', action='store_true'),
-                    opt('--vocab', type=str, nargs='+', default=[' hey', 'fire', 'fox']),
+                    opt('--vocab', type=str, nargs='+', default=[' hey', 'fire', 'fox', 'kit', 'moxie', 'rexy', 'scout']),
                     opt('--eval', action='store_true'))
     args = apb.parser.parse_args()
 
@@ -89,7 +89,7 @@ def main():
     ww_test_neg_ds = WakeWordEvaluationDataset(ww_test_neg_ds, wind_sz, stri_sz, num_labels - 1)
 
     device = torch.device(SETTINGS.training.device)
-    std_transform = StandardAudioTransform(sr).to(device).eval()
+    std_transform = StandardAudioTransform().to(device).eval()
     zmuv_transform = ZmuvTransform().to(device)
     batchifier = WakeWordBatchifier(num_labels - 1,
                                     window_size_ms=int(SETTINGS.training.max_window_size_seconds * 1000))
