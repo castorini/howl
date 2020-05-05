@@ -1,3 +1,4 @@
+from collections import defaultdict
 from copy import deepcopy
 from functools import partial
 from typing import Tuple
@@ -11,7 +12,7 @@ import pandas as pd
 import soundfile
 
 from .base import DatasetType, AudioClipMetadata, UNKNOWN_TRANSCRIPTION, AlignedAudioClipMetadata
-from .dataset import AudioClipDataset, WakeWordDataset
+from .dataset import AudioClipDataset, WakeWordDataset, AudioClassificationDataset
 from ww4ff.utils.audio import silent_load
 from ww4ff.utils.hash import sha256_int
 
@@ -20,11 +21,12 @@ __all__ = ['AudioClipDatasetWriter',
            'AudioClipDatasetLoader',
            'MozillaWakeWordLoader',
            'MozillaCommonVoiceLoader',
-           'FlatWavDatasetMetadataWriter',
-           'WakeWordDatasetLoader']
+           'AudioClipDatasetMetadataWriter',
+           'WakeWordDatasetLoader',
+           'GoogleSpeechCommandsDatasetLoader']
 
 
-class FlatWavDatasetMetadataWriter:
+class AudioClipDatasetMetadataWriter:
     def __init__(self, dataset_path: Path, set_type: DatasetType, prefix: str = '', mode: str = 'w'):
         self.filename = str(dataset_path / f'{prefix}metadata-{set_type.name.lower()}.jsonl')
         self.mode = mode
@@ -57,7 +59,7 @@ class AudioClipDatasetWriter:
         folder.mkdir(exist_ok=True)
         audio_folder = folder / 'audio'
         audio_folder.mkdir(exist_ok=True)
-        with FlatWavDatasetMetadataWriter(audio_folder, self.dataset.set_type) as writer:
+        with AudioClipDatasetMetadataWriter(audio_folder, self.dataset.set_type) as writer:
             for metadata in tqdm(self.dataset.metadata_list, disable=not self.print_progress, desc='Writing files'):
                 try:
                     process(metadata)
@@ -102,7 +104,7 @@ class MetadataLoaderMixin:
 
 
 class AudioClipDatasetLoader(MetadataLoaderMixin, PathDatasetLoader):
-    dataset_class = AudioClipMetadata
+    dataset_class = AudioClipDataset
     metadata_class = AudioClipMetadata
 
 
@@ -110,6 +112,35 @@ class WakeWordDatasetLoader(MetadataLoaderMixin, PathDatasetLoader):
     default_prefix = 'aligned-'
     dataset_class = WakeWordDataset
     metadata_class = AlignedAudioClipMetadata
+
+
+class GoogleSpeechCommandsDatasetLoader(PathDatasetLoader):
+    def load_splits(self, path: Path, **dataset_kwargs) -> Tuple[AudioClassificationDataset,
+                                                                 AudioClassificationDataset,
+                                                                 AudioClassificationDataset]:
+        def load(set_type):
+            metadata_list = []
+            for path in all_list:
+                key = str(Path(path.parent.name) / path.name)
+                if file_map[key] != set_type:
+                    continue
+                metadata_list.append(AudioClipMetadata(path=path.absolute(),
+                                                       transcription=path.parent.name))
+            return AudioClassificationDataset(metadata_list,
+                                              label_map,
+                                              set_type=set_type,
+                                              **dataset_kwargs)
+
+        file_map = defaultdict(lambda: DatasetType.TRAINING)
+        with open(path/ 'testing_list.txt') as f:
+            file_map.update({k: DatasetType.TEST for k in f.read().split('\n')})
+        with open(path / 'validation_list.txt') as f:
+            file_map.update({k: DatasetType.DEV for k in f.read().split('\n')})
+        all_list = list(path.glob('*/*.wav'))
+        folders = sorted(list(path.glob('*/')))
+        label_map = defaultdict(lambda: len(folders))
+        label_map.update({k.name: idx for idx, k in enumerate(folders)})
+        return load(DatasetType.TRAINING), load(DatasetType.DEV), load(DatasetType.TEST)
 
 
 class MozillaCommonVoiceLoader(PathDatasetLoader):

@@ -1,3 +1,4 @@
+from collections import defaultdict
 from copy import deepcopy
 from dataclasses import dataclass
 from functools import lru_cache
@@ -7,13 +8,17 @@ import torch
 import torch.utils.data as tud
 
 from .base import DatasetType, AudioClipMetadata, AudioClipExample, WakeWordClipExample, AudioDatasetStatistics, \
-    AlignedAudioClipMetadata, ClassificationBatch
+    AlignedAudioClipMetadata, ClassificationBatch, NEGATIVE_CLASS, ClassificationClipExample
 
 from ww4ff.settings import SETTINGS
 from ww4ff.utils.audio import silent_load
 
 
-__all__ = ['TypedAudioDataset', 'AudioClipDataset', 'WakeWordEvaluationDataset', 'WakeWordDataset']
+__all__ = ['TypedAudioDataset',
+           'AudioClipDataset',
+           'WakeWordEvaluationDataset',
+           'WakeWordDataset',
+           'AudioClassificationDataset']
 
 
 class TypedAudioDataset:
@@ -108,6 +113,29 @@ class WakeWordDataset(AudioDatasetStatisticsMixin, SingleListAttrMixin, TypedAud
                                    audio_data=torch.from_numpy(audio_data),
                                    sample_rate=self.sr,
                                    frame_labels=frame_labels)
+
+
+class AudioClassificationDataset(AudioDatasetStatisticsMixin, SingleListAttrMixin, TypedAudioDataset, tud.Dataset):
+    list_attr = 'metadata_list'
+
+    def __init__(self,
+                 metadata_list: List[AudioClipMetadata],
+                 label_map: defaultdict,
+                 **kwargs):
+        super().__init__(**kwargs)
+        self.metadata_list = metadata_list
+        self.label_map = label_map
+        self.vocab = {v: k for k, v in label_map.items()}
+        self.vocab[label_map.get(None)] = NEGATIVE_CLASS
+
+    @lru_cache(maxsize=SETTINGS.cache.cache_size)
+    def __getitem__(self, idx) -> ClassificationClipExample:
+        metadata = self.metadata_list[idx]
+        audio_data = silent_load(str(metadata.path), self.sr, self.mono)
+        return ClassificationClipExample(metadata=metadata,
+                                         audio_data=torch.from_numpy(audio_data),
+                                         sample_rate=self.sr,
+                                         label=self.label_map[metadata.transcription])
 
 
 class WakeWordEvaluationDataset(TypedAudioDataset, tud.IterableDataset):

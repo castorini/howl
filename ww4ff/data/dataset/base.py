@@ -17,10 +17,13 @@ __all__ = ['AudioClipExample',
            'AudioDatasetStatistics',
            'EmplacableExample',
            'AlignedAudioClipMetadata',
-           'UNKNOWN_TRANSCRIPTION']
+           'ClassificationClipExample',
+           'UNKNOWN_TRANSCRIPTION',
+           'NEGATIVE_CLASS']
 
 
 UNKNOWN_TRANSCRIPTION = '[UNKNOWN]'
+NEGATIVE_CLASS = '[NEGATIVE]'
 
 
 @dataclass
@@ -106,6 +109,17 @@ class WakeWordClipExample(EmplacableExample):
 
     def emplaced_audio_data(self, audio_data: torch.Tensor) -> 'WakeWordClipExample':
         return WakeWordClipExample(self.metadata, audio_data, self.sample_rate, self.frame_labels)
+
+
+@dataclass
+class ClassificationClipExample(EmplacableExample):
+    metadata: AudioClipMetadata
+    audio_data: torch.Tensor
+    sample_rate: int
+    label: int
+
+    def emplaced_audio_data(self, audio_data: torch.Tensor) -> 'ClassificationClipExample':
+        return ClassificationClipExample(self.metadata, audio_data, self.sample_rate, self.label)
 
 
 class DatasetType(enum.Enum):

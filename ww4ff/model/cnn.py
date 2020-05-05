@@ -42,7 +42,7 @@ class Res8(nn.Module):
         super().__init__()
         n_maps = 45
         self.conv0 = nn.Conv2d(1, n_maps, (3, 3), padding=(1, 1), bias=False)
-        self.pool = nn.AvgPool2d((4, 3))
+        self.pool = nn.AvgPool2d((3, 4))  # flipped -- better for 80 log-Mels
 
         self.n_layers = n_layers = 6
         self.convs = [nn.Conv2d(n_maps, n_maps, (3, 3), padding=1, bias=False) for _ in range(n_layers)]
@@ -53,6 +53,7 @@ class Res8(nn.Module):
 
     def forward(self, x, lengths):
         x = x[:, :1]  # log-Mels only
+        x = x.permute(0, 1, 3, 2).contiguous()  # Original res8 uses (time, frequency) format
         for i in range(self.n_layers + 1):
             y = F.relu(getattr(self, f'conv{i}')(x))
             if i == 0:

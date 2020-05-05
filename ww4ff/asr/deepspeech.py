@@ -1,18 +1,21 @@
 from dataclasses import dataclass
-from typing import List, Tuple, Iterable
+from typing import List, Iterable
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
-from deepspeech_training.util.audio import AudioFile
-from deepspeech_training.util.config import Config, initialize_globals
-from deepspeech_training.util.feeding import split_audio_file
-from deepspeech_training.util.flags import create_flags, FLAGS
-import numpy as np
-import tensorflow as tf
-import tensorflow.compat.v1.logging as tflogging
-tflogging.set_verbosity(tflogging.ERROR)
-import logging
-logging.getLogger('sox').setLevel(logging.ERROR)
+try:
+    from deepspeech_training.util.audio import AudioFile
+    from deepspeech_training.util.config import Config, initialize_globals
+    from deepspeech_training.util.feeding import split_audio_file
+    from deepspeech_training.util.flags import create_flags, FLAGS
+    import numpy as np
+    import tensorflow as tf
+    import tensorflow.compat.v1.logging as tflogging
+    tflogging.set_verbosity(tflogging.ERROR)
+    import logging
+    logging.getLogger('sox').setLevel(logging.ERROR)
+except ImportError:
+    pass
 
 
 __all__ = ['AsrOutput', 'compute_raw_scores']
