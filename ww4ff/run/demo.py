@@ -53,12 +53,15 @@ class InferenceClient:
         if len(self._audio_buf) != 12:
             return data_ok
         audio_data = b''.join(self._audio_buf)
-        self._audio_buf = self._audio_buf[3:]
+        self._audio_buf = self._audio_buf[2:]
         arr = np.frombuffer(audio_data, dtype=np.int16).astype(np.float) / 32768
         inp = torch.from_numpy(arr).float().to(self.device)
-        idx = self.engine.infer(inp)
-        if idx != self.engine.negative_label:
-            logging.info(f'{self.words[idx].title()} detected.')
+        self.engine.infer(inp)
+        if self.engine.sequence_present:
+            phrase = ' '.join(self.words[x] for x in self.engine.sequence).title()
+            print(f'{phrase} detected', end='\r')
+        else:
+            print('                                ', end='\r')
         return data_ok
 
 
@@ -66,7 +69,7 @@ def main():
     apb = ArgumentParserBuilder()
     apb.add_options(opt('--model', type=str, choices=model_names(), default='las'),
                     opt('--workspace', type=str, default=str(Path('workspaces') / 'default')),
-                    opt('--words', type=str, nargs='+', default=['hey', 'fire', 'fox']))
+                    opt('--words', type=str, nargs='+', default=['hey', 'fire', 'fox', 'kit', 'moxie', 'rexy', 'scout']))
     args = apb.parser.parse_args()
 
     ws = Workspace(Path(args.workspace), delete_existing=False)
@@ -81,17 +84,6 @@ def main():
 
     ws.load_model(model, best=True)
     engine = InferenceEngine(model, zmuv_transform, len(args.words))
-
-    # import json
-    # from librosa.display import specshow
-    # with open('/home/ralph/Downloads/mels_hey_fire_fix.json') as f:
-    #     x = torch.tensor(json.load(f))
-    #     x = x.cuda()
-    # x = x.view(100, 80, 61).contiguous()
-    # specshow(x[40].cpu().numpy())
-    # for y in x:
-    #     logging.debug(engine.infer(y.unsqueeze(0)))
-    # return
 
     client = InferenceClient(engine, device, args.words)
     client.join()
