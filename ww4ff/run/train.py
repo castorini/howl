@@ -40,7 +40,8 @@ def main():
 
     def evaluate_engine(dataset: WakeWordEvaluationDataset, prefix: str, save: bool = False):
         std_transform.eval()
-        engine = InferenceEngine(model, zmuv_transform, negative_label=num_labels - 1)
+
+        engine = InferenceEngine(model, zmuv_transform, num_labels=num_labels, negative_label=num_labels - 1)
         model.eval()
         conf_matrix = ConfusionMatrix()
         pbar = tqdm(dataset, desc=prefix)
@@ -51,6 +52,7 @@ def main():
             conf_matrix.increment(pred < num_labels - 1, label < num_labels - 1)
             if idx % 10 == 9:
                 pbar.set_postfix(dict(mcc=f'{conf_matrix.mcc}', c=f'{conf_matrix}'))
+
         logging.info(f'{conf_matrix}')
         if save and not args.eval:
             writer.add_scalar(f'{prefix}/Metric/mcc', conf_matrix.fp, epoch_idx)
@@ -65,6 +67,7 @@ def main():
     args = apb.parser.parse_args()
 
     num_labels = len(args.vocab) + 1
+
     ws = Workspace(Path(args.workspace), delete_existing=not args.eval)
     writer = ws.summary_writer
     set_seed(SETTINGS.training.seed)
@@ -150,7 +153,10 @@ def main():
             group['lr'] *= SETTINGS.training.lr_decay
         evaluate_accuracy(ww_dev_pos_ds, 'Dev positive', save=True)
     evaluate_accuracy(ww_test_pos_ds, 'Test positive')
+
+    evaluate_engine(ww_dev_pos_ds, 'Dev positive')
     evaluate_engine(ww_dev_neg_ds, 'Dev negative')
+    evaluate_engine(ww_test_pos_ds, 'Test positive')
     evaluate_engine(ww_test_neg_ds, 'Test negative')
 
 
