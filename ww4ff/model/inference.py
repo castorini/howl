@@ -53,6 +53,7 @@ class InferenceEngine:
         if not self.sequence_str:
             return False
         self._prune_history()
+        return all(x in self._decoded_history for x in self.sequence_str)  # TODO: temporary
         try:
             self._decoded_history.index(self.sequence_str)
             return True
@@ -79,6 +80,7 @@ class InferenceEngine:
         prob = 1 - p[self.negative_label]
         self.value = self.value * (1 - self.alpha) + self.alpha * prob
         if self.value > self.threshold:
+            p[self.negative_label] = 0
             label = np.argmax(p)
             if self.sequence_str:
                 self.history.append((self.time_provider(), label))
