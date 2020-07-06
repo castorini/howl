@@ -6,7 +6,7 @@ import enum
 from pydantic import BaseModel
 import torch
 
-from ww4ff.asr import AlignedTranscription
+from ww4ff.asr.align import AlignedTranscription
 
 
 __all__ = ['AudioClipExample',

@@ -33,6 +33,7 @@ class TrainingSettings(BaseSettings):
 class RawDatasetSettings(BaseSettings):
     common_voice_dataset_path: Path
     wake_word_dataset_path: Path
+    keyword_voice_dataset_path: Path
 
 
 class DatasetSettings(BaseSettings):

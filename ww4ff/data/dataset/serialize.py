@@ -23,7 +23,8 @@ __all__ = ['AudioClipDatasetWriter',
            'MozillaCommonVoiceLoader',
            'AudioClipDatasetMetadataWriter',
            'WakeWordDatasetLoader',
-           'GoogleSpeechCommandsDatasetLoader']
+           'GoogleSpeechCommandsDatasetLoader',
+           'MozillaKeywordLoader']
 
 
 class AudioClipDatasetMetadataWriter:
@@ -45,9 +46,10 @@ class AudioClipDatasetMetadataWriter:
 
 
 class AudioClipDatasetWriter:
-    def __init__(self, dataset: AudioClipDataset, print_progress: bool = True):
+    def __init__(self, dataset: AudioClipDataset, mode: str = 'w', print_progress: bool = True):
         self.dataset = dataset
         self.print_progress = print_progress
+        self.mode = mode
 
     def write(self, folder: Path):
         def process(metadata: AudioClipMetadata):
@@ -59,7 +61,7 @@ class AudioClipDatasetWriter:
         folder.mkdir(exist_ok=True)
         audio_folder = folder / 'audio'
         audio_folder.mkdir(exist_ok=True)
-        with AudioClipDatasetMetadataWriter(audio_folder, self.dataset.set_type) as writer:
+        with AudioClipDatasetMetadataWriter(audio_folder, self.dataset.set_type, mode=self.mode) as writer:
             for metadata in tqdm(self.dataset.metadata_list, disable=not self.print_progress, desc='Writing files'):
                 try:
                     process(metadata)
@@ -159,6 +161,25 @@ class MozillaCommonVoiceLoader(PathDatasetLoader):
         return (load('train.tsv', DatasetType.TRAINING),
                 load('dev.tsv', DatasetType.DEV),
                 load('test.tsv', DatasetType.TEST))
+
+
+class MozillaKeywordLoader(PathDatasetLoader):
+    def load_splits(self, path: Path, **dataset_kwargs) -> Tuple[AudioClipDataset, AudioClipDataset, AudioClipDataset]:
+        logging.info(f'Loading Mozilla keyword dataset...')
+        df = pd.read_csv(str(path / 'validated.tsv'), sep='\t', quoting=3, na_filter=False)
+        md_splits = ([], [], [])
+        for tup in df.itertuples():
+            md = AudioClipMetadata(path=(path / 'clips' / tup.path).absolute(), transcription=tup.sentence)
+            bucket = sha256_int(tup.client_id) % 100
+            if bucket < 80:
+                md_splits[0].append(md)
+            elif bucket < 90:
+                md_splits[1].append(md)
+            else:
+                md_splits[2].append(md)
+        return (AudioClipDataset(md_splits[0], set_type=DatasetType.TRAINING, **dataset_kwargs),
+                AudioClipDataset(md_splits[1], set_type=DatasetType.DEV, **dataset_kwargs),
+                AudioClipDataset(md_splits[2], set_type=DatasetType.TEST, **dataset_kwargs))
 
 
 class MozillaWakeWordLoader(PathDatasetLoader):
