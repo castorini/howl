@@ -43,7 +43,6 @@ class InferenceEngine:
         self.sequence = settings.inference_sequence
         self.time_provider = time_provider
         self.pred_history = [];
-        self.smoothed_history = [];
         self.label_history = []
 
     @property
@@ -87,30 +86,17 @@ class InferenceEngine:
         return False
 
 
-    def _update_pred_history(self,
-                             curr_time: float):
-    
-        # drop out-dated entries
-        self.pred_history = list(itertools.dropwhile(lambda x: curr_time - x[0] > self.smoothing_window_ms, self.pred_history))
-
-        accum_history = torch.zeros(self.pred_history[0][1].shape)
-        for x in self.pred_history:
-            accum_history += x[1]
-
-        self.smoothed_history.append((curr_time, accum_history))
-
-        # drop out-dated entries
-        self.smoothed_history = list(itertools.dropwhile(lambda x: curr_time - x[0] > self.smoothing_window_ms, self.smoothed_history))
-
-
     def _get_prediction(self,
                         curr_time: float) -> int:
 
-        accum_smoothed_history = torch.zeros(self.smoothed_history[0][1].shape)
-        for x in self.smoothed_history:
-            accum_smoothed_history += x[1]
+        # drop out-dated entries
+        self.pred_history = list(itertools.dropwhile(lambda x: curr_time - x[0] > self.smoothing_window_ms, self.pred_history))
 
-        final_pred = accum_smoothed_history.argmax();
+        accum_pred_history = torch.zeros(self.pred_history[0][1].shape)
+        for x in self.pred_history:
+            accum_pred_history += x[1]
+
+        final_pred = accum_pred_history.argmax();
 
         self.label_history.append((curr_time, final_pred))
 
@@ -136,7 +122,6 @@ class InferenceEngine:
         if (not curr_time):
             curr_time = self.time_provider()
         self.pred_history.append((curr_time, p))
-        self._update_pred_history(curr_time)
         label = self._get_prediction(curr_time)
 
         return label
