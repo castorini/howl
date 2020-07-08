@@ -45,13 +45,15 @@ def main():
         model.eval()
         conf_matrix = ConfusionMatrix()
         pbar = tqdm(dataset, desc=prefix)
+        curr_time = 0;
         for idx, batch in enumerate(pbar):
             batch = batch.to(device)  # type: ClassificationBatch
-            pred = engine.infer(batch.audio_data.to(device).squeeze(0))
+            pred = engine.infer(batch.audio_data.to(device).squeeze(0), curr_time=curr_time)
             label = batch.labels.item()
             conf_matrix.increment(pred < num_labels - 1, label < num_labels - 1)
             if idx % 10 == 9:
                 pbar.set_postfix(dict(mcc=f'{conf_matrix.mcc}', c=f'{conf_matrix}'))
+            curr_time += 100 # assume we are processing the stream with hop_size 100ms
 
         logging.info(f'{conf_matrix}')
         if save and not args.eval:
@@ -62,7 +64,7 @@ def main():
     apb.add_options(opt('--model', type=str, choices=model_names(), default='las'),
                     opt('--workspace', type=str, default=str(Path('workspaces') / 'default')),
                     opt('--load-weights', action='store_true'),
-                    opt('--vocab', type=str, nargs='+', default=[' hey', 'fire', 'fox', 'kit', 'moxie', 'rexy', 'scout']),
+                    opt('--vocab', type=str, nargs='+', default=[' hey', 'fire fox']),
                     opt('--eval', action='store_true'))
     args = apb.parser.parse_args()
 

@@ -15,11 +15,11 @@ __all__ = ['InferenceEngine', 'InferenceEngineSettings']
 
 
 class InferenceEngineSettings(BaseSettings):
-    inference_threshold: float = 0.2
-    inference_alpha: float = 0.9
     inference_weights: List[float] = None
     inference_sequence: List[int] = None
-    inference_window: float = 1
+    inference_window_ms: float = 2000 # look at last 2 seconds
+    smoothing_window_ms: float = 1000 # prediction smoothed over 1 seconds
+    tolerance_window_ms: float = 200 # negative label between words are acceptable for 0.3 seconds
 
 
 class InferenceEngine:
@@ -33,53 +33,65 @@ class InferenceEngine:
         self.model = model
         self.zmuv = zmuv_transform
         self.std = StandardAudioTransform().eval()
-        self.alpha = settings.inference_alpha
-        self.threshold = settings.inference_threshold
-        self.value = 0
         inference_weights = 1 if settings.inference_weights is None else np.array(settings.inference_weights)
         self.inference_weights = inference_weights
         self.num_labels = num_labels
         self.negative_label = negative_label
-        self.window = settings.inference_window
+        self.inference_window_ms = settings.inference_window_ms
+        self.smoothing_window_ms = settings.smoothing_window_ms
+        self.tolerance_window_ms = settings.tolerance_window_ms
         self.sequence = settings.inference_sequence
-        self.sequence_str = ''.join(map(str, settings.inference_sequence))
-        self.label_history = []
-        self._decoded_history = ''
         self.time_provider = time_provider
-
         self.pred_history = [];
         self.smoothed_history = [];
-
-    def reset(self):
-        self.value = 0
+        self.label_history = []
 
     @property
     def sequence_present(self) -> bool:
-        if not self.sequence_str:
+        if not self.sequence:
             return False
-        self._prune_history()
-        try:
-            self._decoded_history.index(self.sequence_str)
+        if len(self.sequence) == 0:
             return True
-        except ValueError:
-            return False
+
+        self.label_history = list(itertools.dropwhile(lambda x: self.time_provider() - x[0] > self.inference_window_ms, self.label_history)) # drop entries that are old
+
+        # finite state machine for detecting the sequence
+        curr_label = None;
+        target_state = 0;
+        last_valid_timestemp = 0;
+
+        for history in self.label_history:
+            label = history[1]
+            target_label = self.sequence[target_state]
+
+            if label == target_label:
+                # move to next state
+                target_state += 1
+                curr_label = self.sequence[target_state-1]
+                last_valid_timestemp = history[0]
+
+                if target_label == len(self.sequence):
+                    # goal state is reached
+                    return True
+
+            elif label == curr_label:
+                # label has not changed, only update last_valid_timestemp
+                last_valid_timestemp = history[0]
+
+            elif last_valid_timestemp + self.tolerance_window_ms < history[0]:
+                # out of tolerance window, start from the first state
+                curr_label = None;
+                target_state = 0;
+                last_valid_timestemp = 0;
+
+        return False
 
 
-    def _update_label_history(self):
-        self.label_history = list(itertools.dropwhile(lambda x: self.time_provider() - x[0] > self.window, self.label_history)) # drop entries that are old
-
-        label_sequence = [str(self.negative_label)]
-        for label in self.label_history:
-            if label_sequence[-1] != str(label):
-                label_sequence.append(str(label))
-
-        self._decoded_history = ''.join(label_sequence)
-
-
-    def _update_pred_history(self):
+    def _update_pred_history(self,
+                             curr_time: float):
+    
         # drop out-dated entries
-        curr_time = self.time_provider()
-        self.pred_history = list(itertools.dropwhile(lambda x: curr_time - x[0] > self.window, self.pred_history))
+        self.pred_history = list(itertools.dropwhile(lambda x: curr_time - x[0] > self.smoothing_window_ms, self.pred_history))
 
         accum_history = torch.zeros(self.pred_history[0][1].shape)
         for x in self.pred_history:
@@ -87,11 +99,12 @@ class InferenceEngine:
 
         self.smoothed_history.append((curr_time, accum_history))
 
-
-    def _get_prediction(self) -> int:
         # drop out-dated entries
-        curr_time = self.time_provider()
-        self.smoothed_history = list(itertools.dropwhile(lambda x: curr_time - x[0] > self.window, self.smoothed_history))
+        self.smoothed_history = list(itertools.dropwhile(lambda x: curr_time - x[0] > self.smoothing_window_ms, self.smoothed_history))
+
+
+    def _get_prediction(self,
+                        curr_time: float) -> int:
 
         accum_smoothed_history = torch.zeros(self.smoothed_history[0][1].shape)
         for x in self.smoothed_history:
@@ -99,8 +112,7 @@ class InferenceEngine:
 
         final_pred = accum_smoothed_history.argmax();
 
-        self.label_history.append(curr_time, final_pred)
-        self._update_label_history()
+        self.label_history.append((curr_time, final_pred))
 
         return final_pred;
 
@@ -108,7 +120,8 @@ class InferenceEngine:
     @torch.no_grad()
     def infer(self,
               x: torch.Tensor,
-              lengths: torch.Tensor = None) -> int:
+              lengths: torch.Tensor = None,
+              curr_time: float = None) -> int:
         self.std = self.std.to(x.device)
         if lengths is None:
             lengths = torch.tensor([x.size(-1)]).to(x.device)
@@ -117,27 +130,13 @@ class InferenceEngine:
         p = self.model(x, lengths).softmax(-1)[0].cpu().numpy()
 
         p *= self.inference_weights
-
-        # normalize
         p = p / p.sum()
         logging.debug([f'{x:.3f}' for x in p.tolist()])
 
-        self.pred_history.append((self.time_provider(), p))
+        if (not curr_time):
+            curr_time = self.time_provider()
+        self.pred_history.append((curr_time, p))
+        self._update_pred_history(curr_time)
+        label = self._get_prediction(curr_time)
 
-        self._update_pred_history()
-        label = self._get_prediction()
-        
-        # TODO:: current time must be passed in from outside
-
-        # prob = 1 - p[self.negative_label] # sum of all the positive probability
-        # self.value = self.value * (1 - self.alpha) + self.alpha * prob # windowing
-
-        # if self.value > self.threshold: # when it's greater than the threshold
-        #     label = np.argmax(p) # largest label
-        #     if self.sequence_str: # largest label
-        #         self.label_history.append((self.time_provider(), label))
-        # else: # other wise negative sample
-        #     label = self.negative_label
-        # if self.sequence_str:
-        #     self._prune_history()
         return label

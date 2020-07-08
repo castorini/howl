@@ -50,13 +50,13 @@ class InferenceClient:
         data_ok = (in_data, pyaudio.paContinue)
         self.last_data = in_data
         self._audio_buf.append(in_data)
-        if len(self._audio_buf) != 12:
+        if len(self._audio_buf) != 16:
             return data_ok
         audio_data = b''.join(self._audio_buf)
         self._audio_buf = self._audio_buf[2:]
-        arr = np.frombuffer(audio_data, dtype=np.int16).astype(np.float) / 32768
+        arr = 1.41 * (np.frombuffer(audio_data, dtype=np.int16).astype(np.float) / 32767)
         inp = torch.from_numpy(arr).float().to(self.device)
-        self.engine.infer(inp)
+        self.engine.infer(inp, curr_time=time_info['current_time'])
         if self.engine.sequence_present:
             phrase = ' '.join(self.words[x] for x in self.engine.sequence).title()
             print(f'{phrase} detected', end='\r')
@@ -69,7 +69,7 @@ def main():
     apb = ArgumentParserBuilder()
     apb.add_options(opt('--model', type=str, choices=model_names(), default='las'),
                     opt('--workspace', type=str, default=str(Path('workspaces') / 'default')),
-                    opt('--words', type=str, nargs='+', default=['hey', 'fire', 'fox', 'kit', 'moxie', 'rexy', 'scout']))
+                    opt('--words', type=str, nargs='+', default=['hey', 'firefox']))
     args = apb.parser.parse_args()
 
     ws = Workspace(Path(args.workspace), delete_existing=False)
