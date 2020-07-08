@@ -5,7 +5,7 @@ from deepspeech_training.util.flags import create_flags, FLAGS
 from tqdm import tqdm
 import tensorflow as tf
 
-from ww4ff.asr import compute_raw_scores, TranscriptionAligner
+from ww4ff.asr import compute_raw_scores, DeepSpeechAligner
 from ww4ff.data.dataset import AudioClipDatasetLoader, AudioClipDatasetMetadataWriter, AlignedAudioClipMetadata
 from ww4ff.settings import SETTINGS
 
@@ -16,7 +16,7 @@ def work(idx, transcriptions, paths, dataset_path, set_type, lock: Lock):
                                       tqdm(compute_raw_scores(list(map(str, paths))),total=len(paths), position=idx),
                                       paths):
             try:
-                aligned = TranscriptionAligner().align(result, text)
+                aligned = DeepSpeechAligner().align(result, text)
             except:
                 logging.warning(f'Transcription skipped {path}')
                 continue

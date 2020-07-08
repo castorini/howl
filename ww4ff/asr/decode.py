@@ -1,20 +1,15 @@
 from typing import List
 
-from pydantic import BaseModel
 import numpy as np
 
 from .deepspeech import AsrOutput
+from .align import AlignedTranscription
 
 
-__all__ = ['AlignedTranscription', 'TranscriptionAligner']
+__all__ = ['DeepSpeechAligner']
 
 
-class AlignedTranscription(BaseModel):
-    transcription: str
-    end_timestamps: List[float]
-
-
-class TranscriptionAligner:
+class DeepSpeechAligner:
     def __init__(self,
                  alphabet: str = ' abcdefghijklmnopqrstuvwxyz\''):
         self.alphabet = alphabet

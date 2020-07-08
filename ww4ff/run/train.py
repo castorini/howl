@@ -60,7 +60,7 @@ def main():
     apb.add_options(opt('--model', type=str, choices=model_names(), default='las'),
                     opt('--workspace', type=str, default=str(Path('workspaces') / 'default')),
                     opt('--load-weights', action='store_true'),
-                    opt('--vocab', type=str, nargs='+', default=[' hey', 'fire', 'fox', 'kit', 'moxie', 'rexy', 'scout']),
+                    opt('--vocab', type=str, nargs='+', default=[' hey', 'fire fox']),
                     opt('--eval', action='store_true'))
     args = apb.parser.parse_args()
 
