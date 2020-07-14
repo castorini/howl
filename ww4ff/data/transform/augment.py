@@ -11,6 +11,7 @@ import torch
 import torch.nn as nn
 
 from ww4ff.data.dataset import EmplacableExample, WakeWordClipExample
+from .meyda_mel_spectrogram import MeydaMelSpectrogram
 
 
 __all__ = ['AugmentationParameter',
@@ -153,10 +154,16 @@ class NoiseTransform(AugmentModule):
 class StandardAudioTransform(AugmentModule):
     def __init__(self, settings: AudioTransformSettings = AudioTransformSettings()):
         super().__init__()
-        self.spec_transform = MelSpectrogram(n_mels=settings.num_mels,
-                                             sample_rate=settings.sample_rate,
-                                             n_fft=settings.num_fft,
-                                             hop_length=settings.hop_length)
+        # self.spec_transform = MelSpectrogram(n_mels=settings.num_mels,
+        #                                      sample_rate=settings.sample_rate,
+        #                                      n_fft=settings.num_fft,
+        #                                      hop_length=settings.hop_length)
+
+        self.spec_transform = MeydaMelSpectrogram(n_mels=settings.num_mels,
+                                                  sample_rate=settings.sample_rate,
+                                                  n_fft=settings.num_fft,
+                                                  hop_length=settings.hop_length)
+
         self.vtlp_transform = apply_vtlp(MelSpectrogram(n_mels=settings.num_mels,
                                                         sample_rate=settings.sample_rate,
                                                         n_fft=settings.num_fft,
