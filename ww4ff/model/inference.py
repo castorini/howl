@@ -18,7 +18,7 @@ class InferenceEngineSettings(BaseSettings):
     inference_weights: List[float] = None
     inference_sequence: List[int] = None
     inference_window_ms: float = 2000 # look at last 2 seconds
-    smoothing_window_ms: float = 1000 # prediction smoothed over 1 seconds
+    smoothing_window_ms: float = 500 # prediction smoothed over 1 seconds
     tolerance_window_ms: float = 200 # negative label between words are acceptable for 0.3 seconds
 
 
@@ -61,23 +61,25 @@ class InferenceEngine:
 
         for history in self.label_history:
             label = history[1]
+            curr_timestemp = history[0]
             target_label = self.sequence[target_state]
 
             if label == target_label:
                 # move to next state
                 target_state += 1
+                target_label = self.sequence[target_state]
                 curr_label = self.sequence[target_state-1]
-                last_valid_timestemp = history[0]
+                last_valid_timestemp = curr_timestemp
 
-                if target_label == len(self.sequence):
+                if target_state == len(self.sequence):
                     # goal state is reached
                     return True
 
             elif label == curr_label:
                 # label has not changed, only update last_valid_timestemp
-                last_valid_timestemp = history[0]
+                last_valid_timestemp = curr_timestemp
 
-            elif last_valid_timestemp + self.tolerance_window_ms < history[0]:
+            elif last_valid_timestemp + self.tolerance_window_ms < curr_timestemp:
                 # out of tolerance window, start from the first state
                 curr_label = None;
                 target_state = 0;
