@@ -1,3 +1,4 @@
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import Mapping, Any, Optional, List, Tuple
 from pathlib import Path
@@ -108,7 +109,9 @@ class WakeWordClipExample(EmplacableExample):
     frame_labels: Mapping[float, int]
 
     def emplaced_audio_data(self, audio_data: torch.Tensor) -> 'WakeWordClipExample':
-        return WakeWordClipExample(self.metadata, audio_data, self.sample_rate, self.frame_labels)
+        rate = audio_data.size(-1) / self.audio_data.size(-1)
+        frame_labels = {rate * k: v for k, v in self.frame_labels.items()}
+        return WakeWordClipExample(self.metadata, audio_data, self.sample_rate, frame_labels)
 
 
 @dataclass

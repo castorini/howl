@@ -12,7 +12,7 @@ from .preprocess_dataset import print_stats
 from ww4ff.data.dataset import WakeWordEvaluationDataset, DatasetType, WakeWordDatasetLoader, ClassificationBatch
 from ww4ff.data.dataloader import StandardAudioDataLoaderBuilder
 from ww4ff.data.transform import compose, ZmuvTransform, StandardAudioTransform, WakeWordBatchifier,\
-    NoiseTransform, batchify
+    NoiseTransform, batchify, TimestretchTransform
 from ww4ff.settings import SETTINGS
 from ww4ff.model import find_model, model_names, Workspace, ConfusionMatrix
 from ww4ff.model.inference import InferenceEngine
@@ -98,7 +98,7 @@ def main():
     zmuv_transform = ZmuvTransform().to(device)
     batchifier = WakeWordBatchifier(num_labels - 1,
                                     window_size_ms=int(SETTINGS.training.max_window_size_seconds * 1000))
-    train_comp = compose(NoiseTransform().train(), batchifier)
+    train_comp = compose(TimestretchTransform().train(), NoiseTransform().train(), batchifier)
     prep_dl = StandardAudioDataLoaderBuilder(ww_train_ds, collate_fn=batchify).build(1)
     prep_dl.shuffle = True
     train_dl = StandardAudioDataLoaderBuilder(ww_train_ds, collate_fn=train_comp).build(SETTINGS.training.batch_size)
