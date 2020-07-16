@@ -98,7 +98,7 @@ def main():
     zmuv_transform = ZmuvTransform().to(device)
     batchifier = WakeWordBatchifier(num_labels - 1,
                                     window_size_ms=int(SETTINGS.training.max_window_size_seconds * 1000))
-    train_comp = compose(TimestretchTransform().train(), NoiseTransform().train(), batchifier)
+    train_comp = compose(NoiseTransform().train(), batchifier)
     prep_dl = StandardAudioDataLoaderBuilder(ww_train_ds, collate_fn=batchify).build(1)
     prep_dl.shuffle = True
     train_dl = StandardAudioDataLoaderBuilder(ww_train_ds, collate_fn=train_comp).build(SETTINGS.training.batch_size)
@@ -156,10 +156,6 @@ def main():
         evaluate_accuracy(ww_dev_pos_ds, 'Dev positive', save=True)
     evaluate_accuracy(ww_test_pos_ds, 'Test positive')
 
-    evaluate_engine(ww_dev_pos_ds, 'Dev positive')
-    evaluate_engine(ww_dev_neg_ds, 'Dev negative')
-    evaluate_engine(ww_test_pos_ds, 'Test positive')
-    evaluate_engine(ww_test_neg_ds, 'Test negative')
 
 
 if __name__ == '__main__':
