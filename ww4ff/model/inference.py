@@ -15,7 +15,7 @@ __all__ = ['InferenceEngine', 'InferenceEngineSettings']
 
 
 class InferenceEngineSettings(BaseSettings):
-    inference_threshold: float = 0.2
+    inference_threshold: float = 0.5
     inference_alpha: float = 0.9
     inference_weights: List[float] = None
     inference_sequence: List[int] = None
@@ -34,7 +34,6 @@ class InferenceEngine:
         self.std = StandardAudioTransform().eval()
         self.alpha = settings.inference_alpha
         self.threshold = settings.inference_threshold
-        self.value = 0
         inference_weights = 1 if settings.inference_weights is None else np.array(settings.inference_weights)
         self.inference_weights = inference_weights
         self.negative_label = negative_label
@@ -46,7 +45,7 @@ class InferenceEngine:
         self.time_provider = time_provider
 
     def reset(self):
-        self.value = 0
+        pass
 
     @property
     def sequence_present(self) -> bool:
@@ -77,11 +76,10 @@ class InferenceEngine:
         p = p / p.sum()
         logging.debug([f'{x:.3f}' for x in p.tolist()])
         prob = 1 - p[self.negative_label]
-        self.value = self.value * (1 - self.alpha) + self.alpha * prob
-        if self.value > self.threshold:
+        if prob > self.threshold:
             p[self.negative_label] = 0
-            label = np.argmax(p)
-            if self.sequence_str:
+            label, label_val = np.argmax(p), np.max(p)
+            if self.sequence_str and not (label == 1 and label_val < 0.95):  # TODO: temporary
                 self.history.append((self.time_provider(), label))
         else:
             label = self.negative_label

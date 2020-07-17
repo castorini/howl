@@ -99,6 +99,7 @@ class WakeWordBatchifier:
             select_negative = random.random() > self.positive_sample_prob
             if not select_negative:
                 end_ms, label = random.choice(list(ex.frame_labels.items()))
+                end_ms = end_ms + ((random.random() - 0.5) * 2 * self.positive_delta_ms)
                 b = int((end_ms / 1000) * self.sample_rate)
                 a = max(b - int((self.window_size_ms / 1000) * self.sample_rate), 0)
                 if b - a == 0:

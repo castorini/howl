@@ -11,7 +11,7 @@ import torch
 import torch.nn as nn
 
 from ww4ff.data.dataset import EmplacableExample, WakeWordClipExample
-from .meyda_mel_spectrogram import MeydaMelSpectrogram
+from .meyda import MeydaMelSpectrogram
 
 
 __all__ = ['AugmentationParameter',
@@ -29,6 +29,7 @@ class AudioTransformSettings(BaseSettings):
     num_mels: int = 80
     sample_rate: int = 16000
     hop_length: int = 200
+    use_meyda_spectrogram: bool = False
 
 
 @dataclass
@@ -116,13 +117,13 @@ class TimeshiftTransform(AugmentModule):
 class TimestretchTransform(AugmentModule):
     @property
     def default_params(self):
-        return AugmentationParameter([0.01, 0.025, 0.05, 0.075, 0.1], 'timestretch', 2),
+        return AugmentationParameter([0.025, 0.05, 0.15, 0.2, 0.25], 'timestretch', 2),
 
     @torch.no_grad()
     def augment(self, param, examples: Sequence[EmplacableExample], **kwargs):
-        rate = np.clip(np.random.normal(1, param.magnitude), 0.75, 1.25)
         new_examples = []
         for example in examples:
+            rate = np.clip(np.random.normal(1, param.magnitude), 0.5, 1.5)
             audio = torch.from_numpy(librosa.effects.time_stretch(example.audio_data.squeeze().cpu().numpy(), rate))
             new_examples.append(example.emplaced_audio_data(audio))
         return new_examples
@@ -154,15 +155,16 @@ class NoiseTransform(AugmentModule):
 class StandardAudioTransform(AugmentModule):
     def __init__(self, settings: AudioTransformSettings = AudioTransformSettings()):
         super().__init__()
-        # self.spec_transform = MelSpectrogram(n_mels=settings.num_mels,
-        #                                      sample_rate=settings.sample_rate,
-        #                                      n_fft=settings.num_fft,
-        #                                      hop_length=settings.hop_length)
-
-        self.spec_transform = MeydaMelSpectrogram(n_mels=settings.num_mels,
-                                                  sample_rate=settings.sample_rate,
-                                                  n_fft=settings.num_fft,
-                                                  hop_length=settings.hop_length)
+        if settings.use_meyda_spectrogram:
+            self.spec_transform = MeydaMelSpectrogram(n_mels=settings.num_mels,
+                                                      sample_rate=settings.sample_rate,
+                                                      n_fft=settings.num_fft,
+                                                      hop_length=settings.hop_length)
+        else:
+            self.spec_transform = MelSpectrogram(n_mels=settings.num_mels,
+                                                 sample_rate=settings.sample_rate,
+                                                 n_fft=settings.num_fft,
+                                                 hop_length=settings.hop_length)
 
         self.vtlp_transform = apply_vtlp(MelSpectrogram(n_mels=settings.num_mels,
                                                         sample_rate=settings.sample_rate,

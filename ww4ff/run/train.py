@@ -45,7 +45,7 @@ def main():
         model.eval()
         conf_matrix = ConfusionMatrix()
         pbar = tqdm(dataset, desc=prefix)
-        curr_time = 0;
+        curr_time = 0
         for idx, batch in enumerate(pbar):
             batch = batch.to(device)  # type: ClassificationBatch
             pred = engine.infer(batch.audio_data.to(device).squeeze(0), curr_time=curr_time)
@@ -98,7 +98,7 @@ def main():
     zmuv_transform = ZmuvTransform().to(device)
     batchifier = WakeWordBatchifier(num_labels - 1,
                                     window_size_ms=int(SETTINGS.training.max_window_size_seconds * 1000))
-    train_comp = compose(NoiseTransform().train(), batchifier)
+    train_comp = compose(TimestretchTransform(), NoiseTransform().train(), batchifier)
     prep_dl = StandardAudioDataLoaderBuilder(ww_train_ds, collate_fn=batchify).build(1)
     prep_dl.shuffle = True
     train_dl = StandardAudioDataLoaderBuilder(ww_train_ds, collate_fn=train_comp).build(SETTINGS.training.batch_size)

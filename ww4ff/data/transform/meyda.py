@@ -4,6 +4,7 @@ from librosa import util
 import numpy as np
 import torch
 
+
 class MeydaMelSpectrogram:
     def __init__(
         self,
@@ -77,12 +78,11 @@ class MeydaMelSpectrogram:
         return np.abs(fft_matrix)**self.power
 
     def __call__(self, audio_data):
+        device = audio_data.device
         audio_data = audio_data.cpu()
-
         batch = []
         for sample in audio_data:
             s = self.spectrogram(sample.squeeze())
             batch.append(torch.tensor(np.dot(self.mel_basis, s.T)))
-
-        batch = torch.stack(batch).float().to('cuda:0')
+        batch = torch.stack(batch).float().to(device)
         return batch

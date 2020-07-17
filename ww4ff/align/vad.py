@@ -16,7 +16,7 @@ class LeftRightVadAligner:
             start = 0
             vad = webrtcvad.Vad(3)
             for frame in frames:
-                buf = (frame.numpy() * 32767 / 1.414)
+                buf = frame.numpy() * 32767
                 buf = buf.astype(np.int16).tobytes()
                 if frame.size(0) < frame_len or vad.is_speech(buf, audio.sample_rate):
                     break
