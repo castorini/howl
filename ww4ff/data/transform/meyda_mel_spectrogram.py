@@ -69,10 +69,9 @@ class MeydaMelSpectrogram:
         windowed = (self.fft_window * y_frames).T
         fft_matrix = []
         for frame in windowed:
-            fft_vectorized = self.fft(frame)[:(self.n_fft//2 + 1)]
-            real = np.power(fft_vectorized.real, 2)
-            imag = np.power(fft_vectorized.imag, 2)
-            fft_matrix.append(torch.tensor(np.power(real, 0.5)))
+            complex_fft = self.fft(frame)
+            amp_spectr = np.sqrt(((complex_fft.real ** 2) + (complex_fft.imag ** 2)))[:self.n_fft // 2 + 1]
+            fft_matrix.append(amp_spectr)
         fft_matrix = np.stack(fft_matrix)
         return np.abs(fft_matrix)**self.power
 
