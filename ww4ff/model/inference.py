@@ -19,7 +19,7 @@ class InferenceEngineSettings(BaseSettings):
     inference_sequence: List[int] = None
     inference_window_ms: float = 2000 # look at last 2 seconds
     smoothing_window_ms: float = 500 # prediction smoothed over 1 seconds
-    tolerance_window_ms: float = 200 # negative label between words are acceptable for 0.3 seconds
+    tolerance_window_ms: float = 500 # negative label between words are acceptable for 0.3 seconds
 
 
 class InferenceEngine:
