@@ -16,7 +16,7 @@ dependencies:
   - bleach=3.1.5=pyh9f0ad1d_0
   - blinker=1.4=py37_0
   - c-ares=1.15.0=h7b6447c_1001
-  - ca-certificates=2020.6.20=hecda079_0
+  - ca-certificates=2020.6.24=0
   - cachetools=3.1.1=py_0
   - cffi=1.14.0=py37h2e261b9_0
   - chardet=3.0.4=py37_1003
@@ -81,7 +81,7 @@ dependencies:
   - notebook=6.0.3=py37hc8dfbb8_1
   - oauthlib=3.1.0=py_0
   - olefile=0.46=py_0
-  - openssl=1.1.1g=h516909a_0
+  - openssl=1.1.1g=h7b6447c_0
   - packaging=20.4=pyh9f0ad1d_0
   - pandoc=2.10=h14c3975_0
   - pandocfilters=1.4.2=py_1
