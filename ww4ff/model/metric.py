@@ -27,3 +27,15 @@ class ConfusionMatrix:
         if denom == 0:
             denom = 1
         return num / denom
+
+    @property
+    def fpr(self) -> float:
+        tp, tn, fp, fn = self.tp, self.tn, self.fp, self.fn
+        denom = fp + tn
+        return fp / denom if denom != 0 else 0.0
+
+    @property
+    def fnr(self) -> float:
+        tp, tn, fp, fn = self.tp, self.tn, self.fp, self.fn
+        denom = fn + tp
+        return fn / denom if denom != 0 else 0.0

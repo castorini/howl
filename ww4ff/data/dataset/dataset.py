@@ -185,6 +185,8 @@ class WakeWordEvaluationDataset(TypedAudioDataset, tud.IterableDataset):
                     except IndexError:
                         self._inc()
             example = self.dataset.dataset[self.curr_file_idx]
+
+            # if there are not enough frames to construct a sample, move on to the next sample
             if example.audio_data.size(-1) < self.dataset.window_size and self.curr_stride_idx != 0:
                 example = self._inc()
             elif example.audio_data.size(-1) - self.curr_stride_idx < self.dataset.window_size and \
@@ -194,6 +196,8 @@ class WakeWordEvaluationDataset(TypedAudioDataset, tud.IterableDataset):
             new_data = example.audio_data[..., self.curr_stride_idx:b]
             end_ts = (b / self.dataset.dataset.sr) * 1000
             try:
+                # if the current timestamp is within positive_delta_ms from the next positive sample,
+                # label it as positive
                 pos_ts, pos_lbl = self.frame_labels[self.label_pointer]
                 timedelta = end_ts - pos_ts
                 if abs(timedelta) < self.dataset.positive_delta_ms:

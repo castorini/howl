@@ -45,12 +45,25 @@ class InferenceEngine:
         self.pred_history = [];
         self.label_history = []
 
-    @property
-    def sequence_present(self) -> bool:
+    def append_label(self,
+                    label: int,
+                    curr_time: float = None):
+
+        if not curr_time:
+            curr_time = self.time_provider()
+
+        self.label_history.append((curr_time, label))
+
+
+    def sequence_present(self,
+                         curr_time: float = None) -> bool:
         if not self.sequence:
             return False
         if len(self.sequence) == 0:
             return True
+
+        if not curr_time:
+            curr_time = self.time_provider()
 
         self.label_history = list(itertools.dropwhile(lambda x: self.time_provider() - x[0] > self.inference_window_ms, self.label_history)) # drop entries that are old
 
@@ -67,13 +80,13 @@ class InferenceEngine:
             if label == target_label:
                 # move to next state
                 target_state += 1
-                target_label = self.sequence[target_state]
-                curr_label = self.sequence[target_state-1]
-                last_valid_timestemp = curr_timestemp
-
                 if target_state == len(self.sequence):
                     # goal state is reached
                     return True
+
+                target_label = self.sequence[target_state]
+                curr_label = self.sequence[target_state-1]
+                last_valid_timestemp = curr_timestemp
 
             elif label == curr_label:
                 # label has not changed, only update last_valid_timestemp
@@ -110,6 +123,10 @@ class InferenceEngine:
               x: torch.Tensor,
               lengths: torch.Tensor = None,
               curr_time: float = None) -> int:
+
+        if not curr_time:
+            curr_time = self.time_provider()
+
         self.std = self.std.to(x.device)
         if lengths is None:
             lengths = torch.tensor([x.size(-1)]).to(x.device)
@@ -121,8 +138,6 @@ class InferenceEngine:
         p = p / p.sum()
         logging.debug([f'{x:.3f}' for x in p.tolist()])
 
-        if (not curr_time):
-            curr_time = self.time_provider()
         self.pred_history.append((curr_time, p))
         label = self._get_prediction(curr_time)
 
