@@ -207,7 +207,8 @@ class WakeWordEvaluationDataset(TypedAudioDataset, tud.IterableDataset):
                     label = self.dataset.negative_label
                 if timedelta > self.dataset.positive_delta_ms:
                     if self.output_positives[-1] != pos_ts:
-                        # Always output a positive example within an audio clip if not outputted
+                        # if the stride size is large that we skipped over a label,
+                        # always output a positive example within an audio clip
                         return self.emit_next_positive_example()
                     else:
                         self.label_pointer += 1
