@@ -41,7 +41,7 @@ def main():
     def evaluate_engine(dataset: WakeWordEvaluationDataset, prefix: str, save: bool = False):
         std_transform.eval()
 
-        engine = InferenceEngine(model, zmuv_transform, num_labels=num_labels, negative_label=num_labels - 1)
+        engine = InferenceEngine(model, zmuv_transform, negative_label=num_labels - 1)
         model.eval()
         conf_matrix = ConfusionMatrix()
         pbar = tqdm(dataset, desc=prefix)
@@ -53,7 +53,7 @@ def main():
             conf_matrix.increment(pred < num_labels - 1, label < num_labels - 1)
             if idx % 10 == 9:
                 pbar.set_postfix(dict(mcc=f'{conf_matrix.mcc}', c=f'{conf_matrix}'))
-            curr_time += 100 # assume we are processing the stream with hop_size 100ms
+            curr_time += 100  # assume we are processing the stream with hop_size 100ms
 
         logging.info(f'{conf_matrix}')
         if save and not args.eval:
@@ -98,7 +98,7 @@ def main():
     zmuv_transform = ZmuvTransform().to(device)
     batchifier = WakeWordBatchifier(num_labels - 1,
                                     window_size_ms=int(SETTINGS.training.max_window_size_seconds * 1000))
-    train_comp = compose(TimestretchTransform(), NoiseTransform().train(), batchifier)
+    train_comp = compose(TimestretchTransform().train(), NoiseTransform().train(), batchifier)
     prep_dl = StandardAudioDataLoaderBuilder(ww_train_ds, collate_fn=batchify).build(1)
     prep_dl.shuffle = True
     train_dl = StandardAudioDataLoaderBuilder(ww_train_ds, collate_fn=train_comp).build(SETTINGS.training.batch_size)
@@ -155,7 +155,6 @@ def main():
             group['lr'] *= SETTINGS.training.lr_decay
         evaluate_accuracy(ww_dev_pos_ds, 'Dev positive', save=True)
     evaluate_accuracy(ww_test_pos_ds, 'Test positive')
-
 
 
 if __name__ == '__main__':

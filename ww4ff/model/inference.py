@@ -42,7 +42,6 @@ class InferenceEngine:
         self.sequence_str = ''.join(map(str, settings.inference_sequence))
         self.history = []
         self._decoded_history = ''
-        self.time_provider = time_provider
 
     def reset(self):
         pass
@@ -58,14 +57,17 @@ class InferenceEngine:
         except ValueError:
             return False
 
-    def _prune_history(self):
-        self.history = list(itertools.dropwhile(lambda x: self.time_provider() - x[0] > self.window, self.history))
+    def _prune_history(self, curr_time: float):
+        self.history = list(itertools.dropwhile(lambda x: curr_time - x[0] > self.window, self.history))
         self._decoded_history = ''.join(map(str, list(x[1] for x in self.history)))
 
     @torch.no_grad()
     def infer(self,
               x: torch.Tensor,
-              lengths: torch.Tensor = None) -> int:
+              lengths: torch.Tensor = None,
+              curr_time: float = None) -> int:
+        if curr_time is None:
+            curr_time = time.time()
         self.std = self.std.to(x.device)
         if lengths is None:
             lengths = torch.tensor([x.size(-1)]).to(x.device)
@@ -79,10 +81,10 @@ class InferenceEngine:
         if prob > self.threshold:
             p[self.negative_label] = 0
             label, label_val = np.argmax(p), np.max(p)
-            if self.sequence_str and not (label == 1 and label_val < 0.95):  # TODO: temporary
-                self.history.append((self.time_provider(), label))
+            if self.sequence_str:
+                self.history.append((curr_time, label))
         else:
             label = self.negative_label
         if self.sequence_str:
-            self._prune_history()
+            self._prune_history(curr_time)
         return label

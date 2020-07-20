@@ -50,10 +50,10 @@ class InferenceClient:
         data_ok = (in_data, pyaudio.paContinue)
         self.last_data = in_data
         self._audio_buf.append(in_data)
-        if len(self._audio_buf) != 32:
+        if len(self._audio_buf) != 24:
             return data_ok
         audio_data = b''.join(self._audio_buf)
-        self._audio_buf = self._audio_buf[3:]
+        self._audio_buf = self._audio_buf[2:]
         arr = np.frombuffer(audio_data, dtype=np.int16).astype(np.float) / 32767
         inp = torch.from_numpy(arr).float().to(self.device)
         self.engine.infer(inp)
