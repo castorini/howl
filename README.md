@@ -25,7 +25,7 @@ NUM_LABELS=10 python -m ww4ff.run.pretrain --model res8 --workspace workspace/<w
 ## Training res8 for hey firefox
 ```
 source envs/res8.env
-INFERENCE_SEQUENCE=[0,1] INFERENCE_WEIGHTS=[1,1,1,1,1,1,1,1,1,1] WW4FF_LOG_LEVEL=INFO NUM_LABELS=10 python -m ww4ff.run.train --model res8 --workspace workspace/<workspace_name> --load-weights --vocab " hey" fire fox
+INFERENCE_SEQUENCE=[0,1] INFERENCE_WEIGHTS=[1,1,1,1,1,1,1,1,1,1] WW4FF_LOG_LEVEL=INFO NUM_LABELS=10 python -m ww4ff.run.train --model res8 --workspace workspace/<workspace_name> --load-weights --vocab " hey" "fire fox"
 
 ```
 
