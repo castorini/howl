@@ -70,8 +70,8 @@ def main():
                     ww_fnr=f'{ww_conf_matrix.fnr}'))
             curr_time += SETTINGS.training.eval_stride_size_seconds * 1000
 
-        logging.info(f'{frame_conf_matrix}')
-        logging.info(f'{ww_conf_matrix}')
+        logging.info(f'Frame level metric: {frame_conf_matrix}')
+        logging.info(f'Wake-word level metric: {ww_conf_matrix}')
         if save and not args.eval:
             writer.add_scalar(f'{prefix}/Metric/frame_mcc', frame_conf_matrix.mcc, epoch_idx)
             ws.increment_model(model, frame_conf_matrix.mcc)
