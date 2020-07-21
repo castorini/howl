@@ -17,16 +17,21 @@ __all__ = ['InferenceEngine', 'InferenceEngineSettings']
 class InferenceEngineSettings(BaseSettings):
     inference_weights: List[float] = None
     inference_sequence: List[int] = None
+<<<<<<< HEAD
     inference_window_ms: float = 2000 # look at last 2 seconds
     smoothing_window_ms: float = 500 # prediction smoothed over 1 seconds
     tolerance_window_ms: float = 500 # negative label between words are acceptable for 0.3 seconds
+=======
+    inference_window_ms: float = 2000  # look at last 2 seconds
+    smoothing_window_ms: float = 50  # prediction smoothed over 1 seconds
+    tolerance_window_ms: float = 500  # negative label between words are acceptable for 0.3 seconds
+>>>>>>> d020945205e8872ccf0703ffdaad4447816767d1
 
 
 class InferenceEngine:
     def __init__(self,
                  model: nn.Module,
                  zmuv_transform: ZmuvTransform,
-                 num_labels: int,
                  negative_label: int,
                  settings: InferenceEngineSettings = InferenceEngineSettings(),
                  time_provider=time.time):
@@ -35,81 +40,76 @@ class InferenceEngine:
         self.std = StandardAudioTransform().eval()
         inference_weights = 1 if settings.inference_weights is None else np.array(settings.inference_weights)
         self.inference_weights = inference_weights
-        self.num_labels = num_labels
         self.negative_label = negative_label
         self.inference_window_ms = settings.inference_window_ms
         self.smoothing_window_ms = settings.smoothing_window_ms
         self.tolerance_window_ms = settings.tolerance_window_ms
         self.sequence = settings.inference_sequence
         self.time_provider = time_provider
-        self.pred_history = [];
+        self.pred_history = []
         self.label_history = []
 
-    @property
-    def sequence_present(self) -> bool:
+    def append_label(self, label: int, curr_time: float = None):
+        if not curr_time:
+            curr_time = self.time_provider() * 1000
+        self.label_history.append((curr_time, label))
+
+    def sequence_present(self, curr_time: float = None) -> bool:
         if not self.sequence:
             return False
         if len(self.sequence) == 0:
             return True
 
-        self.label_history = list(itertools.dropwhile(lambda x: self.time_provider() - x[0] > self.inference_window_ms, self.label_history)) # drop entries that are old
+        if not curr_time:
+            curr_time = self.time_provider() * 1000
+
+        self.label_history = list(itertools.dropwhile(lambda x: curr_time - x[0] > self.inference_window_ms,
+                                                      self.label_history))  # drop entries that are old
 
         # finite state machine for detecting the sequence
-        curr_label = None;
-        target_state = 0;
-        last_valid_timestemp = 0;
+        curr_label = None
+        target_state = 0
+        last_valid_timestamp = 0
 
         for history in self.label_history:
-            label = history[1]
-            curr_timestemp = history[0]
+            curr_timestamp, label = history
             target_label = self.sequence[target_state]
-
             if label == target_label:
                 # move to next state
                 target_state += 1
-                target_label = self.sequence[target_state]
-                curr_label = self.sequence[target_state-1]
-                last_valid_timestemp = curr_timestemp
-
                 if target_state == len(self.sequence):
                     # goal state is reached
                     return True
-
+                curr_label = self.sequence[target_state - 1]
+                last_valid_timestamp = curr_timestamp
             elif label == curr_label:
-                # label has not changed, only update last_valid_timestemp
-                last_valid_timestemp = curr_timestemp
-
-            elif last_valid_timestemp + self.tolerance_window_ms < curr_timestemp:
+                # label has not changed, only update last_valid_timestamp
+                last_valid_timestamp = curr_timestamp
+            elif last_valid_timestamp + self.tolerance_window_ms < curr_timestamp:
                 # out of tolerance window, start from the first state
-                curr_label = None;
-                target_state = 0;
-                last_valid_timestemp = 0;
-
+                curr_label = None
+                target_state = 0
+                last_valid_timestamp = 0
         return False
-
 
     def _get_prediction(self,
                         curr_time: float) -> int:
-
         # drop out-dated entries
         self.pred_history = list(itertools.dropwhile(lambda x: curr_time - x[0] > self.smoothing_window_ms, self.pred_history))
-
-        accum_pred_history = torch.zeros(self.pred_history[0][1].shape)
-        for x in self.pred_history:
-            accum_pred_history += x[1]
-
-        final_pred = accum_pred_history.argmax();
-
-        self.label_history.append((curr_time, final_pred))
-
-        return final_pred;
-
+        lattice = np.vstack([t for _, t in self.pred_history])
+        max_label = np.max(lattice, 0).argmax()
+        self.label_history.append((curr_time, max_label))
+        return max_label
 
     @torch.no_grad()
     def infer(self,
               x: torch.Tensor,
               lengths: torch.Tensor = None,
               curr_time: float = None) -> int:
+
+        if not curr_time:
+            curr_time = self.time_provider() * 1000
+
         self.std = self.std.to(x.device)
         if lengths is None:
             lengths = torch.tensor([x.size(-1)]).to(x.device)
@@ -121,9 +121,6 @@ class InferenceEngine:
         p = p / p.sum()
         logging.debug([f'{x:.3f}' for x in p.tolist()])
 
-        if (not curr_time):
-            curr_time = self.time_provider()
         self.pred_history.append((curr_time, p))
         label = self._get_prediction(curr_time)
-
         return label

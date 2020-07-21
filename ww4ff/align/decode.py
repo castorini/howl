@@ -3,7 +3,7 @@ from typing import List
 import numpy as np
 
 from .deepspeech import AsrOutput
-from .align import AlignedTranscription
+from .base import AlignedTranscription
 
 
 __all__ = ['DeepSpeechAligner']
