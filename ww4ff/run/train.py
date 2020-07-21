@@ -41,12 +41,8 @@ def main():
     def evaluate_engine(dataset: WakeWordEvaluationDataset, prefix: str, save: bool = False):
         std_transform.eval()
 
-<<<<<<< HEAD
-        label_engine = InferenceEngine(None, None, num_labels=num_labels, negative_label=num_labels - 1)
-        pred_engine = InferenceEngine(model, zmuv_transform, num_labels=num_labels, negative_label=num_labels - 1)
-=======
-        engine = InferenceEngine(model, zmuv_transform, negative_label=num_labels - 1)
->>>>>>> d020945205e8872ccf0703ffdaad4447816767d1
+        label_engine = InferenceEngine(None, None, negative_label=num_labels - 1)
+        pred_engine = InferenceEngine(model, zmuv_transform, negative_label=num_labels - 1)
         model.eval()
         frame_conf_matrix = ConfusionMatrix()
         ww_conf_matrix = ConfusionMatrix()
@@ -54,7 +50,6 @@ def main():
         curr_time = 0
         for idx, batch in enumerate(pbar):
             batch = batch.to(device)  # type: ClassificationBatch
-<<<<<<< HEAD
             pred = pred_engine.infer(batch.audio_data.to(device).squeeze(0), curr_time=curr_time)
             label = batch.labels.item()
             label_engine.append_label(label, curr_time=curr_time)
@@ -66,16 +61,6 @@ def main():
             ww_label = label_engine.sequence_present(curr_time)
             ww_pred = label_engine.sequence_present(curr_time)
             ww_conf_matrix.increment(ww_pred, ww_label)
-=======
-            pred = engine.infer(batch.audio_data.to(device).squeeze(0), curr_time=curr_time)
-            engine.append_label(pred, curr_time=curr_time)
-            label = batch.labels.item()
-            seq_present = engine.sequence_present(curr_time=curr_time)
-            conf_matrix.increment(seq_present, label < num_labels - 1)
-            if idx % 10 == 9:
-                pbar.set_postfix(dict(mcc=f'{conf_matrix.mcc}', c=f'{conf_matrix}'))
-            curr_time += 100  # assume we are processing the stream with hop_size 100ms
->>>>>>> d020945205e8872ccf0703ffdaad4447816767d1
 
             if idx % 10 == 9:
                 pbar.set_postfix(dict(
