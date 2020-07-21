@@ -38,3 +38,4 @@ class ConfusionMatrix:
         fn = 0.0
         if input_speech_length_ms > 0:
             fn = self.fn / (input_speech_length_ms / 3.6e+6)
+        return fn
