@@ -18,7 +18,7 @@ class InferenceClient:
                  engine: InferenceEngine,
                  device: torch.device,
                  words,
-                 chunk_size: int = 1000):
+                 chunk_size: int = 500):
         self.engine = engine
         self.chunk_size = chunk_size
         self._audio = pyaudio.PyAudio()
@@ -36,7 +36,7 @@ class InferenceClient:
                                   input_device_index=chosen_idx,
                                   frames_per_buffer=self.chunk_size,
                                   stream_callback=self._on_audio)
-        self.last_data = np.zeros(1000)
+        self.last_data = np.zeros(self.chunk_size)
         self._audio_buf = []
         self.device = device
         self.stream = stream
@@ -50,14 +50,14 @@ class InferenceClient:
         data_ok = (in_data, pyaudio.paContinue)
         self.last_data = in_data
         self._audio_buf.append(in_data)
-        if len(self._audio_buf) != 16:
+        if len(self._audio_buf) != 24:
             return data_ok
         audio_data = b''.join(self._audio_buf)
         self._audio_buf = self._audio_buf[2:]
-        arr = 1.41 * (np.frombuffer(audio_data, dtype=np.int16).astype(np.float) / 32767)
+        arr = np.frombuffer(audio_data, dtype=np.int16).astype(np.float) / 32767
         inp = torch.from_numpy(arr).float().to(self.device)
-        self.engine.infer(inp, curr_time=time_info['current_time'])
-        if self.engine.sequence_present(time_info['current_time']):
+        self.engine.append_label(self.engine.infer(inp))
+        if self.engine.sequence_present():
             phrase = ' '.join(self.words[x] for x in self.engine.sequence).title()
             print(f'{phrase} detected', end='\r')
         else:

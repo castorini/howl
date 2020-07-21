@@ -1,7 +1,7 @@
 import numpy as np
 import webrtcvad
 
-from .align import AlignedTranscription
+from .base import AlignedTranscription
 
 
 __all__ = ['LeftRightVadAligner']
@@ -16,14 +16,14 @@ class LeftRightVadAligner:
             start = 0
             vad = webrtcvad.Vad(3)
             for frame in frames:
-                buf = (frame.numpy() * 32767 / 1.414)
+                buf = frame.numpy() * 32767
                 buf = buf.astype(np.int16).tobytes()
                 if frame.size(0) < frame_len or vad.is_speech(buf, audio.sample_rate):
                     break
                 start += self.frame_ms
             return start
         from ww4ff.data.dataset import AudioClipExample
-        audio = audio  # type: AudioClipExample
+        audio  # type: AudioClipExample
         transcription = audio.metadata.transcription.lower()
         frame_len = int(self.frame_ms / 1000 * audio.sample_rate)
         frames = audio.audio_data.split(frame_len)
