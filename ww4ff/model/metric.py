@@ -28,14 +28,13 @@ class ConfusionMatrix:
             denom = 1
         return num / denom
 
-    @property
-    def fpr(self) -> float:
-        tp, tn, fp, fn = self.tp, self.tn, self.fp, self.fn
-        denom = fp + tn
-        return fp / denom if denom != 0 else 0.0
+    def fp_per_hour(self, input_speech_length_ms : float) -> float:
+        fp = 0.0
+        if input_speech_length_ms > 0:
+            fp = self.fp / (input_speech_length_ms / 3.6e+6)
+        return fp
 
-    @property
-    def fnr(self) -> float:
-        tp, tn, fp, fn = self.tp, self.tn, self.fp, self.fn
-        denom = fn + tp
-        return fn / denom if denom != 0 else 0.0
+    def fn_per_hour(self, input_speech_length_ms : float) -> float:
+        fn = 0.0
+        if input_speech_length_ms > 0:
+            fn = self.fn / (input_speech_length_ms / 3.6e+6)

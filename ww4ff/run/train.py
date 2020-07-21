@@ -64,10 +64,10 @@ def main():
 
             if idx % 10 == 9:
                 pbar.set_postfix(dict(
-                    frame_fpr=f'{frame_conf_matrix.fpr}', 
-                    frame_fnr=f'{frame_conf_matrix.fnr}',
-                    ww_fpr=f'{ww_conf_matrix.fpr}', 
-                    ww_fnr=f'{ww_conf_matrix.fnr}'))
+                    frame_fpr=f'{frame_conf_matrix.fp_per_hour(curr_time)}', 
+                    frame_fnr=f'{frame_conf_matrix.fn_per_hour(curr_time)}',
+                    ww_fpr=f'{ww_conf_matrix.fp_per_hour(curr_time)}', 
+                    ww_fnr=f'{ww_conf_matrix.fn_per_hour(curr_time)}'))
             curr_time += SETTINGS.training.eval_stride_size_seconds * 1000
 
         logging.info(f'Frame level metric: {frame_conf_matrix}')
@@ -174,18 +174,9 @@ def main():
             group['lr'] *= SETTINGS.training.lr_decay
         evaluate_accuracy(ww_dev_pos_ds, 'Dev positive', save=True)
     evaluate_accuracy(ww_test_pos_ds, 'Test positive')
-<<<<<<< HEAD
-
+    
     evaluate_engine(ww_dev_ds, 'Dev')
     evaluate_engine(ww_test_ds, 'Test')
-
-    # evaluate_engine(ww_dev_pos_ds, 'Dev positive')
-    # evaluate_engine(ww_dev_neg_ds, 'Dev negative')
-    # evaluate_engine(ww_test_pos_ds, 'Test positive')
-    # evaluate_engine(ww_test_neg_ds, 'Test negative')
-=======
-    evaluate_engine(ww_dev_neg_ds, 'Test negative')
->>>>>>> d020945205e8872ccf0703ffdaad4447816767d1
 
 
 if __name__ == '__main__':
