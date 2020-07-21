@@ -56,8 +56,8 @@ class InferenceClient:
         self._audio_buf = self._audio_buf[2:]
         arr = np.frombuffer(audio_data, dtype=np.int16).astype(np.float) / 32767
         inp = torch.from_numpy(arr).float().to(self.device)
-        self.engine.infer(inp)
-        if self.engine.sequence_present:
+        self.engine.append_label(self.engine.infer(inp))
+        if self.engine.sequence_present():
             phrase = ' '.join(self.words[x] for x in self.engine.sequence).title()
             print(f'{phrase} detected', end='\r')
         else:

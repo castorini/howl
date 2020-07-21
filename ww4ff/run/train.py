@@ -49,8 +49,10 @@ def main():
         for idx, batch in enumerate(pbar):
             batch = batch.to(device)  # type: ClassificationBatch
             pred = engine.infer(batch.audio_data.to(device).squeeze(0), curr_time=curr_time)
+            engine.append_label(pred, curr_time=curr_time)
             label = batch.labels.item()
-            conf_matrix.increment(pred < num_labels - 1, label < num_labels - 1)
+            seq_present = engine.sequence_present(curr_time=curr_time)
+            conf_matrix.increment(seq_present, label < num_labels - 1)
             if idx % 10 == 9:
                 pbar.set_postfix(dict(mcc=f'{conf_matrix.mcc}', c=f'{conf_matrix}'))
             curr_time += 100  # assume we are processing the stream with hop_size 100ms
@@ -155,6 +157,7 @@ def main():
             group['lr'] *= SETTINGS.training.lr_decay
         evaluate_accuracy(ww_dev_pos_ds, 'Dev positive', save=True)
     evaluate_accuracy(ww_test_pos_ds, 'Test positive')
+    evaluate_engine(ww_dev_neg_ds, 'Test negative')
 
 
 if __name__ == '__main__':
