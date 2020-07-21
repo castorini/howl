@@ -1,6 +1,7 @@
 from typing import Sequence, Iterable
 import random
 
+from librosa.output import write_wav
 import librosa.effects as effects
 import torch
 import torch.nn as nn
@@ -82,12 +83,14 @@ class WakeWordBatchifier:
                  positive_sample_prob: float = 0.5,
                  window_size_ms: int = 500,
                  sample_rate: int = 16000,
-                 positive_delta_ms: int = 150):
+                 positive_delta_ms: int = 150,
+                 eps_ms: int = 75):
         self.positive_sample_prob = positive_sample_prob
         self.window_size_ms = window_size_ms
         self.sample_rate = sample_rate
         self.negative_label = negative_label
         self.positive_delta_ms = positive_delta_ms
+        self.eps_ms = eps_ms
 
     def __call__(self, examples: Sequence[WakeWordClipExample]) -> ClassificationBatch:
         new_examples = []
@@ -99,12 +102,20 @@ class WakeWordBatchifier:
             select_negative = random.random() > self.positive_sample_prob
             if not select_negative:
                 end_ms, label = random.choice(list(ex.frame_labels.items()))
-                b = int((end_ms / 1000) * self.sample_rate)
+                end_ms_rand = end_ms + ((random.random() - 0.5) * 2 * self.eps_ms)
+                b = int((end_ms_rand / 1000) * self.sample_rate)
                 a = max(b - int((self.window_size_ms / 1000) * self.sample_rate), 0)
-                if b - a == 0:
+                if random.random() < 0:
+                    closest_ms = min(filter(lambda k: end_ms - k > 0, ex.frame_labels.keys()),
+                                     key=lambda k: end_ms - k,
+                                     default=-1)
+                    if closest_ms >= 0:
+                        a = max(a, int((closest_ms / 1000) * self.sample_rate))
+                if b - a < 0:
                     select_negative = True
                 else:
                     new_examples.append((label, ex.emplaced_audio_data(ex.audio_data[..., a:b])))
+                    # write_wav(f'clips/{label}-{ex.metadata.path.name}', ex.audio_data[..., a:b].cpu().numpy(), sr=16000)
             if select_negative:
                 positive_intervals = [(v - self.positive_delta_ms, v + self.positive_delta_ms)
                                       for v in ex.frame_labels.values()]
@@ -124,8 +135,14 @@ class WakeWordBatchifier:
         new_examples = sorted(new_examples, key=lambda x: x[1].audio_data.size()[-1], reverse=True)
         lengths = torch.tensor([ex.audio_data.size(-1) for _, ex in new_examples])
         max_length = max(ex.audio_data.size(-1) for _, ex in new_examples)
-        audio_tensor = [torch.cat((ex.audio_data.squeeze(), torch.zeros(max_length - ex.audio_data.size(-1))), -1) for
-                        _, ex in new_examples]
+        audio_tensor = []
+        for _, ex in new_examples:
+            if random.random() < 0.5:
+                x = (torch.zeros(max_length - ex.audio_data.size(-1)), ex.audio_data.squeeze())
+            else:
+                x = (ex.audio_data.squeeze(), torch.zeros(max_length - ex.audio_data.size(-1)))
+            audio_tensor.append(torch.cat(x, -1))
+
         audio_tensor = torch.stack(audio_tensor)
         labels_tensor = torch.tensor([lidx for lidx, _ in new_examples])
         return ClassificationBatch(audio_tensor, labels_tensor, lengths)

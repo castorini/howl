@@ -3,7 +3,7 @@ from tqdm import tqdm
 from .args import ArgumentParserBuilder, opt
 from ww4ff.data.dataset import MozillaKeywordLoader, AudioClipDatasetWriter, AudioClipDatasetMetadataWriter, \
     AlignedAudioClipMetadata
-from ww4ff.asr import LeftRightVadAligner
+from ww4ff.align import LeftRightVadAligner
 from ww4ff.settings import SETTINGS
 
 

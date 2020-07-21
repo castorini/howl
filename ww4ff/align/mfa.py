@@ -1,0 +1,37 @@
+from textgrids import TextGrid
+import numpy as np
+
+from .base import AlignedTranscription
+
+
+__all__ = ['MfaTextGridConverter']
+
+
+class MfaTextGridConverter:
+    def __init__(self, split_by_char: bool = True):
+        assert split_by_char, 'word-level not implemented'
+        self.split_by_char = split_by_char
+
+    def convert(self, text_grid: TextGrid) -> AlignedTranscription:
+        end_timestamps = []
+        words = []
+        if self.split_by_char:
+            for word in text_grid['words']:
+                word_len = len(word.text)
+                if word_len == 0:
+                    continue
+                # TODO: remove
+                ff_count = word.text.count('firefox')
+                word.text = word.text.replace('firefox', 'fire fox')
+                word_len += ff_count
+
+                a, b = 1000 * word.xmin, 1000 * word.xmax
+                interval = np.linspace(a, b, word_len)
+                end_timestamps.extend(interval.tolist())
+                words.append(word.text)
+                end_timestamps.append(b)  # spaces
+        if len(end_timestamps) > 0:
+            end_timestamps.pop()  # pop last space
+        transcript = ' '.join(words)
+        assert len(transcript) == len(end_timestamps), 'unequal alignment'
+        return AlignedTranscription(transcription=transcript.lower(), end_timestamps=end_timestamps)

@@ -5,7 +5,7 @@ from deepspeech_training.util.flags import create_flags, FLAGS
 from tqdm import tqdm
 import tensorflow as tf
 
-from ww4ff.asr import compute_raw_scores, DeepSpeechAligner
+from ww4ff.align import compute_raw_scores, DeepSpeechAligner
 from ww4ff.data.dataset import AudioClipDatasetLoader, AudioClipDatasetMetadataWriter, AlignedAudioClipMetadata
 from ww4ff.settings import SETTINGS
 
