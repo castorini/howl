@@ -13,7 +13,7 @@ def gather_dict(dataclass):
     items = dataclass.dict().items() if isinstance(dataclass, BaseSettings) else dataclass.__dict__.items()
     data_dict = dict()
     for k, v in items:
-        if type(v) in JSON_PRIMITIVES:
+        if type(v) in JSON_PRIMITIVES or v is None:
             data_dict[k] = v
         elif type(v) in SERIALIZABLE_TYPES:
             data_dict[k] = str(v)

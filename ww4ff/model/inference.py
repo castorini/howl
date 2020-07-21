@@ -17,9 +17,13 @@ __all__ = ['InferenceEngine', 'InferenceEngineSettings']
 class InferenceEngineSettings(BaseSettings):
     inference_weights: List[float] = None
     inference_sequence: List[int] = None
-    inference_window_ms: float = 2000  # look at last 2 seconds
-    smoothing_window_ms: float = 50  # prediction smoothed over 1 seconds
-    tolerance_window_ms: float = 500  # negative label between words are acceptable for 0.3 seconds
+    inference_window_ms: float = 2000  # look at last of these seconds
+    smoothing_window_ms: float = 50  # prediction smoothed
+    tolerance_window_ms: float = 500  # negative label between words
+    inference_threshold: float = 0.5  # positive label probability must rise above this threshold
+
+    def make_wakeword(self, vocab: List[str]):
+        return ' '.join(np.array(vocab)[self.inference_sequence])
 
 
 class InferenceEngine:
@@ -35,16 +39,20 @@ class InferenceEngine:
         inference_weights = 1 if settings.inference_weights is None else np.array(settings.inference_weights)
         self.inference_weights = inference_weights
         self.negative_label = negative_label
+        self.threshold = settings.inference_threshold
         self.inference_window_ms = settings.inference_window_ms
         self.smoothing_window_ms = settings.smoothing_window_ms
         self.tolerance_window_ms = settings.tolerance_window_ms
         self.sequence = settings.inference_sequence
         self.time_provider = time_provider
+        self.reset()
+
+    def reset(self):
         self.pred_history = []
         self.label_history = []
 
     def append_label(self, label: int, curr_time: float = None):
-        if not curr_time:
+        if curr_time is None:
             curr_time = self.time_provider() * 1000
         self.label_history.append((curr_time, label))
 
@@ -54,7 +62,7 @@ class InferenceEngine:
         if len(self.sequence) == 0:
             return True
 
-        if not curr_time:
+        if curr_time is None:
             curr_time = self.time_provider() * 1000
 
         self.label_history = list(itertools.dropwhile(lambda x: curr_time - x[0] > self.inference_window_ms,
@@ -91,7 +99,11 @@ class InferenceEngine:
         # drop out-dated entries
         self.pred_history = list(itertools.dropwhile(lambda x: curr_time - x[0] > self.smoothing_window_ms, self.pred_history))
         lattice = np.vstack([t for _, t in self.pred_history])
-        max_label = np.max(lattice, 0).argmax()
+        lattice_max = np.max(lattice, 0)
+        max_label = lattice_max.argmax()
+        max_prob = lattice_max[max_label]
+        if max_prob < self.threshold:
+            max_label = self.negative_label
         self.label_history.append((curr_time, max_label))
         return max_label
 
@@ -101,7 +113,7 @@ class InferenceEngine:
               lengths: torch.Tensor = None,
               curr_time: float = None) -> int:
 
-        if not curr_time:
+        if curr_time is None:
             curr_time = self.time_provider() * 1000
 
         self.std = self.std.to(x.device)

@@ -9,13 +9,14 @@ import torch.nn as nn
 
 from .args import ArgumentParserBuilder, opt
 from .preprocess_dataset import print_stats
-from ww4ff.data.dataset import WakeWordEvaluationDataset, DatasetType, WakeWordDatasetLoader, ClassificationBatch
+from ww4ff.data.dataset import WakeWordEvaluationDataset, DatasetType, WakeWordDatasetLoader, ClassificationBatch, WakeWordDataset
 from ww4ff.data.dataloader import StandardAudioDataLoaderBuilder
 from ww4ff.data.transform import compose, ZmuvTransform, StandardAudioTransform, WakeWordBatchifier,\
     NoiseTransform, batchify, TimestretchTransform
 from ww4ff.settings import SETTINGS
 from ww4ff.model import find_model, model_names, Workspace, ConfusionMatrix
-from ww4ff.model.inference import InferenceEngine
+from ww4ff.model.inference import InferenceEngine, InferenceEngineSettings
+from ww4ff.utils.audio import stride
 from ww4ff.utils.random import set_seed
 
 
@@ -38,24 +39,36 @@ def main():
             writer.add_scalar(f'{prefix}/Metric/acc', acc, epoch_idx)
             ws.increment_model(model, acc)
 
-    def evaluate_engine(dataset: WakeWordEvaluationDataset, prefix: str, save: bool = False):
+    def evaluate_engine(dataset: WakeWordDataset,
+                        prefix: str,
+                        save: bool = False,
+                        positive_set: bool = False):
         std_transform.eval()
 
         engine = InferenceEngine(model, zmuv_transform, negative_label=num_labels - 1)
         model.eval()
         conf_matrix = ConfusionMatrix()
         pbar = tqdm(dataset, desc=prefix)
-        curr_time = 0
-        for idx, batch in enumerate(pbar):
-            batch = batch.to(device)  # type: ClassificationBatch
-            pred = engine.infer(batch.audio_data.to(device).squeeze(0), curr_time=curr_time)
-            engine.append_label(pred, curr_time=curr_time)
-            label = batch.labels.item()
-            seq_present = engine.sequence_present(curr_time=curr_time)
-            conf_matrix.increment(seq_present, label < num_labels - 1)
-            if idx % 10 == 9:
-                pbar.set_postfix(dict(mcc=f'{conf_matrix.mcc}', c=f'{conf_matrix}'))
-            curr_time += 100  # assume we are processing the stream with hop_size 100ms
+        for idx, ex in enumerate(pbar):
+            audio_data = ex.audio_data.to(device)
+            engine.reset()
+            seq_present = False
+            curr_time = 0
+            for window in stride(audio_data,
+                                 SETTINGS.training.max_window_size_seconds * 1000,
+                                 SETTINGS.training.eval_stride_size_seconds * 1000,
+                                 SETTINGS.audio.sample_rate):
+                if window.size(-1) < 1000:
+                    break
+                pred = engine.infer(window.squeeze(0), curr_time=curr_time)
+                engine.append_label(pred, curr_time=curr_time)
+                seq_present = seq_present or engine.sequence_present(curr_time=curr_time)
+                curr_time += SETTINGS.training.eval_stride_size_seconds * 1000
+            if args.error_file and seq_present != positive_set:
+                with open(args.error_file, 'a') as f:
+                    f.write(f'{ex.metadata.transcription.transcription}\t{int(seq_present)}\t{int(positive_set)}\n')
+            conf_matrix.increment(seq_present, positive_set)
+            pbar.set_postfix(dict(mcc=f'{conf_matrix.mcc}', c=f'{conf_matrix}'))
 
         logging.info(f'{conf_matrix}')
         if save and not args.eval:
@@ -67,6 +80,7 @@ def main():
                     opt('--workspace', type=str, default=str(Path('workspaces') / 'default')),
                     opt('--load-weights', action='store_true'),
                     opt('--vocab', type=str, nargs='+', default=[' hey', 'fire fox']),
+                    opt('--error-file', type=str),
                     opt('--eval', action='store_true'))
     args = apb.parser.parse_args()
 
@@ -85,22 +99,25 @@ def main():
     sr = SETTINGS.audio.sample_rate
     wind_sz = int(SETTINGS.training.eval_window_size_seconds * sr)
     stri_sz = int(SETTINGS.training.eval_stride_size_seconds * sr)
-    ww_dev_pos_ds = ww_dev_ds.filter(lambda x: x.compute_frame_labels(args.vocab), clone=True)
-    ww_dev_neg_ds = ww_dev_ds.filter(lambda x: not x.compute_frame_labels(args.vocab), clone=True)
-    ww_test_pos_ds = ww_test_ds.filter(lambda x: x.compute_frame_labels(args.vocab), clone=True)
-    ww_test_neg_ds = ww_test_ds.filter(lambda x: not x.compute_frame_labels(args.vocab), clone=True)
 
-    ww_dev_pos_ds = WakeWordEvaluationDataset(ww_dev_pos_ds, wind_sz, stri_sz, num_labels - 1, positives_only=True)
-    ww_dev_neg_ds = WakeWordEvaluationDataset(ww_dev_neg_ds, wind_sz, stri_sz, num_labels - 1)
-    ww_test_pos_ds = WakeWordEvaluationDataset(ww_test_pos_ds, wind_sz, stri_sz, num_labels - 1, positives_only=True)
-    ww_test_neg_ds = WakeWordEvaluationDataset(ww_test_neg_ds, wind_sz, stri_sz, num_labels - 1)
+    inference_wakeword = InferenceEngineSettings().make_wakeword(args.vocab)
+    ww_dev_all_pos_ds = ww_dev_ds.filter(lambda x: x.compute_frame_labels(args.vocab), clone=True)
+    ww_dev_all_pos_ds = WakeWordEvaluationDataset(ww_dev_all_pos_ds,
+                                                  wind_sz,
+                                                  stri_sz,
+                                                  num_labels - 1,
+                                                  positives_only=True)
+    ww_dev_pos_ds = ww_dev_ds.filter(lambda x: x.compute_frame_labels([inference_wakeword]), clone=True)
+    ww_dev_neg_ds = ww_dev_ds.filter(lambda x: not x.compute_frame_labels([inference_wakeword]), clone=True)
+    ww_test_pos_ds = ww_test_ds.filter(lambda x: x.compute_frame_labels([inference_wakeword]), clone=True)
+    ww_test_neg_ds = ww_test_ds.filter(lambda x: not x.compute_frame_labels([inference_wakeword]), clone=True)
 
     device = torch.device(SETTINGS.training.device)
     std_transform = StandardAudioTransform().to(device).eval()
     zmuv_transform = ZmuvTransform().to(device)
     batchifier = WakeWordBatchifier(num_labels - 1,
                                     window_size_ms=int(SETTINGS.training.max_window_size_seconds * 1000))
-    train_comp = compose(TimestretchTransform().train(), NoiseTransform().train(), batchifier)
+    train_comp = compose(NoiseTransform().train(), batchifier)
     prep_dl = StandardAudioDataLoaderBuilder(ww_train_ds, collate_fn=batchify).build(1)
     prep_dl.shuffle = True
     train_dl = StandardAudioDataLoaderBuilder(ww_train_ds, collate_fn=train_comp).build(SETTINGS.training.batch_size)
@@ -126,8 +143,10 @@ def main():
         ws.load_model(model, best=False)
     if args.eval:
         ws.load_model(model, best=True)
-        evaluate_accuracy(ww_dev_pos_ds, 'Dev positive')
-        evaluate_engine(ww_dev_neg_ds, 'Dev negative')
+        evaluate_engine(ww_dev_pos_ds, 'Dev positive', positive_set=True)
+        evaluate_engine(ww_dev_neg_ds, 'Dev negative', positive_set=False)
+        evaluate_engine(ww_test_pos_ds, 'Test positive', positive_set=True)
+        evaluate_engine(ww_test_neg_ds, 'Test negative', positive_set=False)
         return
 
     ws.write_args(args)
@@ -155,9 +174,13 @@ def main():
 
         for group in optimizer.param_groups:
             group['lr'] *= SETTINGS.training.lr_decay
-        evaluate_accuracy(ww_dev_pos_ds, 'Dev positive', save=True)
-    evaluate_accuracy(ww_test_pos_ds, 'Test positive')
-    evaluate_engine(ww_dev_neg_ds, 'Test negative')
+        evaluate_accuracy(ww_dev_all_pos_ds, 'Dev positive', save=True)
+        evaluate_engine(ww_dev_pos_ds, 'Dev positive', positive_set=True)
+
+    evaluate_engine(ww_dev_pos_ds, 'Dev positive', positive_set=True)
+    evaluate_engine(ww_dev_neg_ds, 'Dev negative', positive_set=False)
+    evaluate_engine(ww_test_pos_ds, 'Test positive', positive_set=True)
+    evaluate_engine(ww_test_neg_ds, 'Test negative', positive_set=False)
 
 
 if __name__ == '__main__':
