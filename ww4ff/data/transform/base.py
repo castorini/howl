@@ -84,7 +84,7 @@ class WakeWordBatchifier:
                  window_size_ms: int = 500,
                  sample_rate: int = 16000,
                  positive_delta_ms: int = 150,
-                 eps_ms: int = 75):
+                 eps_ms: int = 25):
         self.positive_sample_prob = positive_sample_prob
         self.window_size_ms = window_size_ms
         self.sample_rate = sample_rate
