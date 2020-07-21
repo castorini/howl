@@ -17,15 +17,9 @@ __all__ = ['InferenceEngine', 'InferenceEngineSettings']
 class InferenceEngineSettings(BaseSettings):
     inference_weights: List[float] = None
     inference_sequence: List[int] = None
-<<<<<<< HEAD
-    inference_window_ms: float = 2000 # look at last 2 seconds
-    smoothing_window_ms: float = 500 # prediction smoothed over 1 seconds
-    tolerance_window_ms: float = 500 # negative label between words are acceptable for 0.3 seconds
-=======
     inference_window_ms: float = 2000  # look at last 2 seconds
     smoothing_window_ms: float = 50  # prediction smoothed over 1 seconds
-    tolerance_window_ms: float = 500  # negative label between words are acceptable for 0.3 seconds
->>>>>>> d020945205e8872ccf0703ffdaad4447816767d1
+    tolerance_window_ms: float = 500  # negative label between words are acceptable for 0.5 seconds
 
 
 class InferenceEngine:
