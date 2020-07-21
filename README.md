@@ -31,5 +31,5 @@ INFERENCE_SEQUENCE=[0,1] INFERENCE_WEIGHTS=[1,1,1,1,1,1,1,1,1,1] WW4FF_LOG_LEVEL
 
 ## Exporting the trained model as js file
 ```
-python -m ww4ff.run.export_honkling -i workspace/<workspace_name>/model.pt -o <output_filename>.js --name RES8
+python -m ww4ff.run.export_honkling -i workspace/<workspace_name>/model-best.pt -o <output_filename>.js --name RES8
 ```
