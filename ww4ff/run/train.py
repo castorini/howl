@@ -72,8 +72,8 @@ def main():
 
         logging.info(f'{conf_matrix}')
         if save and not args.eval:
-            writer.add_scalar(f'{prefix}/Metric/mcc', conf_matrix.fp, epoch_idx)
-            ws.increment_model(model, conf_matrix.mcc)
+            writer.add_scalar(f'{prefix}/Metric/tp', conf_matrix.tp, epoch_idx)
+            ws.increment_model(model, conf_matrix.tp)
 
     apb = ArgumentParserBuilder()
     apb.add_options(opt('--model', type=str, choices=model_names(), default='las'),
@@ -174,8 +174,8 @@ def main():
 
         for group in optimizer.param_groups:
             group['lr'] *= SETTINGS.training.lr_decay
-        evaluate_accuracy(ww_dev_all_pos_ds, 'Dev positive', save=True)
-        evaluate_engine(ww_dev_pos_ds, 'Dev positive', positive_set=True)
+        # evaluate_accuracy(ww_dev_all_pos_ds, 'Dev positive', save=True)
+        evaluate_engine(ww_dev_pos_ds, 'Dev positive', positive_set=True, save=True)
 
     evaluate_engine(ww_dev_pos_ds, 'Dev positive', positive_set=True)
     evaluate_engine(ww_dev_neg_ds, 'Dev negative', positive_set=False)

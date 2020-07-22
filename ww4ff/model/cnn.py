@@ -36,8 +36,8 @@ class CnnSettings(BaseSettings):
     num_labels: int = 2
     num_maps1: int = 48
     num_maps2: int = 64
+    num_hidden_input: int = 384
     hidden_size: int = 256
-    cnn_type: str = 'dense'
 
 
 @register_model('small-cnn')
@@ -45,9 +45,9 @@ class SmallCnn(nn.Module):
     def __init__(self, config: CnnSettings = CnnSettings()):
         super().__init__()
         self.config = config
-        conv0 = nn.Conv2d(1, config.num_maps1, (8, 16), padding=(4, 0), bias=True)
+        conv0 = nn.Conv2d(1, config.num_maps1, (8, 16), padding=(4, 0), stride=(2, 2), bias=True)
         pool = nn.MaxPool2d(2)
-        conv1 = nn.Conv2d(config.num_maps1, config.num_maps2, (5, 5), padding=2, bias=True)
+        conv1 = nn.Conv2d(config.num_maps1, config.num_maps2, (5, 5), padding=2, stride=(2, 1), bias=True)
         self.encoder1 = nn.Sequential(conv0,
                                       nn.ReLU(),
                                       pool,
@@ -56,7 +56,7 @@ class SmallCnn(nn.Module):
                                       nn.ReLU(),
                                       pool,
                                       nn.BatchNorm2d(config.num_maps2, affine=True))
-        self.output = nn.Sequential(nn.Linear(config.num_maps2 + config.num_maps1 if config.cnn_type == 'dense' else config.num_maps2, config.hidden_size),
+        self.output = nn.Sequential(nn.Linear(config.num_hidden_input, config.hidden_size),
                                     nn.ReLU(),
                                     nn.Dropout(0.1),
                                     nn.Linear(config.hidden_size, config.num_labels))
@@ -66,12 +66,8 @@ class SmallCnn(nn.Module):
         x = x.permute(0, 1, 3, 2)  # (time, frequency)
         x1 = self.encoder1(x)
         x2 = self.encoder2(x1)
-        x1 = x1.view(x1.size(0), x1.size(1), -1)
         x2 = x2.view(x2.size(0), x2.size(1), -1)
-        if self.config.cnn_type == 'dense':
-            x = torch.cat((torch.max(x1, 2)[0], torch.max(x2, 2)[0]), 1)
-        else:
-            x = torch.max(x2, 2)[0]
+        x = x2.view(x2.size(0), -1)
         return self.output(x)
 
 

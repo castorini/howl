@@ -84,13 +84,15 @@ class WakeWordBatchifier:
                  window_size_ms: int = 500,
                  sample_rate: int = 16000,
                  positive_delta_ms: int = 150,
-                 eps_ms: int = 25):
+                 eps_ms: int = 25,
+                 pad_to_window: bool = True):
         self.positive_sample_prob = positive_sample_prob
         self.window_size_ms = window_size_ms
         self.sample_rate = sample_rate
         self.negative_label = negative_label
         self.positive_delta_ms = positive_delta_ms
         self.eps_ms = eps_ms
+        self.pad_to_window = pad_to_window
 
     def __call__(self, examples: Sequence[WakeWordClipExample]) -> ClassificationBatch:
         new_examples = []
@@ -134,7 +136,10 @@ class WakeWordBatchifier:
                 new_examples.append((self.negative_label, ex.emplaced_audio_data(ex.audio_data[..., a:b])))
         new_examples = sorted(new_examples, key=lambda x: x[1].audio_data.size()[-1], reverse=True)
         lengths = torch.tensor([ex.audio_data.size(-1) for _, ex in new_examples])
-        max_length = max(ex.audio_data.size(-1) for _, ex in new_examples)
+        if self.pad_to_window:
+            max_length = int(self.sample_rate * self.window_size_ms / 1000)
+        else:
+            max_length = max(ex.audio_data.size(-1) for _, ex in new_examples)
         audio_tensor = []
         for _, ex in new_examples:
             if random.random() < 0.5:
