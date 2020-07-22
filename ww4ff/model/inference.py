@@ -20,7 +20,7 @@ class InferenceEngineSettings(BaseSettings):
     inference_window_ms: float = 2000  # look at last of these seconds
     smoothing_window_ms: float = 50  # prediction smoothed
     tolerance_window_ms: float = 500  # negative label between words
-    inference_threshold: float = 0.5  # positive label probability must rise above this threshold
+    inference_threshold: float = 0  # positive label probability must rise above this threshold
 
     def make_wakeword(self, vocab: List[str]):
         return ' '.join(np.array(vocab)[self.inference_sequence])

@@ -66,7 +66,7 @@ def main():
                 curr_time += SETTINGS.training.eval_stride_size_seconds * 1000
             if args.error_file and seq_present != positive_set:
                 with open(args.error_file, 'a') as f:
-                    f.write(f'{ex.metadata.transcription.transcription}\t{int(seq_present)}\t{int(positive_set)}\n')
+                    f.write(f'{ex.metadata.transcription.transcription}\t{int(seq_present)}\t{int(positive_set)}\t{ex.metadata.path}\n')
             conf_matrix.increment(seq_present, positive_set)
             pbar.set_postfix(dict(mcc=f'{conf_matrix.mcc}', c=f'{conf_matrix}'))
 

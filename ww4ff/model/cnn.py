@@ -34,9 +34,10 @@ class MobileNetClassifier(nn.Module):
 
 class CnnSettings(BaseSettings):
     num_labels: int = 2
-    num_maps1 = 48
-    num_maps2 = 64
-    hidden_size = 256
+    num_maps1: int = 48
+    num_maps2: int = 64
+    hidden_size: int = 256
+    cnn_type: str = 'dense'
 
 
 @register_model('small-cnn')
@@ -55,7 +56,7 @@ class SmallCnn(nn.Module):
                                       nn.ReLU(),
                                       pool,
                                       nn.BatchNorm2d(config.num_maps2, affine=True))
-        self.output = nn.Sequential(nn.Linear(config.num_maps2 + config.num_maps1, config.hidden_size),
+        self.output = nn.Sequential(nn.Linear(config.num_maps2 + config.num_maps1 if config.cnn_type == 'dense' else config.num_maps2, config.hidden_size),
                                     nn.ReLU(),
                                     nn.Dropout(0.1),
                                     nn.Linear(config.hidden_size, config.num_labels))
@@ -67,7 +68,10 @@ class SmallCnn(nn.Module):
         x2 = self.encoder2(x1)
         x1 = x1.view(x1.size(0), x1.size(1), -1)
         x2 = x2.view(x2.size(0), x2.size(1), -1)
-        x = torch.cat((torch.max(x1, 2)[0], torch.max(x2, 2)[0]), 1)
+        if self.config.cnn_type == 'dense':
+            x = torch.cat((torch.max(x1, 2)[0], torch.max(x2, 2)[0]), 1)
+        else:
+            x = torch.max(x2, 2)[0]
         return self.output(x)
 
 
