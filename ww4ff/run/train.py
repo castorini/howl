@@ -9,7 +9,7 @@ import torch.nn as nn
 
 from .args import ArgumentParserBuilder, opt
 from .preprocess_dataset import print_stats
-from ww4ff.data.dataset import WakeWordEvaluationDataset, DatasetType, WakeWordDatasetLoader, ClassificationBatch, WakeWordDataset
+from ww4ff.data.dataset import WakeWordDatasetLoader, WakeWordDataset
 from ww4ff.data.dataloader import StandardAudioDataLoaderBuilder
 from ww4ff.data.transform import compose, ZmuvTransform, StandardAudioTransform, WakeWordBatchifier,\
     NoiseTransform, batchify, TimestretchTransform
@@ -21,24 +21,6 @@ from ww4ff.utils.random import set_seed
 
 
 def main():
-    def evaluate_accuracy(dataset: WakeWordEvaluationDataset, prefix: str, save: bool = False):
-        std_transform.eval()
-        model.eval()
-        pbar = tqdm(dataset, desc=prefix, leave=True)
-        num_corr = 0
-        num_tot = 0
-        for idx, batch in enumerate(pbar):
-            batch = batch.to(device)
-            scores = model(zmuv_transform(std_transform(batch.audio_data)),
-                           std_transform.compute_lengths(batch.lengths))
-            num_tot += scores.size(0)
-            num_corr += (scores.max(1)[1] == batch.labels).float().sum().item()
-            acc = num_corr / num_tot
-            pbar.set_postfix(accuracy=f'{acc:.4}')
-        if save and not args.eval:
-            writer.add_scalar(f'{prefix}/Metric/acc', acc, epoch_idx)
-            ws.increment_model(model, acc)
-
     def evaluate_engine(dataset: WakeWordDataset,
                         prefix: str,
                         save: bool = False,
@@ -79,6 +61,7 @@ def main():
     apb.add_options(opt('--model', type=str, choices=model_names(), default='las'),
                     opt('--workspace', type=str, default=str(Path('workspaces') / 'default')),
                     opt('--load-weights', action='store_true'),
+                    opt('--load-last', action='store_true'),
                     opt('--vocab', type=str, nargs='+', default=[' hey', 'fire fox']),
                     opt('--error-file', type=str),
                     opt('--eval', action='store_true'))
@@ -102,11 +85,6 @@ def main():
 
     inference_wakeword = InferenceEngineSettings().make_wakeword(args.vocab)
     ww_dev_all_pos_ds = ww_dev_ds.filter(lambda x: x.compute_frame_labels(args.vocab), clone=True)
-    ww_dev_all_pos_ds = WakeWordEvaluationDataset(ww_dev_all_pos_ds,
-                                                  wind_sz,
-                                                  stri_sz,
-                                                  num_labels - 1,
-                                                  positives_only=True)
     ww_dev_pos_ds = ww_dev_ds.filter(lambda x: x.compute_frame_labels([inference_wakeword]), clone=True)
     ww_dev_neg_ds = ww_dev_ds.filter(lambda x: not x.compute_frame_labels([inference_wakeword]), clone=True)
     ww_test_pos_ds = ww_test_ds.filter(lambda x: x.compute_frame_labels([inference_wakeword]), clone=True)
@@ -140,9 +118,9 @@ def main():
     torch.save(zmuv_transform.state_dict(), str(ws.path / 'zmuv.pt.bin'))
 
     if args.load_weights:
-        ws.load_model(model, best=False)
+        ws.load_model(model, best=not args.load_last)
     if args.eval:
-        ws.load_model(model, best=True)
+        ws.load_model(model, best=not args.load_last)
         evaluate_engine(ww_dev_pos_ds, 'Dev positive', positive_set=True)
         evaluate_engine(ww_dev_neg_ds, 'Dev negative', positive_set=False)
         evaluate_engine(ww_test_pos_ds, 'Test positive', positive_set=True)
@@ -174,7 +152,6 @@ def main():
 
         for group in optimizer.param_groups:
             group['lr'] *= SETTINGS.training.lr_decay
-        # evaluate_accuracy(ww_dev_all_pos_ds, 'Dev positive', save=True)
         evaluate_engine(ww_dev_pos_ds, 'Dev positive', positive_set=True, save=True)
 
     evaluate_engine(ww_dev_pos_ds, 'Dev positive', positive_set=True)
