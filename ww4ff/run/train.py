@@ -41,26 +41,41 @@ def main():
     def evaluate_engine(dataset: WakeWordEvaluationDataset, prefix: str, save: bool = False):
         std_transform.eval()
 
-        engine = InferenceEngine(model, zmuv_transform, negative_label=num_labels - 1)
+        label_engine = InferenceEngine(None, None, negative_label=num_labels - 1)
+        pred_engine = InferenceEngine(model, zmuv_transform, negative_label=num_labels - 1)
         model.eval()
-        conf_matrix = ConfusionMatrix()
+        frame_conf_matrix = ConfusionMatrix()
+        ww_conf_matrix = ConfusionMatrix()
         pbar = tqdm(dataset, desc=prefix)
         curr_time = 0
         for idx, batch in enumerate(pbar):
             batch = batch.to(device)  # type: ClassificationBatch
-            pred = engine.infer(batch.audio_data.to(device).squeeze(0), curr_time=curr_time)
-            engine.append_label(pred, curr_time=curr_time)
+            pred = pred_engine.infer(batch.audio_data.to(device).squeeze(0), curr_time=curr_time)
             label = batch.labels.item()
-            seq_present = engine.sequence_present(curr_time=curr_time)
-            conf_matrix.increment(seq_present, label < num_labels - 1)
-            if idx % 10 == 9:
-                pbar.set_postfix(dict(mcc=f'{conf_matrix.mcc}', c=f'{conf_matrix}'))
-            curr_time += 100  # assume we are processing the stream with hop_size 100ms
+            label_engine.append_label(label, curr_time=curr_time)
 
-        logging.info(f'{conf_matrix}')
+            # frame level metrics
+            frame_conf_matrix.increment(pred < num_labels - 1, label < num_labels - 1)
+
+            # sample level metrics
+            ww_label = label_engine.sequence_present(curr_time)
+            ww_pred = label_engine.sequence_present(curr_time)
+            ww_conf_matrix.increment(ww_pred, ww_label)
+
+            if idx % 10 == 9:
+                pbar.set_postfix(dict(
+                    frame_fpr=f'{frame_conf_matrix.fp_per_hour(curr_time)}', 
+                    frame_fnr=f'{frame_conf_matrix.fn_per_hour(curr_time)}',
+                    ww_fpr=f'{ww_conf_matrix.fp_per_hour(curr_time)}', 
+                    ww_fnr=f'{ww_conf_matrix.fn_per_hour(curr_time)}'))
+            curr_time += SETTINGS.training.eval_stride_size_seconds * 1000
+
+        logging.info(f'Frame level metric: {frame_conf_matrix}')
+        logging.info(f'Wake-word level metric: {ww_conf_matrix}')
         if save and not args.eval:
-            writer.add_scalar(f'{prefix}/Metric/mcc', conf_matrix.fp, epoch_idx)
-            ws.increment_model(model, conf_matrix.mcc)
+            writer.add_scalar(f'{prefix}/Metric/frame_mcc', frame_conf_matrix.mcc, epoch_idx)
+            ws.increment_model(model, frame_conf_matrix.mcc)
+            writer.add_scalar(f'{prefix}/Metric/ww_mcc', ww_conf_matrix.mcc, epoch_idx)
 
     apb = ArgumentParserBuilder()
     apb.add_options(opt('--model', type=str, choices=model_names(), default='las'),
@@ -92,8 +107,10 @@ def main():
 
     ww_dev_pos_ds = WakeWordEvaluationDataset(ww_dev_pos_ds, wind_sz, stri_sz, num_labels - 1, positives_only=True)
     ww_dev_neg_ds = WakeWordEvaluationDataset(ww_dev_neg_ds, wind_sz, stri_sz, num_labels - 1)
+    ww_dev_ds = WakeWordEvaluationDataset(ww_dev_ds, wind_sz, stri_sz, num_labels - 1)
     ww_test_pos_ds = WakeWordEvaluationDataset(ww_test_pos_ds, wind_sz, stri_sz, num_labels - 1, positives_only=True)
     ww_test_neg_ds = WakeWordEvaluationDataset(ww_test_neg_ds, wind_sz, stri_sz, num_labels - 1)
+    ww_test_ds = WakeWordEvaluationDataset(ww_test_ds, wind_sz, stri_sz, num_labels - 1)
 
     device = torch.device(SETTINGS.training.device)
     std_transform = StandardAudioTransform().to(device).eval()
@@ -126,8 +143,8 @@ def main():
         ws.load_model(model, best=False)
     if args.eval:
         ws.load_model(model, best=True)
-        evaluate_accuracy(ww_dev_pos_ds, 'Dev positive')
-        evaluate_engine(ww_dev_neg_ds, 'Dev negative')
+        evaluate_engine(ww_dev_ds, 'Dev')
+        evaluate_engine(ww_test_ds, 'Test')
         return
 
     ws.write_args(args)
@@ -157,7 +174,9 @@ def main():
             group['lr'] *= SETTINGS.training.lr_decay
         evaluate_accuracy(ww_dev_pos_ds, 'Dev positive', save=True)
     evaluate_accuracy(ww_test_pos_ds, 'Test positive')
-    evaluate_engine(ww_dev_neg_ds, 'Test negative')
+    
+    evaluate_engine(ww_dev_ds, 'Dev')
+    evaluate_engine(ww_test_ds, 'Test')
 
 
 if __name__ == '__main__':
