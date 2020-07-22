@@ -9,10 +9,10 @@ import torch.nn as nn
 
 from .args import ArgumentParserBuilder, opt
 from .preprocess_dataset import print_stats
-from ww4ff.data.dataset import WakeWordDatasetLoader, WakeWordDataset
+from ww4ff.data.dataset import WakeWordDatasetLoader, WakeWordDataset, SnsdNoiseDatasetLoader
 from ww4ff.data.dataloader import StandardAudioDataLoaderBuilder
 from ww4ff.data.transform import compose, ZmuvTransform, StandardAudioTransform, WakeWordBatchifier,\
-    NoiseTransform, batchify, TimestretchTransform
+    NoiseTransform, batchify, TimestretchTransform, DatasetMixer
 from ww4ff.settings import SETTINGS
 from ww4ff.model import find_model, model_names, Workspace, ConfusionMatrix
 from ww4ff.model.inference import InferenceEngine, InferenceEngineSettings
@@ -79,6 +79,7 @@ def main():
     ww_train_ds, ww_dev_ds, ww_test_ds = loader.load_splits(SETTINGS.dataset.dataset_path, **ds_kwargs)
     print_stats('Wake word dataset', ww_train_ds, ww_dev_ds, ww_test_ds)
 
+
     sr = SETTINGS.audio.sample_rate
     wind_sz = int(SETTINGS.training.eval_window_size_seconds * sr)
     stri_sz = int(SETTINGS.training.eval_stride_size_seconds * sr)
@@ -95,7 +96,14 @@ def main():
     zmuv_transform = ZmuvTransform().to(device)
     batchifier = WakeWordBatchifier(num_labels - 1,
                                     window_size_ms=int(SETTINGS.training.max_window_size_seconds * 1000))
-    train_comp = compose(NoiseTransform().train(), batchifier)
+    train_comp = (NoiseTransform().train(), batchifier)
+
+    if SETTINGS.training.use_snsd_noise:
+        noise_train_ds, noise_dev_ds = SnsdNoiseDatasetLoader().load_splits(SETTINGS.raw_dataset.snsd_dataset_path)
+        noise_ds = noise_train_ds.extend(noise_dev_ds)
+        train_comp = (DatasetMixer(noise_ds),) + train_comp
+    train_comp = compose(*train_comp)
+
     prep_dl = StandardAudioDataLoaderBuilder(ww_train_ds, collate_fn=batchify).build(1)
     prep_dl.shuffle = True
     train_dl = StandardAudioDataLoaderBuilder(ww_train_ds, collate_fn=train_comp).build(SETTINGS.training.batch_size)

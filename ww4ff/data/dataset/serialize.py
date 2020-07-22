@@ -24,7 +24,8 @@ __all__ = ['AudioClipDatasetWriter',
            'AudioClipDatasetMetadataWriter',
            'WakeWordDatasetLoader',
            'GoogleSpeechCommandsDatasetLoader',
-           'MozillaKeywordLoader']
+           'MozillaKeywordLoader',
+           'SnsdNoiseDatasetLoader']
 
 
 class AudioClipDatasetMetadataWriter:
@@ -224,3 +225,13 @@ class MozillaWakeWordLoader(PathDatasetLoader):
 
 SoundIdSplitMozillaWakeWordLoader = partial(MozillaWakeWordLoader, split_by_speaker=False)
 SpeakerSplitMozillaWakeWordLoader = partial(MozillaWakeWordLoader, split_by_speaker=True)
+
+
+class SnsdNoiseDatasetLoader(PathDatasetLoader):
+    def load_splits(self, path: Path, **dataset_kwargs) -> Tuple[AudioClipDataset, AudioClipDataset]:
+        def load(folder, set_type) -> AudioClipDataset:
+            wav_names = folder.glob('*.wav')
+            metadata_list = [AudioClipMetadata(path=filename.absolute(), transcription='') for filename in wav_names]
+            return AudioClipDataset(metadata_list, set_type=set_type, sr=16000, mono=True)
+        return (load(path / 'noise_train', DatasetType.TRAINING),
+                load(path / 'noise_test', DatasetType.DEV))

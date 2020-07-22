@@ -10,7 +10,7 @@ import librosa
 import torch
 import torch.nn as nn
 
-from ww4ff.data.dataset import EmplacableExample, WakeWordClipExample
+from ww4ff.data.dataset import EmplacableExample, WakeWordClipExample, AudioClipDataset
 from .meyda import MeydaMelSpectrogram
 
 
@@ -19,6 +19,7 @@ __all__ = ['AugmentationParameter',
            'TimeshiftTransform',
            'TimestretchTransform',
            'NoiseTransform',
+           'DatasetMixer',
            'StandardAudioTransform',
            'SpecAugmentTransform',
            'NegativeSampleTransform']
@@ -149,6 +150,30 @@ class NoiseTransform(AugmentModule):
             noise_mask.clamp_(-1, 1)
             waveform = (waveform + noise_mask).clamp_(-1, 1)
             new_examples.append(example.emplaced_audio_data(waveform))
+        return new_examples
+
+
+class DatasetMixer(AugmentModule):
+    def __init__(self, background_noise_dataset: AudioClipDataset):
+        super().__init__()
+        self.dataset = background_noise_dataset
+
+    @property
+    def default_params(self):
+        return AugmentationParameter([0.1, 0.2, 0.3, 0.4, 0.5], 'strength', 3),
+
+    @torch.no_grad()
+    def augment(self, param, examples: Sequence[EmplacableExample], **kwargs):
+        new_examples = []
+        for example in examples:
+            waveform = example.audio_data
+            bg_ex = random.choice(self.dataset).audio_data.to(waveform.device)
+            b = random.randint(waveform.size(-1), bg_ex.size(-1))
+            a = b - waveform.size(-1)
+            bg_audio = bg_ex[..., a:b]
+            alpha = random.random() * param.magnitude
+            mixed_wf = waveform * (1 - alpha) + bg_audio * alpha
+            new_examples.append(example.emplaced_audio_data(mixed_wf))
         return new_examples
 
 
