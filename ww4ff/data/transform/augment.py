@@ -160,7 +160,8 @@ class DatasetMixer(AugmentModule):
 
     @property
     def default_params(self):
-        return AugmentationParameter([0.1, 0.2, 0.3, 0.4, 0.5], 'strength', 3),
+        return (AugmentationParameter([0.1, 0.2, 0.3, 0.4, 0.5], 'strength', 1),
+                AugmentationParameter([0], 'replace', 0, prob=0.1))
 
     @torch.no_grad()
     def augment(self, param, examples: Sequence[EmplacableExample], **kwargs):
@@ -168,12 +169,17 @@ class DatasetMixer(AugmentModule):
         for example in examples:
             waveform = example.audio_data
             bg_ex = random.choice(self.dataset).audio_data.to(waveform.device)
+            while bg_ex.size(-1) < waveform.size(-1):
+                bg_ex = random.choice(self.dataset).audio_data.to(waveform.device)
             b = random.randint(waveform.size(-1), bg_ex.size(-1))
             a = b - waveform.size(-1)
             bg_audio = bg_ex[..., a:b]
-            alpha = random.random() * param.magnitude
+            alpha = 1 if param.name == 'replace' else random.random() * param.magnitude
             mixed_wf = waveform * (1 - alpha) + bg_audio * alpha
-            new_examples.append(example.emplaced_audio_data(mixed_wf))
+            ex = example.emplaced_audio_data(mixed_wf)
+            if alpha == 1:
+                ex.frame_labels = {}
+            new_examples.append(ex)
         return new_examples
 
 

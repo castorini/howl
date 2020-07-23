@@ -9,11 +9,12 @@ import torch.nn as nn
 
 from .args import ArgumentParserBuilder, opt
 from .preprocess_dataset import print_stats
-from ww4ff.data.dataset import WakeWordDatasetLoader, WakeWordDataset, SnsdNoiseDatasetLoader
+from ww4ff.data.dataset import WakeWordDatasetLoader, WakeWordDataset, RecursiveNoiseDatasetLoader
 from ww4ff.data.dataloader import StandardAudioDataLoaderBuilder
 from ww4ff.data.transform import compose, ZmuvTransform, StandardAudioTransform, WakeWordBatchifier,\
     NoiseTransform, batchify, TimestretchTransform, DatasetMixer
 from ww4ff.settings import SETTINGS
+from ww4ff.model import find_model, model_names, Workspace, ConfusionMatrix
 from ww4ff.model import find_model, model_names, Workspace, ConfusionMatrix
 from ww4ff.model.inference import InferenceEngine, InferenceEngineSettings
 from ww4ff.utils.audio import stride
@@ -24,7 +25,8 @@ def main():
     def evaluate_engine(dataset: WakeWordDataset,
                         prefix: str,
                         save: bool = False,
-                        positive_set: bool = False):
+                        positive_set: bool = False,
+                        write_errors: bool = True):
         std_transform.eval()
 
         engine = InferenceEngine(model, zmuv_transform, negative_label=num_labels - 1)
@@ -46,8 +48,8 @@ def main():
                 engine.append_label(pred, curr_time=curr_time)
                 seq_present = seq_present or engine.sequence_present(curr_time=curr_time)
                 curr_time += SETTINGS.training.eval_stride_size_seconds * 1000
-            if args.error_file and seq_present != positive_set:
-                with open(args.error_file, 'a') as f:
+            if seq_present != positive_set and write_errors:
+                with (ws.path / 'errors.tsv').open('a') as f:
                     f.write(f'{ex.metadata.transcription.transcription}\t{int(seq_present)}\t{int(positive_set)}\t{ex.metadata.path}\n')
             conf_matrix.increment(seq_present, positive_set)
             pbar.set_postfix(dict(mcc=f'{conf_matrix.mcc}', c=f'{conf_matrix}'))
@@ -63,7 +65,6 @@ def main():
                     opt('--load-weights', action='store_true'),
                     opt('--load-last', action='store_true'),
                     opt('--vocab', type=str, nargs='+', default=[' hey', 'fire fox']),
-                    opt('--error-file', type=str),
                     opt('--eval', action='store_true'))
     args = apb.parser.parse_args()
 
@@ -98,9 +99,11 @@ def main():
                                     window_size_ms=int(SETTINGS.training.max_window_size_seconds * 1000))
     train_comp = (NoiseTransform().train(), batchifier)
 
-    if SETTINGS.training.use_snsd_noise:
-        noise_train_ds, noise_dev_ds = SnsdNoiseDatasetLoader().load_splits(SETTINGS.raw_dataset.snsd_dataset_path)
-        noise_ds = noise_train_ds.extend(noise_dev_ds)
+    if SETTINGS.training.use_noise_dataset:
+        noise_ds = RecursiveNoiseDatasetLoader().load(SETTINGS.raw_dataset.noise_dataset_path,
+                                                      sr=SETTINGS.audio.sample_rate,
+                                                      mono=SETTINGS.audio.use_mono)
+        logging.info(f'Loaded {len(noise_ds.metadata_list)} noise files.')
         train_comp = (DatasetMixer(noise_ds),) + train_comp
     train_comp = compose(*train_comp)
 
@@ -160,7 +163,7 @@ def main():
 
         for group in optimizer.param_groups:
             group['lr'] *= SETTINGS.training.lr_decay
-        evaluate_engine(ww_dev_pos_ds, 'Dev positive', positive_set=True, save=True)
+        evaluate_engine(ww_dev_pos_ds, 'Dev positive', positive_set=True, save=True, write_errors=False)
 
     evaluate_engine(ww_dev_pos_ds, 'Dev positive', positive_set=True)
     evaluate_engine(ww_dev_neg_ds, 'Dev negative', positive_set=False)
