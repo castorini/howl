@@ -24,16 +24,18 @@ class TrainingSettings(BaseSettings):
     device: str = 'cuda:0'
     batch_size: int = 16
     lr_decay: float = 0.75
-    max_window_size_seconds: float = 1
-    eval_window_size_seconds: float = 1
-    eval_stride_size_seconds: float = 0.25
+    max_window_size_seconds: float = 0.75
+    eval_window_size_seconds: float = 0.75
+    eval_stride_size_seconds: float = 0.063
     weight_decay: float = 0
+    use_snsd_noise: bool = False
 
 
 class RawDatasetSettings(BaseSettings):
     common_voice_dataset_path: Path
     wake_word_dataset_path: Path
     keyword_voice_dataset_path: Path
+    snsd_dataset_path: Path = None
 
 
 class DatasetSettings(BaseSettings):

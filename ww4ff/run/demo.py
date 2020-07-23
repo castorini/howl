@@ -50,7 +50,7 @@ class InferenceClient:
         data_ok = (in_data, pyaudio.paContinue)
         self.last_data = in_data
         self._audio_buf.append(in_data)
-        if len(self._audio_buf) != 24:
+        if len(self._audio_buf) != 16:
             return data_ok
         audio_data = b''.join(self._audio_buf)
         self._audio_buf = self._audio_buf[2:]
@@ -82,7 +82,7 @@ def main():
     model = find_model(args.model)().to(device).eval()
     zmuv_transform.load_state_dict(torch.load(str(ws.path / 'zmuv.pt.bin')))
 
-    ws.load_model(model, best=True)
+    ws.load_model(model, best=False)
     engine = InferenceEngine(model, zmuv_transform, len(args.words))
 
     client = InferenceClient(engine, device, args.words)

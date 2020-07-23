@@ -28,13 +28,13 @@ class ConfusionMatrix:
             denom = 1
         return num / denom
 
-    def fp_per_hour(self, input_speech_length_ms : float) -> float:
+    def fp_per_hour(self, input_speech_length_ms: float) -> float:
         fp = 0.0
         if input_speech_length_ms > 0:
             fp = self.fp / (input_speech_length_ms / 3.6e+6)
         return fp
 
-    def fn_per_hour(self, input_speech_length_ms : float) -> float:
+    def fn_per_hour(self, input_speech_length_ms: float) -> float:
         fn = 0.0
         if input_speech_length_ms > 0:
             fn = self.fn / (input_speech_length_ms / 3.6e+6)
