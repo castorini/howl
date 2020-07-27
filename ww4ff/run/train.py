@@ -9,7 +9,7 @@ import torch.nn as nn
 
 from .args import ArgumentParserBuilder, opt
 from .preprocess_dataset import print_stats
-from ww4ff.data.dataset import WakeWordDatasetLoader, WakeWordDataset, RecursiveNoiseDatasetLoader
+from ww4ff.data.dataset import WakeWordDatasetLoader, WakeWordDataset, RecursiveNoiseDatasetLoader, Sha256Splitter
 from ww4ff.data.dataloader import StandardAudioDataLoaderBuilder
 from ww4ff.data.transform import compose, ZmuvTransform, StandardAudioTransform, WakeWordBatchifier,\
     NoiseTransform, batchify, TimestretchTransform, DatasetMixer
@@ -26,14 +26,20 @@ def main():
                         prefix: str,
                         save: bool = False,
                         positive_set: bool = False,
-                        write_errors: bool = True):
+                        write_errors: bool = True,
+                        mixer: DatasetMixer = None):
         std_transform.eval()
 
         engine = InferenceEngine(model, zmuv_transform, negative_label=num_labels - 1)
         model.eval()
         conf_matrix = ConfusionMatrix()
         pbar = tqdm(dataset, desc=prefix)
+        if write_errors:
+            with (ws.path / 'errors.tsv').open('a') as f:
+                print(prefix, file=f)
         for idx, ex in enumerate(pbar):
+            if mixer is not None:
+                ex, = mixer([ex])
             audio_data = ex.audio_data.to(device)
             engine.reset()
             seq_present = False
@@ -59,6 +65,16 @@ def main():
             writer.add_scalar(f'{prefix}/Metric/tp', conf_matrix.tp, epoch_idx)
             ws.increment_model(model, conf_matrix.tp)
 
+    def do_evaluate():
+        evaluate_engine(ww_dev_pos_ds, 'Dev positive', positive_set=True)
+        evaluate_engine(ww_dev_pos_ds, 'Dev noisy positive', positive_set=True, mixer=dev_mixer)
+        evaluate_engine(ww_dev_neg_ds, 'Dev negative', positive_set=False)
+        evaluate_engine(ww_dev_neg_ds, 'Dev noisy negative', positive_set=False, mixer=dev_mixer)
+        evaluate_engine(ww_test_pos_ds, 'Test positive', positive_set=True)
+        evaluate_engine(ww_test_pos_ds, 'Test noisy positive', positive_set=True, mixer=test_mixer)
+        evaluate_engine(ww_test_neg_ds, 'Test negative', positive_set=False)
+        evaluate_engine(ww_test_neg_ds, 'Test noisy negative', positive_set=False, mixer=test_mixer)
+
     apb = ArgumentParserBuilder()
     apb.add_options(opt('--model', type=str, choices=model_names(), default='las'),
                     opt('--workspace', type=str, default=str(Path('workspaces') / 'default')),
@@ -79,7 +95,6 @@ def main():
     ds_kwargs = dict(sr=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono, words=args.vocab)
     ww_train_ds, ww_dev_ds, ww_test_ds = loader.load_splits(SETTINGS.dataset.dataset_path, **ds_kwargs)
     print_stats('Wake word dataset', ww_train_ds, ww_dev_ds, ww_test_ds)
-
 
     sr = SETTINGS.audio.sample_rate
     wind_sz = int(SETTINGS.training.eval_window_size_seconds * sr)
@@ -104,7 +119,11 @@ def main():
                                                       sr=SETTINGS.audio.sample_rate,
                                                       mono=SETTINGS.audio.use_mono)
         logging.info(f'Loaded {len(noise_ds.metadata_list)} noise files.')
-        train_comp = (DatasetMixer(noise_ds),) + train_comp
+        noise_ds_train, noise_ds_dev = noise_ds.split(Sha256Splitter(80))
+        noise_ds_dev, noise_ds_test = noise_ds_dev.split(Sha256Splitter(50))
+        train_comp = (DatasetMixer(noise_ds_train).train(),) + train_comp
+        dev_mixer = DatasetMixer(noise_ds_dev, seed=0, do_replace=False)
+        test_mixer = DatasetMixer(noise_ds_test, seed=0, do_replace=False)
     train_comp = compose(*train_comp)
 
     prep_dl = StandardAudioDataLoaderBuilder(ww_train_ds, collate_fn=batchify).build(1)
@@ -132,10 +151,7 @@ def main():
         ws.load_model(model, best=not args.load_last)
     if args.eval:
         ws.load_model(model, best=not args.load_last)
-        evaluate_engine(ww_dev_pos_ds, 'Dev positive', positive_set=True)
-        evaluate_engine(ww_dev_neg_ds, 'Dev negative', positive_set=False)
-        evaluate_engine(ww_test_pos_ds, 'Test positive', positive_set=True)
-        evaluate_engine(ww_test_neg_ds, 'Test negative', positive_set=False)
+        do_evaluate()
         return
 
     ws.write_args(args)
@@ -164,11 +180,7 @@ def main():
         for group in optimizer.param_groups:
             group['lr'] *= SETTINGS.training.lr_decay
         evaluate_engine(ww_dev_pos_ds, 'Dev positive', positive_set=True, save=True, write_errors=False)
-
-    evaluate_engine(ww_dev_pos_ds, 'Dev positive', positive_set=True)
-    evaluate_engine(ww_dev_neg_ds, 'Dev negative', positive_set=False)
-    evaluate_engine(ww_test_pos_ds, 'Test positive', positive_set=True)
-    evaluate_engine(ww_test_neg_ds, 'Test negative', positive_set=False)
+    do_evaluate()
 
 
 if __name__ == '__main__':

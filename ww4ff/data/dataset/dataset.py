@@ -1,6 +1,5 @@
 from collections import defaultdict
 from copy import deepcopy
-from dataclasses import dataclass
 from functools import lru_cache
 from typing import Any, List, Callable
 
@@ -8,16 +7,17 @@ import torch
 import torch.utils.data as tud
 
 from .base import DatasetType, AudioClipMetadata, AudioClipExample, WakeWordClipExample, AudioDatasetStatistics, \
-    AlignedAudioClipMetadata, ClassificationBatch, NEGATIVE_CLASS, ClassificationClipExample
-
+    AlignedAudioClipMetadata, NEGATIVE_CLASS, ClassificationClipExample
 from ww4ff.settings import SETTINGS
 from ww4ff.utils.audio import silent_load
+from ww4ff.utils.hash import sha256_int
 
 
 __all__ = ['TypedAudioDataset',
            'AudioClipDataset',
            'WakeWordDataset',
-           'AudioClassificationDataset']
+           'AudioClassificationDataset',
+           'Sha256Splitter']
 
 
 class TypedAudioDataset:
@@ -47,6 +47,18 @@ class SingleListAttrMixin:
         data_list = self._list_attr
         self._list_attr = list(filter(predicate_fn, data_list))
         return self
+
+    def split(self, predicate_fn: Callable[[Any], bool]):
+        data_list1 = []
+        data_list2 = []
+        x1 = deepcopy(self)
+        x2 = deepcopy(self)
+        for x in self._list_attr:
+            data_list = data_list2 if predicate_fn(x) else data_list1
+            data_list.append(x)
+        x1._list_attr = data_list1
+        x2._list_attr = data_list2
+        return x1, x2
 
     def extend(self, other_dataset: 'SingleListAttrMixin'):
         self._list_attr.extend(other_dataset._list_attr)
@@ -135,3 +147,11 @@ class AudioClassificationDataset(AudioDatasetStatisticsMixin, SingleListAttrMixi
                                          audio_data=torch.from_numpy(audio_data),
                                          sample_rate=self.sr,
                                          label=self.label_map[metadata.transcription])
+
+
+class Sha256Splitter:
+    def __init__(self, target_pct: int):
+        self.target_pct = target_pct
+
+    def __call__(self, x: AudioClipMetadata):
+        return (sha256_int(str(x.path)) % 100) < self.target_pct
