@@ -82,7 +82,7 @@ def main():
     model = find_model(args.model)().to(device).eval()
     zmuv_transform.load_state_dict(torch.load(str(ws.path / 'zmuv.pt.bin')))
 
-    ws.load_model(model, best=True)
+    ws.load_model(model, best=False)
     engine = InferenceEngine(model, zmuv_transform, len(args.words))
 
     client = InferenceClient(engine, device, args.words)

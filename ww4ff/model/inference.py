@@ -125,7 +125,7 @@ class InferenceEngine:
 
         p *= self.inference_weights
         p = p / p.sum()
-        logging.debug(([f'{x:.3f}' for x in p.tolist()], ['hey', 'fire', 'fox', 'none', ''][np.argmax(p)]))
+        logging.debug(([f'{x:.3f}' for x in p.tolist()], np.argmax(p)))
 
         self.pred_history.append((curr_time, p))
         label = self._get_prediction(curr_time)

@@ -20,11 +20,6 @@ class MfaTextGridConverter:
                 word_len = len(word.text)
                 if word_len == 0:
                     continue
-                # TODO: remove
-                ff_count = word.text.count('firefox')
-                word.text = word.text.replace('firefox', 'fire fox')
-                word_len += ff_count
-
                 a, b = 1000 * word.xmin, 1000 * word.xmax
                 interval = np.linspace(a, b, word_len)
                 end_timestamps.extend(interval.tolist())

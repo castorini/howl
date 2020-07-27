@@ -124,7 +124,7 @@ class TimestretchTransform(AugmentModule):
     def augment(self, param, examples: Sequence[EmplacableExample], **kwargs):
         new_examples = []
         for example in examples:
-            rate = np.clip(np.random.normal(1, param.magnitude), 0.5, 1.5)
+            rate = np.clip(np.random.normal(1.1, param.magnitude), 0.8, 2)
             audio = torch.from_numpy(librosa.effects.time_stretch(example.audio_data.squeeze().cpu().numpy(), rate))
             new_examples.append(example.emplaced_audio_data(audio))
         return new_examples
@@ -231,8 +231,8 @@ class StandardAudioTransform(AugmentModule):
 class SpecAugmentTransform(AugmentModule):
     @property
     def default_params(self) -> Sequence[AugmentationParameter]:
-        return AugmentationParameter([20, 30, 40, 50, 60], 'sa_freq', 2),\
-               AugmentationParameter([50, 75, 100, 125, 150], 'sa_time', 2)
+        return AugmentationParameter([2, 5, 10, 20, 25], 'sa_freq', 2),\
+               AugmentationParameter([10, 50, 75, 125, 150], 'sa_time', 2)
 
     def tmask(self, x, T):
         for idx in range(x.size(0)):
