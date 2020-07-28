@@ -56,9 +56,15 @@ class AugmentationParameter(object):
 
 
 class AugmentModule(nn.Module):
-    def __init__(self):
+    def __init__(self, seed: int = None):
         super().__init__()
         self.augment_params = self.default_params
+        self.rand = random if seed is None else random.Random(seed)
+        self.seed = seed
+
+    def reset_random(self):
+        if self.seed is not None:
+            self.rand = random.Random(self.seed)
 
     @property
     def default_params(self) -> Sequence[AugmentationParameter]:
@@ -72,7 +78,7 @@ class AugmentModule(nn.Module):
 
     def forward(self, x, **kwargs):
         for param in self.augment_params:
-            if param.enabled and random.random() < param.prob and self.training:
+            if param.enabled and self.rand.random() < param.prob and self.training:
                 x = self.augment(param, x, **kwargs)
             else:
                 x = self.passthrough(x, **kwargs)
@@ -108,9 +114,9 @@ class TimeshiftTransform(AugmentModule):
     def augment(self, param: AugmentationParameter, examples: Sequence[EmplacableExample], **kwargs):
         new_examples = []
         for example in examples:
-            w = min(int(random.random() * param.magnitude * self.sr), int(0.5 * example.audio_data.size(-1)))
+            w = min(int(self.rand.random() * param.magnitude * self.sr), int(0.5 * example.audio_data.size(-1)))
             audio_data = example.audio_data
-            audio_data = audio_data[..., w:] if random.random() < 0.5 else audio_data[..., :example.audio_data.size(-1) - w]
+            audio_data = audio_data[..., w:] if self.rand.random() < 0.5 else audio_data[..., :example.audio_data.size(-1) - w]
             new_examples.append(example.emplaced_audio_data(audio_data))
         return new_examples
 
@@ -124,7 +130,7 @@ class TimestretchTransform(AugmentModule):
     def augment(self, param, examples: Sequence[EmplacableExample], **kwargs):
         new_examples = []
         for example in examples:
-            rate = np.clip(np.random.normal(1, param.magnitude), 0.5, 1.5)
+            rate = np.clip(np.random.normal(1.1, param.magnitude), 0.8, 2)
             audio = torch.from_numpy(librosa.effects.time_stretch(example.audio_data.squeeze().cpu().numpy(), rate))
             new_examples.append(example.emplaced_audio_data(audio))
         return new_examples
@@ -142,10 +148,10 @@ class NoiseTransform(AugmentModule):
         for example in examples:
             waveform = example.audio_data
             if param.name == 'white':
-                strength = param.magnitude * random.random()
+                strength = param.magnitude * self.rand.random()
                 noise_mask = torch.empty_like(waveform).normal_(0, strength)
             else:
-                prob = param.magnitude * random.random()
+                prob = param.magnitude * self.rand.random()
                 noise_mask = torch.empty_like(waveform).bernoulli_(prob / 2) - torch.empty_like(waveform).bernoulli_(prob / 2)
             noise_mask.clamp_(-1, 1)
             waveform = (waveform + noise_mask).clamp_(-1, 1)
@@ -154,26 +160,36 @@ class NoiseTransform(AugmentModule):
 
 
 class DatasetMixer(AugmentModule):
-    def __init__(self, background_noise_dataset: AudioClipDataset):
-        super().__init__()
+    def __init__(self,
+                 background_noise_dataset: AudioClipDataset,
+                 do_replace: bool = False,
+                 **kwargs):
+        self.do_replace = do_replace
+        super().__init__(**kwargs)
         self.dataset = background_noise_dataset
 
     @property
     def default_params(self):
-        return AugmentationParameter([0.1, 0.2, 0.3, 0.4, 0.5], 'strength', 3),
+        return (AugmentationParameter([0.1, 0.2, 0.3, 0.4, 0.5], 'strength', 1),
+                AugmentationParameter([0], 'replace', 0, prob=0.1 if self.do_replace else 0))
 
     @torch.no_grad()
     def augment(self, param, examples: Sequence[EmplacableExample], **kwargs):
         new_examples = []
         for example in examples:
             waveform = example.audio_data
-            bg_ex = random.choice(self.dataset).audio_data.to(waveform.device)
-            b = random.randint(waveform.size(-1), bg_ex.size(-1))
+            bg_ex = self.rand.choice(self.dataset).audio_data.to(waveform.device)
+            while bg_ex.size(-1) < waveform.size(-1):
+                bg_ex = self.rand.choice(self.dataset).audio_data.to(waveform.device)
+            b = self.rand.randint(waveform.size(-1), bg_ex.size(-1))
             a = b - waveform.size(-1)
             bg_audio = bg_ex[..., a:b]
-            alpha = random.random() * param.magnitude
+            alpha = 1 if param.name == 'replace' else self.rand.random() * param.magnitude
             mixed_wf = waveform * (1 - alpha) + bg_audio * alpha
-            new_examples.append(example.emplaced_audio_data(mixed_wf))
+            ex = example.emplaced_audio_data(mixed_wf)
+            if alpha == 1:
+                ex.frame_labels = {}
+            new_examples.append(ex)
         return new_examples
 
 
@@ -225,14 +241,14 @@ class StandardAudioTransform(AugmentModule):
 class SpecAugmentTransform(AugmentModule):
     @property
     def default_params(self) -> Sequence[AugmentationParameter]:
-        return AugmentationParameter([20, 30, 40, 50, 60], 'sa_freq', 2),\
-               AugmentationParameter([50, 75, 100, 125, 150], 'sa_time', 2)
+        return AugmentationParameter([2, 5, 10, 20, 25], 'sa_freq', 2),\
+               AugmentationParameter([10, 50, 75, 125, 150], 'sa_time', 2)
 
     def tmask(self, x, T):
         for idx in range(x.size(0)):
-            t = random.randrange(0, T)
+            t = self.rand.randrange(0, T)
             try:
-                t0 = random.randrange(0, x.size(3) - t)
+                t0 = self.rand.randrange(0, x.size(3) - t)
             except ValueError:
                 continue
             x[idx, :, :, t0:t0 + t] = 0
@@ -240,8 +256,8 @@ class SpecAugmentTransform(AugmentModule):
 
     def fmask(self, x, F):
         for idx in range(x.size(0)):
-            f = random.randrange(0, F)
-            f0 = random.randrange(0, x.size(2) - f)
+            f = self.rand.randrange(0, F)
+            f0 = self.rand.randrange(0, x.size(2) - f)
             x[idx, :, f0:f0 + f] = 0
         return x
 

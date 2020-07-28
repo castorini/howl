@@ -9,11 +9,12 @@ import torch.nn as nn
 
 from .args import ArgumentParserBuilder, opt
 from .preprocess_dataset import print_stats
-from ww4ff.data.dataset import WakeWordDatasetLoader, WakeWordDataset, SnsdNoiseDatasetLoader
+from ww4ff.data.dataset import WakeWordDatasetLoader, WakeWordDataset, RecursiveNoiseDatasetLoader, Sha256Splitter
 from ww4ff.data.dataloader import StandardAudioDataLoaderBuilder
 from ww4ff.data.transform import compose, ZmuvTransform, StandardAudioTransform, WakeWordBatchifier,\
     NoiseTransform, batchify, TimestretchTransform, DatasetMixer
 from ww4ff.settings import SETTINGS
+from ww4ff.model import find_model, model_names, Workspace, ConfusionMatrix
 from ww4ff.model import find_model, model_names, Workspace, ConfusionMatrix
 from ww4ff.model.inference import InferenceEngine, InferenceEngineSettings
 from ww4ff.utils.audio import stride
@@ -24,14 +25,21 @@ def main():
     def evaluate_engine(dataset: WakeWordDataset,
                         prefix: str,
                         save: bool = False,
-                        positive_set: bool = False):
+                        positive_set: bool = False,
+                        write_errors: bool = True,
+                        mixer: DatasetMixer = None):
         std_transform.eval()
 
         engine = InferenceEngine(model, zmuv_transform, negative_label=num_labels - 1)
         model.eval()
         conf_matrix = ConfusionMatrix()
         pbar = tqdm(dataset, desc=prefix)
+        if write_errors:
+            with (ws.path / 'errors.tsv').open('a') as f:
+                print(prefix, file=f)
         for idx, ex in enumerate(pbar):
+            if mixer is not None:
+                ex, = mixer([ex])
             audio_data = ex.audio_data.to(device)
             engine.reset()
             seq_present = False
@@ -46,8 +54,8 @@ def main():
                 engine.append_label(pred, curr_time=curr_time)
                 seq_present = seq_present or engine.sequence_present(curr_time=curr_time)
                 curr_time += SETTINGS.training.eval_stride_size_seconds * 1000
-            if args.error_file and seq_present != positive_set:
-                with open(args.error_file, 'a') as f:
+            if seq_present != positive_set and write_errors:
+                with (ws.path / 'errors.tsv').open('a') as f:
                     f.write(f'{ex.metadata.transcription.transcription}\t{int(seq_present)}\t{int(positive_set)}\t{ex.metadata.path}\n')
             conf_matrix.increment(seq_present, positive_set)
             pbar.set_postfix(dict(mcc=f'{conf_matrix.mcc}', c=f'{conf_matrix}'))
@@ -57,13 +65,22 @@ def main():
             writer.add_scalar(f'{prefix}/Metric/tp', conf_matrix.tp, epoch_idx)
             ws.increment_model(model, conf_matrix.tp)
 
+    def do_evaluate():
+        evaluate_engine(ww_dev_pos_ds, 'Dev positive', positive_set=True)
+        evaluate_engine(ww_dev_pos_ds, 'Dev noisy positive', positive_set=True, mixer=dev_mixer)
+        evaluate_engine(ww_dev_neg_ds, 'Dev negative', positive_set=False)
+        evaluate_engine(ww_dev_neg_ds, 'Dev noisy negative', positive_set=False, mixer=dev_mixer)
+        evaluate_engine(ww_test_pos_ds, 'Test positive', positive_set=True)
+        evaluate_engine(ww_test_pos_ds, 'Test noisy positive', positive_set=True, mixer=test_mixer)
+        evaluate_engine(ww_test_neg_ds, 'Test negative', positive_set=False)
+        evaluate_engine(ww_test_neg_ds, 'Test noisy negative', positive_set=False, mixer=test_mixer)
+
     apb = ArgumentParserBuilder()
     apb.add_options(opt('--model', type=str, choices=model_names(), default='las'),
                     opt('--workspace', type=str, default=str(Path('workspaces') / 'default')),
                     opt('--load-weights', action='store_true'),
                     opt('--load-last', action='store_true'),
                     opt('--vocab', type=str, nargs='+', default=[' hey', 'fire fox']),
-                    opt('--error-file', type=str),
                     opt('--eval', action='store_true'))
     args = apb.parser.parse_args()
 
@@ -78,7 +95,6 @@ def main():
     ds_kwargs = dict(sr=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono, words=args.vocab)
     ww_train_ds, ww_dev_ds, ww_test_ds = loader.load_splits(SETTINGS.dataset.dataset_path, **ds_kwargs)
     print_stats('Wake word dataset', ww_train_ds, ww_dev_ds, ww_test_ds)
-
 
     sr = SETTINGS.audio.sample_rate
     wind_sz = int(SETTINGS.training.eval_window_size_seconds * sr)
@@ -98,10 +114,16 @@ def main():
                                     window_size_ms=int(SETTINGS.training.max_window_size_seconds * 1000))
     train_comp = (NoiseTransform().train(), batchifier)
 
-    if SETTINGS.training.use_snsd_noise:
-        noise_train_ds, noise_dev_ds = SnsdNoiseDatasetLoader().load_splits(SETTINGS.raw_dataset.snsd_dataset_path)
-        noise_ds = noise_train_ds.extend(noise_dev_ds)
-        train_comp = (DatasetMixer(noise_ds),) + train_comp
+    if SETTINGS.training.use_noise_dataset:
+        noise_ds = RecursiveNoiseDatasetLoader().load(SETTINGS.raw_dataset.noise_dataset_path,
+                                                      sr=SETTINGS.audio.sample_rate,
+                                                      mono=SETTINGS.audio.use_mono)
+        logging.info(f'Loaded {len(noise_ds.metadata_list)} noise files.')
+        noise_ds_train, noise_ds_dev = noise_ds.split(Sha256Splitter(80))
+        noise_ds_dev, noise_ds_test = noise_ds_dev.split(Sha256Splitter(50))
+        train_comp = (DatasetMixer(noise_ds_train).train(),) + train_comp
+        dev_mixer = DatasetMixer(noise_ds_dev, seed=0, do_replace=False)
+        test_mixer = DatasetMixer(noise_ds_test, seed=0, do_replace=False)
     train_comp = compose(*train_comp)
 
     prep_dl = StandardAudioDataLoaderBuilder(ww_train_ds, collate_fn=batchify).build(1)
@@ -129,10 +151,7 @@ def main():
         ws.load_model(model, best=not args.load_last)
     if args.eval:
         ws.load_model(model, best=not args.load_last)
-        evaluate_engine(ww_dev_pos_ds, 'Dev positive', positive_set=True)
-        evaluate_engine(ww_dev_neg_ds, 'Dev negative', positive_set=False)
-        evaluate_engine(ww_test_pos_ds, 'Test positive', positive_set=True)
-        evaluate_engine(ww_test_neg_ds, 'Test negative', positive_set=False)
+        do_evaluate()
         return
 
     ws.write_args(args)
@@ -160,12 +179,8 @@ def main():
 
         for group in optimizer.param_groups:
             group['lr'] *= SETTINGS.training.lr_decay
-        evaluate_engine(ww_dev_pos_ds, 'Dev positive', positive_set=True, save=True)
-
-    evaluate_engine(ww_dev_pos_ds, 'Dev positive', positive_set=True)
-    evaluate_engine(ww_dev_neg_ds, 'Dev negative', positive_set=False)
-    evaluate_engine(ww_test_pos_ds, 'Test positive', positive_set=True)
-    evaluate_engine(ww_test_neg_ds, 'Test negative', positive_set=False)
+        evaluate_engine(ww_dev_pos_ds, 'Dev positive', positive_set=True, save=True, write_errors=False)
+    do_evaluate()
 
 
 if __name__ == '__main__':

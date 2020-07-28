@@ -1,3 +1,5 @@
+from typing import Tuple
+
 from pydantic import BaseSettings
 from torchvision.models import MobileNetV2, mobilenet_v2
 import torch
@@ -73,15 +75,17 @@ class SmallCnn(nn.Module):
 
 class Res8Settings(BaseSettings):
     num_labels: int = 2
+    pooling: Tuple[int, int] = (3, 4)
+    num_maps: int = 45
 
 
 @register_model('res8')
 class Res8(nn.Module):
     def __init__(self, config: Res8Settings = Res8Settings()):
         super().__init__()
-        n_maps = 45
+        n_maps = config.num_maps
         self.conv0 = nn.Conv2d(1, n_maps, (3, 3), padding=(1, 1), bias=False)
-        self.pool = nn.AvgPool2d((3, 4))  # flipped -- better for 80 log-Mels
+        self.pool = nn.AvgPool2d(config.pooling)  # flipped -- better for 80 log-Mels
 
         self.n_layers = n_layers = 6
         self.convs = [nn.Conv2d(n_maps, n_maps, (3, 3), padding=1, bias=False) for _ in range(n_layers)]
