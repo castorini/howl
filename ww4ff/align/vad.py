@@ -1,13 +1,13 @@
 import numpy as np
 import webrtcvad
 
-from .base import AlignedTranscription
+from .base import AlignedTranscription, Aligner
 
 
 __all__ = ['LeftRightVadAligner']
 
 
-class LeftRightVadAligner:
+class LeftRightVadAligner(Aligner):
     def __init__(self, frame_ms: int = 30):
         self.frame_ms = frame_ms
 
@@ -22,8 +22,6 @@ class LeftRightVadAligner:
                     break
                 start += self.frame_ms
             return start
-        from ww4ff.data.dataset import AudioClipExample
-        audio  # type: AudioClipExample
         transcription = audio.metadata.transcription.lower()
         frame_len = int(self.frame_ms / 1000 * audio.sample_rate)
         frames = audio.audio_data.split(frame_len)

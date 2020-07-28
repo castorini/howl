@@ -1,7 +1,7 @@
 from collections import defaultdict
 from copy import deepcopy
 from functools import lru_cache
-from typing import Any, List, Callable
+from typing import Any, List, Callable, TypeVar, Generic
 
 import torch
 import torch.utils.data as tud
@@ -13,18 +13,23 @@ from ww4ff.utils.audio import silent_load
 from ww4ff.utils.hash import sha256_int
 
 
-__all__ = ['TypedAudioDataset',
+__all__ = ['AudioDataset',
            'AudioClipDataset',
            'WakeWordDataset',
            'AudioClassificationDataset',
            'Sha256Splitter']
 
 
-class TypedAudioDataset:
+T = TypeVar('T', bound=AudioClipMetadata)
+
+
+class AudioDataset(tud.Dataset, Generic[T]):
     def __init__(self,
+                 metadata_list: List[T],
                  sr: int = 16000,
                  mono: bool = True,
                  set_type: DatasetType = DatasetType.UNSPECIFIED):
+        self.metadata_list = metadata_list
         self.set_type = set_type
         self.sr = sr
         self.mono = mono
@@ -37,15 +42,11 @@ class TypedAudioDataset:
     def is_eval(self):
         return not self.is_training and self.set_type != DatasetType.UNSPECIFIED
 
-
-class SingleListAttrMixin:
-    list_attr = None
-
     def filter(self, predicate_fn: Callable[[Any], bool], clone: bool = False):
         if clone:
             self = deepcopy(self)
-        data_list = self._list_attr
-        self._list_attr = list(filter(predicate_fn, data_list))
+        data_list = self.metadata_list
+        self.metadata_list = list(filter(predicate_fn, data_list))
         return self
 
     def split(self, predicate_fn: Callable[[Any], bool]):
@@ -53,30 +54,20 @@ class SingleListAttrMixin:
         data_list2 = []
         x1 = deepcopy(self)
         x2 = deepcopy(self)
-        for x in self._list_attr:
+        for x in self.metadata_list:
             data_list = data_list2 if predicate_fn(x) else data_list1
             data_list.append(x)
-        x1._list_attr = data_list1
-        x2._list_attr = data_list2
+        x1.metadata_list = data_list1
+        x2.metadata_list = data_list2
         return x1, x2
 
-    def extend(self, other_dataset: 'SingleListAttrMixin'):
-        self._list_attr.extend(other_dataset._list_attr)
+    def extend(self, other_dataset: 'AudioDataset'):
+        self.metadata_list.extend(other_dataset.metadata_list)
         return self
 
-    @property
-    def _list_attr(self) -> List[Any]:
-        return getattr(self, self.list_attr)
-
-    @_list_attr.setter
-    def _list_attr(self, value):
-        setattr(self, self.list_attr, value)
-
     def __len__(self):
-        return len(self._list_attr)
+        return len(self.metadata_list)
 
-
-class AudioDatasetStatisticsMixin:
     def compute_statistics(self, skip_length: bool = False, use_trim: bool = True) -> AudioDatasetStatistics:
         from ww4ff.data.transform import trim
         seconds = 0
@@ -87,15 +78,7 @@ class AudioDatasetStatisticsMixin:
         return AudioDatasetStatistics(len(self), seconds)
 
 
-class AudioClipDataset(AudioDatasetStatisticsMixin, SingleListAttrMixin, TypedAudioDataset, tud.Dataset):
-    list_attr = 'metadata_list'
-
-    def __init__(self,
-                 metadata_list: List[AudioClipMetadata],
-                 **kwargs):
-        super().__init__(**kwargs)
-        self.metadata_list = metadata_list
-
+class AudioClipDataset(AudioDataset[AudioClipMetadata]):
     @lru_cache(maxsize=SETTINGS.cache.cache_size)
     def __getitem__(self, idx) -> AudioClipExample:
         metadata = self.metadata_list[idx]
@@ -103,15 +86,12 @@ class AudioClipDataset(AudioDatasetStatisticsMixin, SingleListAttrMixin, TypedAu
         return AudioClipExample(metadata=metadata, audio_data=torch.from_numpy(audio_data), sample_rate=self.sr)
 
 
-class WakeWordDataset(AudioDatasetStatisticsMixin, SingleListAttrMixin, TypedAudioDataset, tud.Dataset):
-    list_attr = 'metadata_list'
-
+class WakeWordDataset(AudioDataset[AlignedAudioClipMetadata]):
     def __init__(self,
-                 metadata_list: List[AlignedAudioClipMetadata],
                  words: List[str],
+                 *args,
                  **kwargs):
-        super().__init__(**kwargs)
-        self.metadata_list = metadata_list
+        super().__init__(*args, **kwargs)
         self.words = words
         self.vocab = {v: k for k, v in enumerate(words)}
 
@@ -126,15 +106,12 @@ class WakeWordDataset(AudioDatasetStatisticsMixin, SingleListAttrMixin, TypedAud
                                    frame_labels=frame_labels)
 
 
-class AudioClassificationDataset(AudioDatasetStatisticsMixin, SingleListAttrMixin, TypedAudioDataset, tud.Dataset):
-    list_attr = 'metadata_list'
-
+class AudioClassificationDataset(AudioDataset[AudioClipMetadata]):
     def __init__(self,
-                 metadata_list: List[AudioClipMetadata],
                  label_map: defaultdict,
+                 *args,
                  **kwargs):
-        super().__init__(**kwargs)
-        self.metadata_list = metadata_list
+        super().__init__(*args, **kwargs)
         self.label_map = label_map
         self.vocab = {v: k for k, v in label_map.items()}
         self.vocab[label_map.get(None)] = NEGATIVE_CLASS
@@ -153,5 +130,5 @@ class Sha256Splitter:
     def __init__(self, target_pct: int):
         self.target_pct = target_pct
 
-    def __call__(self, x: AudioClipMetadata):
+    def __call__(self, x: AudioClipMetadata) -> bool:
         return (sha256_int(str(x.path)) % 100) < self.target_pct

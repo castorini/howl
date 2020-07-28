@@ -5,7 +5,7 @@ from textgrids import TextGrid
 from tqdm import tqdm
 
 from ww4ff.align import MfaTextGridConverter
-from ww4ff.data.dataset import AudioClipDatasetLoader, AudioClipDatasetMetadataWriter, WakeWordDatasetLoader, \
+from ww4ff.data.dataset import AudioClipDatasetLoader, AudioDatasetMetadataWriter, WakeWordDatasetLoader, \
     AlignedAudioClipMetadata
 from ww4ff.settings import SETTINGS
 
@@ -27,7 +27,7 @@ def main():
         id_align_map[audio_id] = converter.convert(tg)
 
     for ds in (train_ds, dev_ds, test_ds):
-        with AudioClipDatasetMetadataWriter(ds_path, ds.set_type, 'aligned-', mode='w') as writer:
+        with AudioDatasetMetadataWriter(ds_path, ds.set_type, 'aligned-', mode='w') as writer:
             for ex in tqdm(ds, total=len(ds)):
                 try:
                     transcription = id_align_map[ex.metadata.path.name.split('.', 1)[0]]

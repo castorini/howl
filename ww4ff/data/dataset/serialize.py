@@ -1,12 +1,11 @@
 from collections import defaultdict
 from copy import deepcopy
 from functools import partial
-from typing import Tuple
+from typing import Tuple, TypeVar
 from pathlib import Path
 import json
 import logging
 
-from pydantic import BaseModel
 from tqdm import tqdm
 import pandas as pd
 import soundfile
@@ -17,18 +16,18 @@ from ww4ff.utils.audio import silent_load
 from ww4ff.utils.hash import sha256_int
 
 
-__all__ = ['AudioClipDatasetWriter',
+__all__ = ['AudioDatasetWriter',
            'AudioClipDatasetLoader',
            'MozillaWakeWordLoader',
            'MozillaCommonVoiceLoader',
-           'AudioClipDatasetMetadataWriter',
+           'AudioDatasetMetadataWriter',
            'WakeWordDatasetLoader',
            'GoogleSpeechCommandsDatasetLoader',
            'MozillaKeywordLoader',
            'RecursiveNoiseDatasetLoader']
 
 
-class AudioClipDatasetMetadataWriter:
+class AudioDatasetMetadataWriter:
     def __init__(self, dataset_path: Path, set_type: DatasetType, prefix: str = '', mode: str = 'w'):
         self.filename = str(dataset_path / f'{prefix}metadata-{set_type.name.lower()}.jsonl')
         self.mode = mode
@@ -37,7 +36,7 @@ class AudioClipDatasetMetadataWriter:
         self.f = open(self.filename, self.mode)
         return self
 
-    def write(self, metadata: BaseModel):
+    def write(self, metadata: AudioClipMetadata):
         metadata = deepcopy(metadata)
         metadata.path = metadata.path.name
         self.f.write(metadata.json() + '\n')
@@ -46,7 +45,10 @@ class AudioClipDatasetMetadataWriter:
         self.f.close()
 
 
-class AudioClipDatasetWriter:
+T = TypeVar('T', bound=AudioClipDataset)
+
+
+class AudioDatasetWriter:
     def __init__(self, dataset: AudioClipDataset, mode: str = 'w', print_progress: bool = True):
         self.dataset = dataset
         self.print_progress = print_progress
@@ -62,7 +64,7 @@ class AudioClipDatasetWriter:
         folder.mkdir(exist_ok=True)
         audio_folder = folder / 'audio'
         audio_folder.mkdir(exist_ok=True)
-        with AudioClipDatasetMetadataWriter(folder, self.dataset.set_type, mode=self.mode) as writer:
+        with AudioDatasetMetadataWriter(folder, self.dataset.set_type, mode=self.mode) as writer:
             for metadata in tqdm(self.dataset.metadata_list, disable=not self.print_progress, desc='Writing files'):
                 try:
                     process(metadata)

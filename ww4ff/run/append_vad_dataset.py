@@ -1,7 +1,7 @@
 from tqdm import tqdm
 
 from .args import ArgumentParserBuilder, opt
-from ww4ff.data.dataset import MozillaKeywordLoader, AudioClipDatasetWriter, AudioClipDatasetMetadataWriter, \
+from ww4ff.data.dataset import MozillaKeywordLoader, AudioDatasetWriter, AudioDatasetMetadataWriter, \
     AlignedAudioClipMetadata
 from ww4ff.align import LeftRightVadAligner
 from ww4ff.settings import SETTINGS
@@ -23,9 +23,9 @@ def main():
     cv_test_ds.filter(filter_fn)
 
     for ds in cv_dev_ds, cv_train_ds, cv_test_ds:
-        AudioClipDatasetWriter(ds, 'a').write(SETTINGS.dataset.dataset_path)
+        AudioDatasetWriter(ds, 'a').write(SETTINGS.dataset.dataset_path)
 
-        with AudioClipDatasetMetadataWriter(SETTINGS.dataset.dataset_path, ds.set_type, 'aligned-', mode='a') as writer:
+        with AudioDatasetMetadataWriter(SETTINGS.dataset.dataset_path, ds.set_type, 'aligned-', mode='a') as writer:
             for ex in tqdm(ds, total=len(ds)):
                 ex.metadata.transcription = ex.metadata.transcription.lower().replace('firefox', 'fire fox')  # TODO: remove quick fix
                 aligned = LeftRightVadAligner().align(ex)

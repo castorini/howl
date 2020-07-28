@@ -1,12 +1,12 @@
 import numpy as np
 
-from .base import AlignedTranscription
+from .base import AlignedTranscription, Aligner
 
 
 __all__ = ['StubAligner']
 
 
-class StubAligner:
+class StubAligner(Aligner):
     def align(self, audio) -> AlignedTranscription:
         start = 0
         end = audio.audio_data.size(0) / audio.sample_rate * 1000

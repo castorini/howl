@@ -186,9 +186,8 @@ class DatasetMixer(AugmentModule):
             bg_audio = bg_ex[..., a:b]
             alpha = 1 if param.name == 'replace' else self.rand.random() * param.magnitude
             mixed_wf = waveform * (1 - alpha) + bg_audio * alpha
-            ex = example.emplaced_audio_data(mixed_wf)
-            if alpha == 1:
-                ex.frame_labels = {}
+            scale = mixed_wf.size(-1) / self.audio_data.size(-1)
+            ex = example.emplaced_audio_data(mixed_wf, scale=scale, new=alpha == 1)
             new_examples.append(ex)
         return new_examples
 

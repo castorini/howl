@@ -2,12 +2,12 @@ import multiprocessing as mp
 
 import torch.utils.data as tud
 
-from ww4ff.data.dataset import TypedAudioDataset, DatasetType
+from ww4ff.data.dataset import AudioDataset, DatasetType
 
 
 class StandardAudioDataLoaderBuilder:
     def __init__(self,
-                 dataset: TypedAudioDataset,
+                 dataset: AudioDataset,
                  num_workers=mp.cpu_count(),
                  collate_fn=None):
         self.dataset = dataset

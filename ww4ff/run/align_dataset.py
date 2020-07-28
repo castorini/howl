@@ -6,12 +6,12 @@ from tqdm import tqdm
 import tensorflow as tf
 
 from ww4ff.align import compute_raw_scores, DeepSpeechAligner
-from ww4ff.data.dataset import AudioClipDatasetLoader, AudioClipDatasetMetadataWriter, AlignedAudioClipMetadata
+from ww4ff.data.dataset import AudioClipDatasetLoader, AudioDatasetMetadataWriter, AlignedAudioClipMetadata
 from ww4ff.settings import SETTINGS
 
 
 def work(idx, transcriptions, paths, dataset_path, set_type, lock: Lock):
-    with AudioClipDatasetMetadataWriter(dataset_path, set_type, 'aligned-', mode='a') as writer:
+    with AudioDatasetMetadataWriter(dataset_path, set_type, 'aligned-', mode='a') as writer:
         for text, result, path in zip(transcriptions,
                                       tqdm(compute_raw_scores(list(map(str, paths))),total=len(paths), position=idx),
                                       paths):

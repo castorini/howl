@@ -3,8 +3,8 @@ import logging
 from tqdm import tqdm
 
 from .args import ArgumentParserBuilder, opt
-from ww4ff.data.dataset import MozillaWakeWordLoader, MozillaCommonVoiceLoader, AudioClipDatasetWriter, AudioClipDataset,\
-    AlignedAudioClipMetadata, AudioClipDatasetMetadataWriter, AudioClipDatasetLoader
+from ww4ff.data.dataset import MozillaWakeWordLoader, MozillaCommonVoiceLoader, AudioDatasetWriter, AudioClipDataset,\
+    AlignedAudioClipMetadata, AudioDatasetMetadataWriter, AudioClipDatasetLoader
 from ww4ff.align import StubAligner
 from ww4ff.settings import SETTINGS
 from ww4ff.utils.hash import sha256_int
@@ -39,13 +39,13 @@ def main():
     print_stats('Filtered Common Voice dataset', cv_train_ds, cv_dev_ds, cv_test_ds, skip_length=True)
 
     for ds in cv_train_ds, cv_dev_ds, cv_test_ds:
-        AudioClipDatasetWriter(ds, mode='a').write(SETTINGS.dataset.dataset_path)
+        AudioDatasetWriter(ds, mode='a').write(SETTINGS.dataset.dataset_path)
 
     ds_path = SETTINGS.dataset.dataset_path
     aligner = StubAligner()
     train_ds, dev_ds, test_ds = AudioClipDatasetLoader().load_splits(ds_path, **ds_kwargs)
     for ds in (train_ds, dev_ds, test_ds):
-        with AudioClipDatasetMetadataWriter(ds_path, ds.set_type, 'aligned-', mode='w') as writer:
+        with AudioDatasetMetadataWriter(ds_path, ds.set_type, 'aligned-', mode='w') as writer:
             for ex in tqdm(ds, total=len(ds)):
                 try:
                     transcription = aligner.align(ex)
