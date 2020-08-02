@@ -11,9 +11,9 @@ import torchvision
 import torchvision.transforms as transforms
 
 from .args import ArgumentParserBuilder, opt
-from ww4ff.settings import SETTINGS
-from ww4ff.model import find_model, model_names, Workspace
-from ww4ff.utils.random import set_seed
+from howl.settings import SETTINGS
+from howl.model import RegisteredModel, Workspace
+from howl.utils.random import set_seed
 
 
 def expand(x):
@@ -36,7 +36,7 @@ def main():
         ws.increment_model(model, num_correct / num_total / 100)
 
     apb = ArgumentParserBuilder()
-    apb.add_options(opt('--model', type=str, choices=model_names(), default='las'),
+    apb.add_options(opt('--model', type=str, choices=RegisteredModel.registered_names(), default='las'),
                     opt('--workspace', type=str, default=str(Path('workspaces') / 'default')),
                     opt('--load-weights', action='store_true'))
     args = apb.parser.parse_args()
@@ -77,7 +77,7 @@ def main():
                              shuffle=False)
 
     device = torch.device(SETTINGS.training.device)
-    model = find_model(args.model)().to(device)
+    model = RegisteredModel.find_registered_class(args.model)().to(device)
     params = list(filter(lambda x: x.requires_grad, model.parameters()))
     optimizer = AdamW(params, SETTINGS.training.learning_rate, weight_decay=SETTINGS.training.weight_decay)
     logging.info(f'{sum(p.numel() for p in params)} parameters')

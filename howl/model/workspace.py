@@ -7,7 +7,7 @@ from torch.utils.tensorboard import SummaryWriter
 import torch
 import torch.nn as nn
 
-from ww4ff.utils.dataclass import gather_dict
+from howl.utils.dataclass import gather_dict
 
 
 @dataclass
@@ -27,11 +27,11 @@ class Workspace(object):
         return str(self.path / f'model{"-best" if best else ""}.pt.bin')
 
     def write_setting(self, setting):
-        with open(self.path / 'setting.json', 'w') as f:
+        with (self.path / 'setting.json').open('w') as f:
             json.dump(gather_dict(setting), f, indent=2)
 
     def write_args(self, args):
-        with open(self.path / 'cmd-args.json', 'w') as f:
+        with (self.path / 'cmd-args.json').open('w') as f:
             json.dump(gather_dict(args), f, indent=2)
 
     def increment_model(self, model, quality):

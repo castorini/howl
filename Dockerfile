@@ -18,18 +18,12 @@ RUN cd /tmp && \
 	echo 'export PATH="~/anaconda/bin:$PATH"' >> ~/.bashrc
 
 # prepare conda environment
-ENV CONDA_ENV_NAME ww4ff
+ENV CONDA_ENV_NAME howl
 
 WORKDIR /app
 COPY environment.yml /app
 RUN ~/anaconda/bin/conda init bash && \
         ~/anaconda/bin/conda env create -n ${CONDA_ENV_NAME} -f environment.yml
-
-# install deepspeech
-RUN cd /tmp && \
-	git clone http://github.com/mozilla/DeepSpeech && \
-	cd DeepSpeech && \
-	~/anaconda/envs/${CONDA_ENV_NAME}/bin/pip install --upgrade -e .
 
 # prepare data folder
 RUN mkdir /data

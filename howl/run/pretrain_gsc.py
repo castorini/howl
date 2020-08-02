@@ -8,14 +8,14 @@ import torch
 import torch.nn as nn
 
 from .args import ArgumentParserBuilder, opt
-from .preprocess_dataset import print_stats
-from ww4ff.data.dataset import AudioClassificationDataset, GoogleSpeechCommandsDatasetLoader, ClassificationBatch
-from ww4ff.data.dataloader import StandardAudioDataLoaderBuilder
-from ww4ff.data.transform import compose, ZmuvTransform, StandardAudioTransform, WakeWordBatchifier,\
+from .create_raw_dataset import print_stats
+from howl.data.dataset import AudioClassificationDataset, GoogleSpeechCommandsDatasetLoader, ClassificationBatch
+from howl.data.dataloader import StandardAudioDataLoaderBuilder
+from howl.data.transform import compose, ZmuvTransform, StandardAudioTransform, WakeWordBatchifier,\
     NoiseTransform, batchify, TimestretchTransform, TimeshiftTransform, truncate_length
-from ww4ff.settings import SETTINGS
-from ww4ff.model import find_model, model_names, Workspace
-from ww4ff.utils.random import set_seed
+from howl.settings import SETTINGS
+from howl.model import find_model, model_names, Workspace
+from howl.utils.random import set_seed
 
 
 def main():

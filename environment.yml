@@ -1,4 +1,4 @@
-name: ww4ff
+name: howl
 channels:
   - pytorch
   - menpo

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from copy import deepcopy
 from typing import Mapping, Optional, List, TypeVar, Generic
 from pathlib import Path
 import enum
@@ -34,11 +35,15 @@ class AudioClipMetadata(BaseModel):
     path: Path
     transcription: str = ''
 
+    @property
+    def audio_id(self):
+        return self.path.name.split('.', 1)[0]
+
 
 class AlignedAudioClipMetadata(AudioClipMetadata):
     end_timestamps: List[float]
 
-    def compute_frame_labels(self, words: List[str]):
+    def compute_frame_labels(self, words: List[str]) -> Mapping[float, int]:
         frame_labels = dict()
         t = f' {self.transcription}'
         start = 0
@@ -67,18 +72,20 @@ class EmplacableExample:
 T = TypeVar('T', bound=AudioClipMetadata)
 
 
-@dataclass
 class AudioClipExample(EmplacableExample, Generic[T]):
-    metadata: T
-    audio_data: torch.Tensor
-    sample_rate: int
+    def __init__(self, metadata: T, audio_data: torch.Tensor, sample_rate: int):
+        self.metadata = metadata
+        self.audio_data = audio_data
+        self.sample_rate = sample_rate
 
     def pin_memory(self):
         self.audio_data.pin_memory()
 
     def emplaced_audio_data(self,
                             audio_data: torch.Tensor,
-                            **kwargs) -> 'AudioClipExample':
+                            scale: float = 1,
+                            bias: float = 0,
+                            new: bool = False) -> 'EmplacableExample':
         return AudioClipExample(self.metadata, audio_data, self.sample_rate)
 
 
@@ -106,11 +113,10 @@ class ClassificationBatch:
 
 
 @dataclass
-class WakeWordClipExample(EmplacableExample):
-    metadata: T
-    audio_data: torch.Tensor
-    sample_rate: int
-    frame_labels: Mapping[float, int]
+class WakeWordClipExample(AudioClipExample[AlignedAudioClipMetadata]):
+    def __init__(self, frame_labels: Mapping[float, int], *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.frame_labels = frame_labels
 
     def emplaced_audio_data(self,
                             audio_data: torch.Tensor,
@@ -118,15 +124,14 @@ class WakeWordClipExample(EmplacableExample):
                             bias: float = 0,
                             new: bool = False) -> 'WakeWordClipExample':
         frame_labels = {} if new else {scale * k + bias: v for k, v in self.frame_labels.items()}
-        return WakeWordClipExample(self.metadata, audio_data, self.sample_rate, frame_labels)
+        return WakeWordClipExample(frame_labels, self.metadata, audio_data, self.sample_rate)
 
 
 @dataclass
-class ClassificationClipExample(EmplacableExample):
-    metadata: T
-    audio_data: torch.Tensor
-    sample_rate: int
-    label: int
+class ClassificationClipExample(AudioClipExample[AudioClipMetadata]):
+    def __init__(self, label, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.label = label
 
     def emplaced_audio_data(self, audio_data: torch.Tensor, **kwargs) -> 'ClassificationClipExample':
         return ClassificationClipExample(self.metadata, audio_data, self.sample_rate, self.label)

@@ -8,9 +8,9 @@ import torch.utils.data as tud
 
 from .base import DatasetType, AudioClipMetadata, AudioClipExample, WakeWordClipExample, AudioDatasetStatistics, \
     AlignedAudioClipMetadata, NEGATIVE_CLASS, ClassificationClipExample
-from ww4ff.settings import SETTINGS
-from ww4ff.utils.audio import silent_load
-from ww4ff.utils.hash import sha256_int
+from howl.settings import SETTINGS
+from howl.utils.audio import silent_load
+from howl.utils.hash import sha256_int
 
 
 __all__ = ['AudioDataset',
@@ -69,7 +69,7 @@ class AudioDataset(tud.Dataset, Generic[T]):
         return len(self.metadata_list)
 
     def compute_statistics(self, skip_length: bool = False, use_trim: bool = True) -> AudioDatasetStatistics:
-        from ww4ff.data.transform import trim
+        from howl.data.transform import trim
         seconds = 0
         if not skip_length:
             for ex in self:
@@ -99,11 +99,10 @@ class WakeWordDataset(AudioDataset[AlignedAudioClipMetadata]):
     def __getitem__(self, idx) -> WakeWordClipExample:
         metadata = self.metadata_list[idx]
         audio_data = silent_load(str(metadata.path), self.sr, self.mono)
-        frame_labels = metadata.compute_frame_labels(self.words)
         return WakeWordClipExample(metadata=metadata,
                                    audio_data=torch.from_numpy(audio_data),
                                    sample_rate=self.sr,
-                                   frame_labels=frame_labels)
+                                   frame_labels=metadata.compute_frame_labels(self.words))
 
 
 class AudioClassificationDataset(AudioDataset[AudioClipMetadata]):

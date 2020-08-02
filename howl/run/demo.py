@@ -7,10 +7,10 @@ import numpy as np
 import torch
 
 from .args import ArgumentParserBuilder, opt
-from ww4ff.data.transform import ZmuvTransform
-from ww4ff.settings import SETTINGS
-from ww4ff.model import find_model, model_names, Workspace
-from ww4ff.model.inference import InferenceEngine
+from howl.data.transform import ZmuvTransform
+from howl.settings import SETTINGS
+from howl.model import RegisteredModel, Workspace
+from howl.model.inference import InferenceEngine
 
 
 class InferenceClient:
@@ -67,7 +67,7 @@ class InferenceClient:
 
 def main():
     apb = ArgumentParserBuilder()
-    apb.add_options(opt('--model', type=str, choices=model_names(), default='las'),
+    apb.add_options(opt('--model', type=str, choices=RegisteredModel.registered_names(), default='las'),
                     opt('--workspace', type=str, default=str(Path('workspaces') / 'default')),
                     opt('--words', type=str, nargs='+', default=['hey', 'firefox']))
     args = apb.parser.parse_args()
@@ -79,7 +79,7 @@ def main():
     device = torch.device(SETTINGS.training.device)
     zmuv_transform = ZmuvTransform().to(device)
 
-    model = find_model(args.model)().to(device).eval()
+    model = RegisteredModel.find_registered_class(args.model)().to(device).eval()
     zmuv_transform.load_state_dict(torch.load(str(ws.path / 'zmuv.pt.bin')))
 
     ws.load_model(model, best=False)

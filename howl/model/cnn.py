@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .base import register_model
+from .base import RegisteredModel
 
 
 __all__ = ['MobileNetClassifier', 'Res8']
@@ -16,8 +16,7 @@ class MobileNetSettings(BaseSettings):
     num_labels: int = 2
 
 
-@register_model('mobilenet')
-class MobileNetClassifier(nn.Module):
+class MobileNetClassifier(RegisteredModel, name='mobilenet'):
     def __init__(self, settings: MobileNetSettings = MobileNetSettings()):
         super().__init__()
         self.downsample = nn.Sequential(nn.Conv2d(1, 3, 3, padding=(1, 3)),
@@ -42,8 +41,7 @@ class CnnSettings(BaseSettings):
     hidden_size: int = 256
 
 
-@register_model('small-cnn')
-class SmallCnn(nn.Module):
+class SmallCnn(RegisteredModel, name='small-cnn'):
     def __init__(self, config: CnnSettings = CnnSettings()):
         super().__init__()
         self.config = config
@@ -79,8 +77,7 @@ class Res8Settings(BaseSettings):
     num_maps: int = 45
 
 
-@register_model('res8')
-class Res8(nn.Module):
+class Res8(RegisteredModel, name='res8'):
     def __init__(self, config: Res8Settings = Res8Settings()):
         super().__init__()
         n_maps = config.num_maps

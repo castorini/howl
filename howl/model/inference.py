@@ -8,7 +8,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from ww4ff.data.transform import ZmuvTransform, StandardAudioTransform
+from howl.data.transform import ZmuvTransform, StandardAudioTransform
 
 
 __all__ = ['InferenceEngine', 'InferenceEngineSettings']
@@ -16,7 +16,7 @@ __all__ = ['InferenceEngine', 'InferenceEngineSettings']
 
 class InferenceEngineSettings(BaseSettings):
     inference_weights: List[float] = None
-    inference_sequence: List[int] = None
+    inference_sequence: List[int] = [0]
     inference_window_ms: float = 2000  # look at last of these seconds
     smoothing_window_ms: float = 50  # prediction smoothed
     tolerance_window_ms: float = 500  # negative label between words

@@ -2,7 +2,7 @@ import multiprocessing as mp
 
 import torch.utils.data as tud
 
-from ww4ff.data.dataset import AudioDataset, DatasetType
+from howl.data.dataset import AudioDataset, DatasetType
 
 
 class StandardAudioDataLoaderBuilder:

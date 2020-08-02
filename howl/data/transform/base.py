@@ -1,12 +1,11 @@
 from typing import Sequence, Iterable
 import random
 
-from librosa.output import write_wav
 import librosa.effects as effects
 import torch
 import torch.nn as nn
 
-from ww4ff.data.dataset import WakeWordClipExample, ClassificationBatch, EmplacableExample
+from howl.data.dataset import WakeWordClipExample, ClassificationBatch, EmplacableExample
 
 
 __all__ = ['Composition',
@@ -117,7 +116,6 @@ class WakeWordBatchifier:
                     select_negative = True
                 else:
                     new_examples.append((label, ex.emplaced_audio_data(ex.audio_data[..., a:b])))
-                    # write_wav(f'clips/{label}-{ex.metadata.path.name}', ex.audio_data[..., a:b].cpu().numpy(), sr=16000)
             if select_negative:
                 positive_intervals = [(v - self.positive_delta_ms, v + self.positive_delta_ms)
                                       for v in ex.frame_labels.values()]

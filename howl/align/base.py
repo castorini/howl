@@ -13,7 +13,7 @@ class AlignedTranscription(BaseModel):
 
 class Aligner:
     def align(self, audio) -> AlignedTranscription:
-        from ww4ff.data.dataset import AudioClipExample
+        from howl.data.dataset import AudioClipExample
         audio  # type: AudioClipExample
         raise NotImplementedError
 

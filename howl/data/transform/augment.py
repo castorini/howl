@@ -5,12 +5,11 @@ import random
 
 from pydantic import BaseSettings
 from torchaudio.transforms import MelSpectrogram, ComputeDeltas
-import numpy as np
 import librosa
 import torch
 import torch.nn as nn
 
-from ww4ff.data.dataset import EmplacableExample, WakeWordClipExample, AudioClipDataset
+from howl.data.dataset import EmplacableExample, WakeWordClipExample, AudioClipDataset
 from .meyda import MeydaMelSpectrogram
 
 
@@ -34,7 +33,7 @@ class AudioTransformSettings(BaseSettings):
 
 
 @dataclass
-class AugmentationParameter(object):
+class AugmentationParameter:
     domain: Sequence[float]
     name: str
     current_value_idx: int = None
@@ -124,15 +123,15 @@ class TimeshiftTransform(AugmentModule):
 class TimestretchTransform(AugmentModule):
     @property
     def default_params(self):
-        return AugmentationParameter([0.025, 0.05, 0.15, 0.2, 0.25], 'timestretch', 2),
+        return AugmentationParameter([0.025, 0.05, 0.15, 0.2, 0.25], 'timestretch', 2, prob=0.3),
 
     @torch.no_grad()
     def augment(self, param, examples: Sequence[EmplacableExample], **kwargs):
         new_examples = []
         for example in examples:
-            rate = np.clip(np.random.normal(1.1, param.magnitude), 0.8, 2)
+            rate = 1.5  # np.clip(np.random.normal(1.1, param.magnitude), 0.8, 2)
             audio = torch.from_numpy(librosa.effects.time_stretch(example.audio_data.squeeze().cpu().numpy(), rate))
-            new_examples.append(example.emplaced_audio_data(audio))
+            new_examples.append(example.emplaced_audio_data(audio, scale=1 / rate))
         return new_examples
 
 
@@ -186,8 +185,7 @@ class DatasetMixer(AugmentModule):
             bg_audio = bg_ex[..., a:b]
             alpha = 1 if param.name == 'replace' else self.rand.random() * param.magnitude
             mixed_wf = waveform * (1 - alpha) + bg_audio * alpha
-            scale = mixed_wf.size(-1) / self.audio_data.size(-1)
-            ex = example.emplaced_audio_data(mixed_wf, scale=scale, new=alpha == 1)
+            ex = example.emplaced_audio_data(mixed_wf, new=alpha == 1)
             new_examples.append(ex)
         return new_examples
 

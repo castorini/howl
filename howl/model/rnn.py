@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .base import register_model
+from .base import RegisteredModel
 
 
 __all__ = ['LASEncoderConfig',
@@ -35,8 +35,7 @@ class LASClassifierConfig(BaseSettings):
     fixed_attn_config: FixedAttentionModuleConfig = FixedAttentionModuleConfig()
 
 
-@register_model('gru')
-class SimpleGRU(nn.Module):
+class SimpleGRU(RegisteredModel, name='gru'):
     def __init__(self, config: LASEncoderConfig = LASEncoderConfig()):
         super().__init__()
         conv1 = nn.Conv2d(1, config.num_latent_channels, 3, padding=(1, 3))
@@ -128,8 +127,7 @@ class FixedAttentionModule(nn.Module):
         return vec.view(vec.size(0), -1)
 
 
-@register_model('las')
-class LASClassifier(nn.Module):
+class LASClassifier(RegisteredModel, name='las'):
     def __init__(self, config: LASClassifierConfig = LASClassifierConfig()):
         super().__init__()
         self.encoder = LASEncoder(config.las_config)

@@ -8,17 +8,16 @@ import torch
 import torch.nn as nn
 
 from .args import ArgumentParserBuilder, opt
-from .preprocess_dataset import print_stats
-from ww4ff.data.dataset import WakeWordDatasetLoader, WakeWordDataset, RecursiveNoiseDatasetLoader, Sha256Splitter
-from ww4ff.data.dataloader import StandardAudioDataLoaderBuilder
-from ww4ff.data.transform import compose, ZmuvTransform, StandardAudioTransform, WakeWordBatchifier,\
+from .create_raw_dataset import print_stats
+from howl.data.dataset import WakeWordDatasetLoader, WakeWordDataset, RecursiveNoiseDatasetLoader, Sha256Splitter
+from howl.data.dataloader import StandardAudioDataLoaderBuilder
+from howl.data.transform import compose, ZmuvTransform, StandardAudioTransform, WakeWordBatchifier,\
     NoiseTransform, batchify, TimestretchTransform, DatasetMixer
-from ww4ff.settings import SETTINGS
-from ww4ff.model import find_model, model_names, Workspace, ConfusionMatrix
-from ww4ff.model import find_model, model_names, Workspace, ConfusionMatrix
-from ww4ff.model.inference import InferenceEngine, InferenceEngineSettings
-from ww4ff.utils.audio import stride
-from ww4ff.utils.random import set_seed
+from howl.settings import SETTINGS
+from howl.model import Workspace, ConfusionMatrix, RegisteredModel
+from howl.model.inference import InferenceEngine, InferenceEngineSettings
+from howl.utils.audio import stride
+from howl.utils.random import set_seed
 
 
 def main():
@@ -56,7 +55,7 @@ def main():
                 curr_time += SETTINGS.training.eval_stride_size_seconds * 1000
             if seq_present != positive_set and write_errors:
                 with (ws.path / 'errors.tsv').open('a') as f:
-                    f.write(f'{ex.metadata.transcription.transcription}\t{int(seq_present)}\t{int(positive_set)}\t{ex.metadata.path}\n')
+                    f.write(f'{ex.metadata.transcription}\t{int(seq_present)}\t{int(positive_set)}\t{ex.metadata.path}\n')
             conf_matrix.increment(seq_present, positive_set)
             pbar.set_postfix(dict(mcc=f'{conf_matrix.mcc}', c=f'{conf_matrix}'))
 
@@ -76,10 +75,11 @@ def main():
         evaluate_engine(ww_test_neg_ds, 'Test noisy negative', positive_set=False, mixer=test_mixer)
 
     apb = ArgumentParserBuilder()
-    apb.add_options(opt('--model', type=str, choices=model_names(), default='las'),
+    apb.add_options(opt('--model', type=str, choices=RegisteredModel.registered_names(), default='las'),
                     opt('--workspace', type=str, default=str(Path('workspaces') / 'default')),
                     opt('--load-weights', action='store_true'),
                     opt('--load-last', action='store_true'),
+                    opt('--dataset-paths', '-i', type=str, nargs='+', default=[SETTINGS.dataset.dataset_path]),
                     opt('--vocab', type=str, nargs='+', default=[' hey', 'fire fox']),
                     opt('--eval', action='store_true'))
     args = apb.parser.parse_args()
@@ -93,8 +93,17 @@ def main():
     logging.info(f'Using {ww}')
     loader = WakeWordDatasetLoader()
     ds_kwargs = dict(sr=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono, words=args.vocab)
-    ww_train_ds, ww_dev_ds, ww_test_ds = loader.load_splits(SETTINGS.dataset.dataset_path, **ds_kwargs)
-    print_stats('Wake word dataset', ww_train_ds, ww_dev_ds, ww_test_ds)
+
+    ww_train_ds, ww_dev_ds, ww_test_ds = WakeWordDataset(metadata_list=[], **ds_kwargs),\
+                                         WakeWordDataset(metadata_list=[], **ds_kwargs),\
+                                         WakeWordDataset(metadata_list=[], **ds_kwargs)
+    for ds_path in args.dataset_paths:
+        ds_path = Path(ds_path)
+        train_ds, dev_ds, test_ds = loader.load_splits(ds_path, **ds_kwargs)
+        print_stats(f'Wake word dataset {ds_path}', train_ds, dev_ds, test_ds)
+        ww_train_ds.extend(train_ds)
+        ww_dev_ds.extend(dev_ds)
+        ww_test_ds.extend(test_ds)
 
     sr = SETTINGS.audio.sample_rate
     wind_sz = int(SETTINGS.training.eval_window_size_seconds * sr)
@@ -121,7 +130,7 @@ def main():
         logging.info(f'Loaded {len(noise_ds.metadata_list)} noise files.')
         noise_ds_train, noise_ds_dev = noise_ds.split(Sha256Splitter(80))
         noise_ds_dev, noise_ds_test = noise_ds_dev.split(Sha256Splitter(50))
-        train_comp = (DatasetMixer(noise_ds_train).train(),) + train_comp
+        train_comp = (DatasetMixer(noise_ds_train).train(), TimestretchTransform().train()) + train_comp
         dev_mixer = DatasetMixer(noise_ds_dev, seed=0, do_replace=False)
         test_mixer = DatasetMixer(noise_ds_test, seed=0, do_replace=False)
     train_comp = compose(*train_comp)
@@ -130,7 +139,7 @@ def main():
     prep_dl.shuffle = True
     train_dl = StandardAudioDataLoaderBuilder(ww_train_ds, collate_fn=train_comp).build(SETTINGS.training.batch_size)
 
-    model = find_model(args.model)().to(device)
+    model = RegisteredModel.find_registered_class(args.model)().to(device)
     params = list(filter(lambda x: x.requires_grad, model.parameters()))
     optimizer = AdamW(params, SETTINGS.training.learning_rate, weight_decay=SETTINGS.training.weight_decay)
     logging.info(f'{sum(p.numel() for p in params)} parameters')

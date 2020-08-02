@@ -11,19 +11,22 @@ import pandas as pd
 import soundfile
 
 from .base import DatasetType, AudioClipMetadata, UNKNOWN_TRANSCRIPTION, AlignedAudioClipMetadata
-from .dataset import AudioClipDataset, WakeWordDataset, AudioClassificationDataset
-from ww4ff.utils.audio import silent_load
-from ww4ff.utils.hash import sha256_int
+from .dataset import AudioClipDataset, WakeWordDataset, AudioClassificationDataset, AudioDataset
+from howl.registered import RegisteredObjectBase
+from howl.utils.audio import silent_load
+from howl.utils.hash import sha256_int
 
 
 __all__ = ['AudioDatasetWriter',
            'AudioClipDatasetLoader',
            'MozillaWakeWordLoader',
+           'RegisteredPathDatasetLoader',
            'MozillaCommonVoiceLoader',
            'AudioDatasetMetadataWriter',
            'WakeWordDatasetLoader',
            'GoogleSpeechCommandsDatasetLoader',
            'MozillaKeywordLoader',
+           'PathDatasetLoader',
            'RecursiveNoiseDatasetLoader']
 
 
@@ -38,6 +41,8 @@ class AudioDatasetMetadataWriter:
 
     def write(self, metadata: AudioClipMetadata):
         metadata = deepcopy(metadata)
+        with metadata.path.with_suffix('.lab').open('w') as f:
+            f.write(f'{metadata.transcription}\n')
         metadata.path = metadata.path.name
         self.f.write(metadata.json() + '\n')
 
@@ -56,9 +61,11 @@ class AudioDatasetWriter:
 
     def write(self, folder: Path):
         def process(metadata: AudioClipMetadata):
-            audio_data = silent_load(str(metadata.path), self.dataset.sr, self.dataset.mono)
-            metadata.path = audio_folder / metadata.path.with_suffix('.wav').name
-            soundfile.write(str(metadata.path), audio_data, self.dataset.sr)
+            new_path = audio_folder / metadata.path.with_suffix('.wav').name
+            if not new_path.exists():
+                audio_data = silent_load(str(metadata.path), self.dataset.sr, self.dataset.mono)
+                soundfile.write(str(new_path), audio_data, self.dataset.sr)
+            metadata.path = new_path
 
         logging.info(f'Writing flat dataset to {folder}...')
         folder.mkdir(exist_ok=True)
@@ -75,8 +82,12 @@ class AudioDatasetWriter:
 
 
 class PathDatasetLoader:
-    def load_splits(self, path: Path, **dataset_kwargs) -> Tuple[AudioClipDataset, AudioClipDataset, AudioClipDataset]:
+    def load_splits(self, path: Path, **dataset_kwargs) -> Tuple[AudioDataset, AudioDataset, AudioDataset]:
         raise NotImplementedError
+
+
+class RegisteredPathDatasetLoader(PathDatasetLoader, RegisteredObjectBase):
+    registered_map = {}
 
 
 class MetadataLoaderMixin:
@@ -103,12 +114,12 @@ class MetadataLoaderMixin:
         training_path = path / f'{prefix}metadata-{DatasetType.TRAINING.name.lower()}.jsonl'
         dev_path = path / f'{prefix}metadata-{DatasetType.DEV.name.lower()}.jsonl'
         test_path = path / f'{prefix}metadata-{DatasetType.TEST.name.lower()}.jsonl'
-        return (self.dataset_class(load(training_path), set_type=DatasetType.TRAINING, **dataset_kwargs),
-                self.dataset_class(load(dev_path), set_type=DatasetType.DEV, **dataset_kwargs),
-                self.dataset_class(load(test_path), set_type=DatasetType.TEST, **dataset_kwargs))
+        return (self.dataset_class(metadata_list=load(training_path), set_type=DatasetType.TRAINING, **dataset_kwargs),
+                self.dataset_class(metadata_list=load(dev_path), set_type=DatasetType.DEV, **dataset_kwargs),
+                self.dataset_class(metadata_list=load(test_path), set_type=DatasetType.TEST, **dataset_kwargs))
 
 
-class AudioClipDatasetLoader(MetadataLoaderMixin, PathDatasetLoader):
+class AudioClipDatasetLoader(MetadataLoaderMixin, RegisteredPathDatasetLoader, name='clip'):
     dataset_class = AudioClipDataset
     metadata_class = AudioClipMetadata
 
@@ -119,7 +130,7 @@ class WakeWordDatasetLoader(MetadataLoaderMixin, PathDatasetLoader):
     metadata_class = AlignedAudioClipMetadata
 
 
-class GoogleSpeechCommandsDatasetLoader(PathDatasetLoader):
+class GoogleSpeechCommandsDatasetLoader(RegisteredPathDatasetLoader, name='gsc'):
     def load_splits(self, path: Path, **dataset_kwargs) -> Tuple[AudioClassificationDataset,
                                                                  AudioClassificationDataset,
                                                                  AudioClassificationDataset]:
@@ -131,15 +142,15 @@ class GoogleSpeechCommandsDatasetLoader(PathDatasetLoader):
                     continue
                 metadata_list.append(AudioClipMetadata(path=path.absolute(),
                                                        transcription=path.parent.name))
-            return AudioClassificationDataset(metadata_list,
-                                              label_map,
+            return AudioClassificationDataset(metadata_list=metadata_list,
+                                              label_map=label_map,
                                               set_type=set_type,
                                               **dataset_kwargs)
 
         file_map = defaultdict(lambda: DatasetType.TRAINING)
-        with open(path/ 'testing_list.txt') as f:
+        with (path / 'testing_list.txt').open() as f:
             file_map.update({k: DatasetType.TEST for k in f.read().split('\n')})
-        with open(path / 'validation_list.txt') as f:
+        with (path / 'validation_list.txt').open() as f:
             file_map.update({k: DatasetType.DEV for k in f.read().split('\n')})
         all_list = list(path.glob('*/*.wav'))
         folders = sorted(list(path.glob('*/')))
@@ -148,7 +159,7 @@ class GoogleSpeechCommandsDatasetLoader(PathDatasetLoader):
         return load(DatasetType.TRAINING), load(DatasetType.DEV), load(DatasetType.TEST)
 
 
-class MozillaCommonVoiceLoader(PathDatasetLoader):
+class MozillaCommonVoiceLoader(RegisteredPathDatasetLoader, name='mozilla-cv'):
     def load_splits(self, path: Path, **dataset_kwargs) -> Tuple[AudioClipDataset, AudioClipDataset, AudioClipDataset]:
         def load(filename, set_type):
             logging.info(f'Loading split {filename}...')
@@ -156,7 +167,7 @@ class MozillaCommonVoiceLoader(PathDatasetLoader):
             metadata_list = []
             for tup in df.itertuples():
                 metadata_list.append(AudioClipMetadata(path=(path / 'clips' / tup.path).absolute(), transcription=tup.sentence))
-            return AudioClipDataset(metadata_list, set_type=set_type, **dataset_kwargs)
+            return AudioClipDataset(metadata_list=metadata_list, set_type=set_type, **dataset_kwargs)
 
         assert path.exists(), 'dataset path doesn\'t exist'
         filenames = ('train.tsv', 'dev.tsv', 'test.tsv')
@@ -166,7 +177,7 @@ class MozillaCommonVoiceLoader(PathDatasetLoader):
                 load('test.tsv', DatasetType.TEST))
 
 
-class MozillaKeywordLoader(PathDatasetLoader):
+class MozillaKeywordLoader(RegisteredPathDatasetLoader, name='mozilla-kw'):
     def load_splits(self, path: Path, **dataset_kwargs) -> Tuple[AudioClipDataset, AudioClipDataset, AudioClipDataset]:
         logging.info(f'Loading Mozilla keyword dataset...')
         df = pd.read_csv(str(path / 'validated.tsv'), sep='\t', quoting=3, na_filter=False)
@@ -180,13 +191,13 @@ class MozillaKeywordLoader(PathDatasetLoader):
                 md_splits[1].append(md)
             else:
                 md_splits[2].append(md)
-        return (AudioClipDataset(md_splits[0], set_type=DatasetType.TRAINING, **dataset_kwargs),
-                AudioClipDataset(md_splits[1], set_type=DatasetType.DEV, **dataset_kwargs),
-                AudioClipDataset(md_splits[2], set_type=DatasetType.TEST, **dataset_kwargs))
+        return (AudioClipDataset(metadata_list=md_splits[0], set_type=DatasetType.TRAINING, **dataset_kwargs),
+                AudioClipDataset(metadata_list=md_splits[1], set_type=DatasetType.DEV, **dataset_kwargs),
+                AudioClipDataset(metadata_list=md_splits[2], set_type=DatasetType.TEST, **dataset_kwargs))
 
 
-class MozillaWakeWordLoader(PathDatasetLoader):
-    def __init__(self, training_pct=80, dev_pct=10, test_pct=10, split_by_speaker=False, split='verified'):
+class MozillaWakeWordLoader(RegisteredPathDatasetLoader, name='mozilla-ww'):
+    def __init__(self, training_pct=80, dev_pct=10, test_pct=10, split_by_speaker=True, split='verified'):
         self.split_by_speaker = split_by_speaker
         total = training_pct + dev_pct + test_pct
         training_pct = 100 * training_pct / total
@@ -220,9 +231,9 @@ class MozillaWakeWordLoader(PathDatasetLoader):
             bucket %= 100
             bucket = next(idx for idx, cutoff in enumerate(self.cutoffs) if bucket < cutoff)
             metadatas[bucket].append(metadata)
-        return (AudioClipDataset(metadatas[0], set_type=DatasetType.TRAINING, **dataset_kwargs),
-                AudioClipDataset(metadatas[1], set_type=DatasetType.DEV, **dataset_kwargs),
-                AudioClipDataset(metadatas[2], set_type=DatasetType.TEST, **dataset_kwargs))
+        return (AudioClipDataset(metadata_list=metadatas[0], set_type=DatasetType.TRAINING, **dataset_kwargs),
+                AudioClipDataset(metadata_list=metadatas[1], set_type=DatasetType.DEV, **dataset_kwargs),
+                AudioClipDataset(metadata_list=metadatas[2], set_type=DatasetType.TEST, **dataset_kwargs))
 
 
 SoundIdSplitMozillaWakeWordLoader = partial(MozillaWakeWordLoader, split_by_speaker=False)
@@ -233,4 +244,4 @@ class RecursiveNoiseDatasetLoader:
     def load(self, path: Path, **dataset_kwargs) -> AudioClipDataset:
         wav_names = path.glob('**/*.wav')
         metadata_list = [AudioClipMetadata(path=filename.absolute(), transcription='') for filename in wav_names]
-        return AudioClipDataset(metadata_list, set_type=DatasetType.TRAINING, **dataset_kwargs)
+        return AudioClipDataset(metadata_list=metadata_list, set_type=DatasetType.TRAINING, **dataset_kwargs)
