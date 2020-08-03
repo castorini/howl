@@ -92,8 +92,6 @@ def main():
     ws = Workspace(Path(args.workspace), delete_existing=not args.eval)
     writer = ws.summary_writer
     set_seed(SETTINGS.training.seed)
-    ww = SETTINGS.training.wake_word
-    logging.info(f'Using {ww}')
     loader = WakeWordDatasetLoader()
     ds_kwargs = dict(sr=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono, words=args.vocab)
 
@@ -109,6 +107,7 @@ def main():
     print_stats(f'Wake word dataset', ww_train_ds, ww_dev_ds, ww_test_ds)
 
     inference_wakeword = InferenceEngineSettings().make_wakeword(args.vocab)
+    logging.info(f'Using {inference_wakeword}')
     ww_dev_pos_ds = ww_dev_ds.filter(lambda x: x.compute_frame_labels([inference_wakeword]), clone=True)
     ww_dev_neg_ds = ww_dev_ds.filter(lambda x: not x.compute_frame_labels([inference_wakeword]), clone=True)
     ww_test_pos_ds = ww_test_ds.filter(lambda x: x.compute_frame_labels([inference_wakeword]), clone=True)

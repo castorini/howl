@@ -69,23 +69,21 @@ def main():
     apb = ArgumentParserBuilder()
     apb.add_options(opt('--model', type=str, choices=RegisteredModel.registered_names(), default='las'),
                     opt('--workspace', type=str, default=str(Path('workspaces') / 'default')),
-                    opt('--words', type=str, nargs='+', default=['hey', 'firefox']))
+                    opt('--vocab', type=str, nargs='+', default=['hey', 'firefox']))
     args = apb.parser.parse_args()
 
     ws = Workspace(Path(args.workspace), delete_existing=False)
-    ww = SETTINGS.training.wake_word
-    logging.info(f'Using {ww}')
 
     device = torch.device(SETTINGS.training.device)
     zmuv_transform = ZmuvTransform().to(device)
-
     model = RegisteredModel.find_registered_class(args.model)().to(device).eval()
     zmuv_transform.load_state_dict(torch.load(str(ws.path / 'zmuv.pt.bin')))
 
     ws.load_model(model, best=False)
-    engine = InferenceEngine(model, zmuv_transform, len(args.words))
+    engine = InferenceEngine(model, zmuv_transform, len(args.vocab))
+    print(f'Using {engine.settings.make_wakeword(args.vocab)}')
 
-    client = InferenceClient(engine, device, args.words)
+    client = InferenceClient(engine, device, args.vocab)
     client.join()
 
 

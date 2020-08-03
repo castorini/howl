@@ -36,6 +36,7 @@ class InferenceEngine:
         self.model = model
         self.zmuv = zmuv_transform
         self.std = StandardAudioTransform().eval()
+        self.settings = settings
         inference_weights = 1 if settings.inference_weights is None else np.array(settings.inference_weights)
         self.inference_weights = inference_weights
         self.negative_label = negative_label
