@@ -2,13 +2,13 @@ from pathlib import Path
 import logging
 
 from .args import ArgumentParserBuilder, opt
-from howl.data.dataset import AudioDatasetWriter, AudioClipDataset, RegisteredPathDatasetLoader
+from howl.data.dataset import AudioDatasetWriter, AudioDataset, RegisteredPathDatasetLoader
 from howl.model.inference import InferenceEngineSettings
 from howl.settings import SETTINGS
 from howl.utils.hash import sha256_int
 
 
-def print_stats(header: str, *datasets: AudioClipDataset, skip_length=False):
+def print_stats(header: str, *datasets: AudioDataset, skip_length=False):
     for ds in datasets:
         logging.info(f'{header} ({ds.set_type}) statistics: {ds.compute_statistics(skip_length=skip_length)}')
 
@@ -17,9 +17,9 @@ def main():
     def filter_fn(x):
         bucket = sha256_int(x.path.stem) % 100
         if bucket < args.negative_pct:
-            return wake_word not in f' {x.transcription.lower()}'
+            return wake_word not in f' {x.transcription.lower()} '
         if bucket < args.positive_pct:
-            return any(word in f' {x.transcription.lower()}' for word in args.vocab)
+            return any(word in f' {x.transcription.lower()} ' for word in args.vocab)
         return False
 
     apb = ArgumentParserBuilder()

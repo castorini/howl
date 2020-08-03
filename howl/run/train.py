@@ -1,4 +1,3 @@
-from functools import partial
 from pathlib import Path
 import logging
 
@@ -9,7 +8,8 @@ import torch.nn as nn
 
 from .args import ArgumentParserBuilder, opt
 from .create_raw_dataset import print_stats
-from howl.data.dataset import WakeWordDatasetLoader, WakeWordDataset, RecursiveNoiseDatasetLoader, Sha256Splitter
+from howl.data.dataset import WakeWordDatasetLoader, WakeWordDataset, RecursiveNoiseDatasetLoader, Sha256Splitter,\
+    DatasetType
 from howl.data.dataloader import StandardAudioDataLoaderBuilder
 from howl.data.transform import compose, ZmuvTransform, StandardAudioTransform, WakeWordBatchifier,\
     NoiseTransform, batchify, TimestretchTransform, DatasetMixer
@@ -66,19 +66,22 @@ def main():
 
     def do_evaluate():
         evaluate_engine(ww_dev_pos_ds, 'Dev positive', positive_set=True)
-        evaluate_engine(ww_dev_pos_ds, 'Dev noisy positive', positive_set=True, mixer=dev_mixer)
         evaluate_engine(ww_dev_neg_ds, 'Dev negative', positive_set=False)
-        evaluate_engine(ww_dev_neg_ds, 'Dev noisy negative', positive_set=False, mixer=dev_mixer)
+        if SETTINGS.training.use_noise_dataset:
+            evaluate_engine(ww_dev_pos_ds, 'Dev noisy positive', positive_set=True, mixer=dev_mixer)
+            evaluate_engine(ww_dev_neg_ds, 'Dev noisy negative', positive_set=False, mixer=dev_mixer)
         evaluate_engine(ww_test_pos_ds, 'Test positive', positive_set=True)
-        evaluate_engine(ww_test_pos_ds, 'Test noisy positive', positive_set=True, mixer=test_mixer)
         evaluate_engine(ww_test_neg_ds, 'Test negative', positive_set=False)
-        evaluate_engine(ww_test_neg_ds, 'Test noisy negative', positive_set=False, mixer=test_mixer)
+        if SETTINGS.training.use_noise_dataset:
+            evaluate_engine(ww_test_pos_ds, 'Test noisy positive', positive_set=True, mixer=test_mixer)
+            evaluate_engine(ww_test_neg_ds, 'Test noisy negative', positive_set=False, mixer=test_mixer)
 
     apb = ArgumentParserBuilder()
     apb.add_options(opt('--model', type=str, choices=RegisteredModel.registered_names(), default='las'),
                     opt('--workspace', type=str, default=str(Path('workspaces') / 'default')),
                     opt('--load-weights', action='store_true'),
                     opt('--load-last', action='store_true'),
+                    opt('--no-dev-per-epoch', action='store_false', dest='dev_per_epoch'),
                     opt('--dataset-paths', '-i', type=str, nargs='+', default=[SETTINGS.dataset.dataset_path]),
                     opt('--vocab', type=str, nargs='+', default=[' hey', 'fire fox']),
                     opt('--eval', action='store_true'))
@@ -94,23 +97,18 @@ def main():
     loader = WakeWordDatasetLoader()
     ds_kwargs = dict(sr=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono, words=args.vocab)
 
-    ww_train_ds, ww_dev_ds, ww_test_ds = WakeWordDataset(metadata_list=[], **ds_kwargs),\
-                                         WakeWordDataset(metadata_list=[], **ds_kwargs),\
-                                         WakeWordDataset(metadata_list=[], **ds_kwargs)
+    ww_train_ds, ww_dev_ds, ww_test_ds = WakeWordDataset(metadata_list=[], set_type=DatasetType.TRAINING, **ds_kwargs),\
+                                         WakeWordDataset(metadata_list=[], set_type=DatasetType.DEV, **ds_kwargs),\
+                                         WakeWordDataset(metadata_list=[], set_type=DatasetType.TEST, **ds_kwargs)
     for ds_path in args.dataset_paths:
         ds_path = Path(ds_path)
         train_ds, dev_ds, test_ds = loader.load_splits(ds_path, **ds_kwargs)
-        print_stats(f'Wake word dataset {ds_path}', train_ds, dev_ds, test_ds)
         ww_train_ds.extend(train_ds)
         ww_dev_ds.extend(dev_ds)
         ww_test_ds.extend(test_ds)
-
-    sr = SETTINGS.audio.sample_rate
-    wind_sz = int(SETTINGS.training.eval_window_size_seconds * sr)
-    stri_sz = int(SETTINGS.training.eval_stride_size_seconds * sr)
+    print_stats(f'Wake word dataset', ww_train_ds, ww_dev_ds, ww_test_ds)
 
     inference_wakeword = InferenceEngineSettings().make_wakeword(args.vocab)
-    ww_dev_all_pos_ds = ww_dev_ds.filter(lambda x: x.compute_frame_labels(args.vocab), clone=True)
     ww_dev_pos_ds = ww_dev_ds.filter(lambda x: x.compute_frame_labels([inference_wakeword]), clone=True)
     ww_dev_neg_ds = ww_dev_ds.filter(lambda x: not x.compute_frame_labels([inference_wakeword]), clone=True)
     ww_test_pos_ds = ww_test_ds.filter(lambda x: x.compute_frame_labels([inference_wakeword]), clone=True)
@@ -130,7 +128,7 @@ def main():
         logging.info(f'Loaded {len(noise_ds.metadata_list)} noise files.')
         noise_ds_train, noise_ds_dev = noise_ds.split(Sha256Splitter(80))
         noise_ds_dev, noise_ds_test = noise_ds_dev.split(Sha256Splitter(50))
-        train_comp = (DatasetMixer(noise_ds_train).train(), TimestretchTransform().train()) + train_comp
+        train_comp = (DatasetMixer(noise_ds_train).train(),) + train_comp
         dev_mixer = DatasetMixer(noise_ds_dev, seed=0, do_replace=False)
         test_mixer = DatasetMixer(noise_ds_test, seed=0, do_replace=False)
     train_comp = compose(*train_comp)
@@ -188,7 +186,8 @@ def main():
 
         for group in optimizer.param_groups:
             group['lr'] *= SETTINGS.training.lr_decay
-        evaluate_engine(ww_dev_pos_ds, 'Dev positive', positive_set=True, save=True, write_errors=False)
+        if args.dev_per_epoch:
+            evaluate_engine(ww_dev_pos_ds, 'Dev positive', positive_set=True, save=True, write_errors=False)
     do_evaluate()
 
 

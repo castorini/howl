@@ -43,9 +43,11 @@ class AudioClipMetadata(BaseModel):
 class AlignedAudioClipMetadata(AudioClipMetadata):
     end_timestamps: List[float]
 
-    def compute_frame_labels(self, words: List[str]) -> Mapping[float, int]:
+    def compute_frame_labels(self,
+                             words: List[str],
+                             ceil_word_boundary: bool = False) -> Mapping[float, int]:
         frame_labels = dict()
-        t = f' {self.transcription}'
+        t = f' {self.transcription} '
         start = 0
         for idx, word in enumerate(words):
             while True:
@@ -53,7 +55,9 @@ class AlignedAudioClipMetadata(AudioClipMetadata):
                     start = t.index(word, start)
                 except ValueError:
                     break
-                frame_labels[self.end_timestamps[start + len(word) - 2]] = idx
+                while ceil_word_boundary and start + len(word) < len(t) - 1 and t[start + len(word)] != ' ':
+                    start += 1
+                frame_labels[self.end_timestamps[start + len(word.rstrip()) - 2]] = idx
                 start += 1
         return frame_labels
 
