@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from copy import deepcopy
 from typing import Mapping, Optional, List, TypeVar, Generic
 from pathlib import Path
 import enum
