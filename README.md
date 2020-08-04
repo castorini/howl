@@ -22,11 +22,11 @@ In the example that follows, we describe how to train a custom detector for the 
 and download an [English pronunciation dictionary](http://svn.code.sf.net/p/cmusphinx/code/trunk/cmudict/cmudict-0.7b).
 3. Create a positive dataset containing the keyword: 
 ```bash
-INFERENCE_SEQUENCE=[0] DATASET_PATH=data/fire-positive python -m howl.run.create_raw_dataset --negative-pct 0 --vocab fire -i ~/path/to/common-voice --positive-pct 100`
+INFERENCE_SEQUENCE=[0] DATASET_PATH=data/fire-positive python -m howl.run.create_raw_dataset --negative-pct 0 --vocab fire -i ~/path/to/common-voice --positive-pct 100
 ```
 4. Create a negative dataset without the keyword:
 ```bash
-INFERENCE_SEQUENCE=[0] DATASET_PATH=data/fire-negative python -m howl.run.create_raw_dataset --negative-pct 5 --vocab fire -i ~/path/to/common-voice --positive-pct 0`
+INFERENCE_SEQUENCE=[0] DATASET_PATH=data/fire-negative python -m howl.run.create_raw_dataset --negative-pct 5 --vocab fire -i ~/path/to/common-voice --positive-pct 0
 ```
 5. Generate some mock alignment for the negative set, where we don't care about alignment:
 ```bash
