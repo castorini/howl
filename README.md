@@ -28,7 +28,7 @@ INFERENCE_SEQUENCE=[0] DATASET_PATH=data/fire-positive python -m howl.run.create
 ```bash
 INFERENCE_SEQUENCE=[0] DATASET_PATH=data/fire-negative python -m howl.run.create_raw_dataset --negative-pct 5 --vocab fire -i ~/path/to/common-voice --positive-pct 0`
 ```
-5. Generate some mock alignment for the negative set, since we don't care about alignment for the negative set:
+5. Generate some mock alignment for the negative set, where we don't care about alignment:
 ```bash
 DATASET_PATH=data/fire-negative python -m howl.run.attach_alignment --align-type stub
 ```
