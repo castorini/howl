@@ -6,6 +6,8 @@ import enum
 from pydantic import BaseModel
 import torch
 
+from .phone import PhonePhrase
+
 
 __all__ = ['AudioClipExample',
            'AudioClipMetadata',
@@ -16,6 +18,10 @@ __all__ = ['AudioClipExample',
            'EmplacableExample',
            'AlignedAudioClipMetadata',
            'WakeWordClipExample',
+           'FrameLabeler',
+           'WordFrameLabeler',
+           'FrameLabelData',
+           'PhoneticFrameLabeler',
            'UNKNOWN_TRANSCRIPTION',
            'NEGATIVE_CLASS']
 
@@ -42,23 +48,58 @@ class AudioClipMetadata(BaseModel):
 class AlignedAudioClipMetadata(AudioClipMetadata):
     end_timestamps: List[float]
 
-    def compute_frame_labels(self,
-                             words: List[str],
-                             ceil_word_boundary: bool = False) -> Mapping[float, int]:
+
+@dataclass
+class FrameLabelData:
+    timestamp_label_map: Mapping[float, int]
+
+
+class FrameLabeler:
+    def compute_frame_labels(self, metadata: AlignedAudioClipMetadata) -> FrameLabelData:
+        raise NotImplementedError
+
+
+class PhoneticFrameLabeler(FrameLabeler):
+    def __init__(self, phrases: List[PhonePhrase]):
+        self.phrases = phrases
+
+    def compute_frame_labels(self, metadata: AlignedAudioClipMetadata) -> FrameLabelData:
         frame_labels = dict()
-        t = f' {self.transcription} '
         start = 0
-        for idx, word in enumerate(words):
+        pp = PhonePhrase.from_string(metadata.transcription)
+        for idx, phrase in enumerate(self.phrases):
+            while True:
+                try:
+                    start = pp.audible_index(phrase, start)
+                except ValueError:
+                    break
+                # TODO: make alignment to token instead of character
+                start = pp.all_idx_to_transcript_idx(pp.audible_idx_to_all_idx(start))
+                frame_labels[metadata.end_timestamps[start + len(str(phrase)) - 1]] = idx
+                start += 1
+        return FrameLabelData(frame_labels)
+
+
+class WordFrameLabeler(FrameLabeler):
+    def __init__(self, words: List[str], ceil_word_boundary: bool = False):
+        self.words = words
+        self.ceil_word_boundary = ceil_word_boundary
+
+    def compute_frame_labels(self, metadata: AlignedAudioClipMetadata) -> FrameLabelData:
+        frame_labels = dict()
+        t = f' {metadata.transcription} '
+        start = 0
+        for idx, word in enumerate(self.words):
             while True:
                 try:
                     start = t.index(word, start)
                 except ValueError:
                     break
-                while ceil_word_boundary and start + len(word) < len(t) - 1 and t[start + len(word)] != ' ':
+                while self.ceil_word_boundary and start + len(word) < len(t) - 1 and t[start + len(word)] != ' ':
                     start += 1
-                frame_labels[self.end_timestamps[start + len(word.rstrip()) - 2]] = idx
+                frame_labels[metadata.end_timestamps[start + len(word.rstrip()) - 2]] = idx
                 start += 1
-        return frame_labels
+        return FrameLabelData(frame_labels)
 
 
 class EmplacableExample:
@@ -117,17 +158,17 @@ class ClassificationBatch:
 
 @dataclass
 class WakeWordClipExample(AudioClipExample[AlignedAudioClipMetadata]):
-    def __init__(self, frame_labels: Mapping[float, int], *args, **kwargs):
+    def __init__(self, label_data: FrameLabelData, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.frame_labels = frame_labels
+        self.label_data = label_data
 
     def emplaced_audio_data(self,
                             audio_data: torch.Tensor,
                             scale: float = 1,
                             bias: float = 0,
                             new: bool = False) -> 'WakeWordClipExample':
-        frame_labels = {} if new else {scale * k + bias: v for k, v in self.frame_labels.items()}
-        return WakeWordClipExample(frame_labels, self.metadata, audio_data, self.sample_rate)
+        label_data = {} if new else {scale * k + bias: v for k, v in self.label_data.timestamp_label_map.items()}
+        return WakeWordClipExample(FrameLabelData(label_data), self.metadata, audio_data, self.sample_rate)
 
 
 @dataclass

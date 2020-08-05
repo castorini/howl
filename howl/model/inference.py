@@ -1,6 +1,8 @@
+from collections import defaultdict
 from typing import List
 import itertools
 import logging
+import re
 import time
 
 from pydantic import BaseSettings
@@ -8,10 +10,48 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+from howl.data.dataset import PhonePhrase
 from howl.data.transform import ZmuvTransform, StandardAudioTransform
 
 
-__all__ = ['InferenceEngine', 'InferenceEngineSettings']
+__all__ = ['InferenceEngine',
+           'InferenceEngineSettings',
+           'PhoneticTranscriptSearcher',
+           'TranscriptSearcher',
+           'WordTranscriptSearcher',
+           'LabelColoring']
+
+
+class LabelColoring:
+    def __init__(self):
+        self.color_map = {}
+        self.color_counter = 0
+        self.label_counter = 0
+
+    def append_label(self, label: int, color: int = None):
+        color = self._inc_color_counter(color)
+        self.color_map[label] = color
+
+    def _inc_color_counter(self, color: int = None):
+        if color is None:
+            color = self.color_counter
+        else:
+            self.color_counter = max(self.color_counter, color + 1)
+        self.color_counter += 1
+        return color
+
+    def extend_sequence(self, size: int, color: int = None):
+        color = self._inc_color_counter(color)
+        for label in range(self.label_counter, self.label_counter + size):
+            self.color_map[label] = color
+        self.label_counter += size
+
+    @classmethod
+    def sequential_coloring(cls, num_labels: int):
+        coloring = cls()
+        for label_idx in range(num_labels):
+            coloring.append_label(label_idx)
+        return coloring
 
 
 class InferenceEngineSettings(BaseSettings):
@@ -22,8 +62,45 @@ class InferenceEngineSettings(BaseSettings):
     tolerance_window_ms: float = 500  # negative label between words
     inference_threshold: float = 0  # positive label probability must rise above this threshold
 
-    def make_wakeword(self, vocab: List[str]):
-        return ' '.join(np.array(vocab)[self.inference_sequence])
+
+class TranscriptSearcher:
+    def __init__(self, settings: InferenceEngineSettings = InferenceEngineSettings()):
+        self.settings = settings
+
+    def search(self, item: str) -> bool:
+        raise NotImplementedError
+
+
+class WordTranscriptSearcher(TranscriptSearcher):
+    def __init__(self, vocab: List[str], **kwargs):
+        super().__init__(**kwargs)
+        self.vocab = vocab
+        self.wakeword = ' '.join(np.array(self.vocab)[self.settings.inference_sequence])
+
+    def search(self, item: str) -> bool:
+        return self.wakeword in item
+
+
+class PhoneticTranscriptSearcher(TranscriptSearcher):
+    def __init__(self, phrases: List[PhonePhrase], coloring: LabelColoring, **kwargs):
+        super().__init__(**kwargs)
+        self.phrases = phrases
+        self.coloring = coloring
+        label_map = [(phrase.audible_transcript, coloring.color_map[idx]) for idx, phrase in enumerate(phrases)]
+        buckets = defaultdict(list)
+        for transcript, color in label_map:
+            buckets[color].append(transcript)
+        pattern_strings = []
+        for _, transcripts in sorted(buckets.items(), key=lambda x: x[0]):
+            pattern_strings.append('(' + '|'.join(f'({x})' for x in transcripts) + ')')
+        pattern_strings = np.array(pattern_strings)[self.settings.inference_sequence]
+        pattern_str = '^.*' + ' '.join(pattern_strings) + '.*$'
+        logging.info(f'Using search pattern {pattern_str}')
+        self.pattern = re.compile(pattern_str)
+
+    def search(self, item: str) -> bool:
+        transcript = PhonePhrase.from_string(item).audible_transcript
+        return self.pattern.match(transcript) is not None
 
 
 class InferenceEngine:
@@ -32,6 +109,7 @@ class InferenceEngine:
                  zmuv_transform: ZmuvTransform,
                  negative_label: int,
                  settings: InferenceEngineSettings = InferenceEngineSettings(),
+                 coloring: LabelColoring = None,
                  time_provider=time.time):
         self.model = model
         self.zmuv = zmuv_transform
@@ -45,6 +123,7 @@ class InferenceEngine:
         self.smoothing_window_ms = settings.smoothing_window_ms
         self.tolerance_window_ms = settings.tolerance_window_ms
         self.sequence = settings.inference_sequence
+        self.coloring = coloring
         self.time_provider = time_provider
         self.reset()
 
@@ -103,6 +182,8 @@ class InferenceEngine:
         lattice_max = np.max(lattice, 0)
         max_label = lattice_max.argmax()
         max_prob = lattice_max[max_label]
+        if self.coloring:
+            max_label = self.coloring.color_map.get(max_label, self.negative_label)
         if max_prob < self.threshold:
             max_label = self.negative_label
         self.label_history.append((curr_time, max_label))
@@ -126,8 +207,8 @@ class InferenceEngine:
 
         p *= self.inference_weights
         p = p / p.sum()
-        logging.debug(([f'{x:.3f}' for x in p.tolist()], np.argmax(p)))
 
         self.pred_history.append((curr_time, p))
         label = self._get_prediction(curr_time)
+        logging.debug(([f'{x:.3f}' for x in p.tolist()], label))
         return label

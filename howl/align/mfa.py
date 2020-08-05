@@ -8,15 +8,19 @@ __all__ = ['MfaTextGridConverter']
 
 
 class MfaTextGridConverter:
-    def __init__(self, split_by_char: bool = True):
+    def __init__(self,
+                 split_by_char: bool = True,
+                 use_phones: bool = False):
         assert split_by_char, 'word-level not implemented'
         self.split_by_char = split_by_char
+        self.use_phones = use_phones
 
     def convert(self, text_grid: TextGrid) -> AlignedTranscription:
         end_timestamps = []
         words = []
+        key = 'phones' if self.use_phones else 'words'
         if self.split_by_char:
-            for word in text_grid['words']:
+            for word in text_grid[key]:
                 word_len = len(word.text)
                 if word_len == 0:
                     continue

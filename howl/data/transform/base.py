@@ -96,18 +96,18 @@ class WakeWordBatchifier:
     def __call__(self, examples: Sequence[WakeWordClipExample]) -> ClassificationBatch:
         new_examples = []
         for ex in examples:
-            if not ex.frame_labels:
+            if not ex.label_data.timestamp_label_map:
                 new_examples.append((self.negative_label,
                                      random_slice([ex], int(self.sample_rate * self.window_size_ms / 1000))[0]))
                 continue
             select_negative = random.random() > self.positive_sample_prob
             if not select_negative:
-                end_ms, label = random.choice(list(ex.frame_labels.items()))
+                end_ms, label = random.choice(list(ex.label_data.timestamp_label_map.items()))
                 end_ms_rand = end_ms + ((random.random() - 0.5) * 2 * self.eps_ms)
                 b = int((end_ms_rand / 1000) * self.sample_rate)
                 a = max(b - int((self.window_size_ms / 1000) * self.sample_rate), 0)
                 if random.random() < 0:
-                    closest_ms = min(filter(lambda k: end_ms - k > 0, ex.frame_labels.keys()),
+                    closest_ms = min(filter(lambda k: end_ms - k > 0, ex.label_data.timestamp_label_map.keys()),
                                      key=lambda k: end_ms - k,
                                      default=-1)
                     if closest_ms >= 0:
@@ -118,7 +118,7 @@ class WakeWordBatchifier:
                     new_examples.append((label, ex.emplaced_audio_data(ex.audio_data[..., a:b])))
             if select_negative:
                 positive_intervals = [(v - self.positive_delta_ms, v + self.positive_delta_ms)
-                                      for v in ex.frame_labels.values()]
+                                      for v in ex.label_data.timestamp_label_map.values()]
                 positive_intervals = sorted(positive_intervals, key=lambda x: x[0])
                 negative_intervals = []
                 last_positive = 0

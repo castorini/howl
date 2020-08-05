@@ -12,7 +12,7 @@ from howl.settings import SETTINGS
 
 def main():
     def load_mfa_align():
-        converter = MfaTextGridConverter()
+        converter = MfaTextGridConverter(use_phones=args.align_unit == 'phone')
         id_align_map = {}
 
         for tg_path in args.align_folder.glob('**/*.TextGrid'):
@@ -29,6 +29,7 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--mfa-folder', '-i', dest='align_folder', type=Path)
+    parser.add_argument('--align-unit', '-u', type=str, default='word', choices=('phone', 'word'))
     parser.add_argument('--align-type', type=str, default='mfa', choices=('mfa', 'stub'))
     args = parser.parse_args()
 

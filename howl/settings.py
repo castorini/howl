@@ -28,6 +28,8 @@ class TrainingSettings(BaseSettings):
     eval_window_size_seconds: float = 0.75
     eval_stride_size_seconds: float = 0.063
     weight_decay: float = 0
+    use_phone: bool = False
+    phone_dictionary: Path = None
     use_noise_dataset: bool = False
 
 

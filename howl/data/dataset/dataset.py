@@ -7,7 +7,8 @@ import torch
 import torch.utils.data as tud
 
 from .base import DatasetType, AudioClipMetadata, AudioClipExample, WakeWordClipExample, AudioDatasetStatistics, \
-    AlignedAudioClipMetadata, NEGATIVE_CLASS, ClassificationClipExample
+    AlignedAudioClipMetadata, NEGATIVE_CLASS, ClassificationClipExample, FrameLabeler
+from .phone import PronunciationDictionary
 from howl.settings import SETTINGS
 from howl.utils.audio import silent_load
 from howl.utils.hash import sha256_int
@@ -42,7 +43,7 @@ class AudioDataset(tud.Dataset, Generic[T]):
     def is_eval(self):
         return not self.is_training and self.set_type != DatasetType.UNSPECIFIED
 
-    def filter(self, predicate_fn: Callable[[Any], bool], clone: bool = False):
+    def filter(self, predicate_fn: Callable[[T], bool], clone: bool = False):
         if clone:
             self = deepcopy(self)
         data_list = self.metadata_list
@@ -88,12 +89,11 @@ class AudioClipDataset(AudioDataset[AudioClipMetadata]):
 
 class WakeWordDataset(AudioDataset[AlignedAudioClipMetadata]):
     def __init__(self,
-                 words: List[str],
+                 frame_labeler: FrameLabeler,
                  *args,
                  **kwargs):
         super().__init__(*args, **kwargs)
-        self.words = words
-        self.vocab = {v: k for k, v in enumerate(words)}
+        self.frame_labeler = frame_labeler
 
     @lru_cache(maxsize=SETTINGS.cache.cache_size)
     def __getitem__(self, idx) -> WakeWordClipExample:
@@ -102,7 +102,13 @@ class WakeWordDataset(AudioDataset[AlignedAudioClipMetadata]):
         return WakeWordClipExample(metadata=metadata,
                                    audio_data=torch.from_numpy(audio_data),
                                    sample_rate=self.sr,
-                                   frame_labels=metadata.compute_frame_labels(self.words))
+                                   label_data=self.frame_labeler.compute_frame_labels(metadata))
+
+
+class PhoneticWakeWordDataset(WakeWordDataset):
+    def __init__(self, dictionary: PronunciationDictionary, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.dictionary = dictionary
 
 
 class AudioClassificationDataset(AudioDataset[AudioClipMetadata]):
