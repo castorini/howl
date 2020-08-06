@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import List
 
 from pydantic import BaseSettings
 
@@ -17,7 +18,7 @@ class AudioSettings(BaseSettings):
 
 class TrainingSettings(BaseSettings):
     seed: int = 0
-    wake_word: str = 'Hey Firefox'
+    vocab: List[str] = ['fire']
     num_epochs: int = 10
     num_labels: int = 2
     learning_rate: float = 1e-3
@@ -28,7 +29,7 @@ class TrainingSettings(BaseSettings):
     eval_window_size_seconds: float = 0.75
     eval_stride_size_seconds: float = 0.063
     weight_decay: float = 0
-    use_phone: bool = False
+    token_type: str = 'word'
     phone_dictionary: Path = None
     use_noise_dataset: bool = False
 

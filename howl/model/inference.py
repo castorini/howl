@@ -70,6 +70,9 @@ class TranscriptSearcher:
     def search(self, item: str) -> bool:
         raise NotImplementedError
 
+    def contains_any(self, item: str) -> bool:
+        raise NotImplementedError
+
 
 class WordTranscriptSearcher(TranscriptSearcher):
     def __init__(self, vocab: List[str], **kwargs):
@@ -79,6 +82,9 @@ class WordTranscriptSearcher(TranscriptSearcher):
 
     def search(self, item: str) -> bool:
         return self.wakeword in item
+
+    def contains_any(self, item: str) -> bool:
+        return any(word in f' {item.lower()} ' for word in self.vocab)
 
 
 class PhoneticTranscriptSearcher(TranscriptSearcher):
@@ -102,6 +108,10 @@ class PhoneticTranscriptSearcher(TranscriptSearcher):
         transcript = PhonePhrase.from_string(item).audible_transcript
         return self.pattern.match(transcript) is not None
 
+    def contains_any(self, item: str) -> bool:
+        transcript = PhonePhrase.from_string(item).audible_transcript
+        return any(word.audible_transcript in transcript for word in self.phrases)
+
 
 class InferenceEngine:
     def __init__(self,
@@ -117,7 +127,7 @@ class InferenceEngine:
         self.settings = settings
         inference_weights = 1 if settings.inference_weights is None else np.array(settings.inference_weights)
         self.inference_weights = inference_weights
-        self.negative_label = negative_label
+        self.negative_label = negative_label if coloring is None else coloring.color_map[negative_label]
         self.threshold = settings.inference_threshold
         self.inference_window_ms = settings.inference_window_ms
         self.smoothing_window_ms = settings.smoothing_window_ms

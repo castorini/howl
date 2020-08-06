@@ -12,6 +12,7 @@ __all__ = ['PhoneEnum',
 
 class PhoneEnum(enum.Enum):
     SILENCE = 'sil'
+    SILENCE_OPTIONAL = 'sp'
     SPEECH_UNKNOWN = 'spn'
 
 
@@ -21,7 +22,9 @@ class Phone:
 
     def __post_init__(self):
         self.text = self.text.lower().strip()
-        self.is_speech = self.text != PhoneEnum.SILENCE.value
+        self.is_speech = self.text not in (PhoneEnum.SILENCE.value,
+                                           PhoneEnum.SILENCE_OPTIONAL.value,
+                                           PhoneEnum.SPEECH_UNKNOWN.value)
 
     def __str__(self):
         return self.text
@@ -35,7 +38,7 @@ class PhonePhrase:
     phones: List[Phone]
 
     def __post_init__(self):
-        self.audible_phones = [x for x in self.phones if x.text != PhoneEnum.SILENCE.value]
+        self.audible_phones = [x for x in self.phones if x.is_speech]
         self.audible_transcript = ' '.join(x.text for x in self.audible_phones)
         self.sil_indices = [idx for idx, x in enumerate(self.phones) if not x.is_speech]
 
