@@ -2,8 +2,8 @@ from pathlib import Path
 import logging
 
 from .args import ArgumentParserBuilder, opt
+from howl.context import InferenceDataContext
 from howl.data.dataset import AudioDatasetWriter, AudioDataset, RegisteredPathDatasetLoader
-from howl.model.inference import InferenceEngineSettings
 from howl.settings import SETTINGS
 from howl.utils.hash import sha256_int
 
@@ -17,9 +17,9 @@ def main():
     def filter_fn(x):
         bucket = sha256_int(x.path.stem) % 100
         if bucket < args.negative_pct:
-            return wake_word not in f' {x.transcription.lower()} '
+            return not ctx.searcher.search(x.transcription.lower())
         if bucket < args.positive_pct:
-            return any(word in f' {x.transcription.lower()} ' for word in args.vocab)
+            return ctx.searcher.contains_any(x.transcription.lower())
         return False
 
     apb = ArgumentParserBuilder()
@@ -27,7 +27,6 @@ def main():
                         type=int,
                         default=1,
                         help='The percentage of the dataset to check for negative examples.'),
-                    opt('--vocab', type=str, nargs='+', default=[' hey', 'fire', 'fox']),
                     opt('--positive-pct', type=int, default=100,
                         help='The percentage of the dataset to check for positive examples.'),
                     opt('--input-path', '-i', type=Path),
@@ -39,7 +38,7 @@ def main():
     if args.input_path is None:
         args.input_path = SETTINGS.raw_dataset.common_voice_dataset_path
 
-    wake_word = InferenceEngineSettings().make_wakeword(args.vocab)
+    ctx = InferenceDataContext()
     loader = RegisteredPathDatasetLoader.find_registered_class(args.dataset_type)()
     ds_kwargs = dict(sr=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono)
     cv_train_ds, cv_dev_ds, cv_test_ds = loader.load_splits(args.input_path, **ds_kwargs)

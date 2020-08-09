@@ -15,6 +15,7 @@ __all__ = ['LASEncoderConfig',
 
 
 class LASEncoderConfig(BaseSettings):
+    num_mels: int = 40
     num_spec_channels: int = 3
     num_latent_channels: int = 32
     hidden_size: int = 128
@@ -48,11 +49,11 @@ class SimpleGRU(RegisteredModel, name='gru'):
                                           nn.ReLU(),
                                           nn.BatchNorm2d(1))
         self.use_maxpool = config.use_maxpool
-        self.lstm_encoder = nn.GRU(80, config.hidden_size, bidirectional=True)
-        self.dnn = nn.Sequential(nn.Linear(2 * config.hidden_size, int(4 * config.hidden_size)),
+        self.lstm_encoder = nn.GRU(config.num_mels, config.hidden_size, bidirectional=False)
+        self.dnn = nn.Sequential(nn.Linear(config.hidden_size, int(2 * config.hidden_size)),
                                  nn.ReLU(),
                                  nn.Dropout(0.2),
-                                 nn.Linear(int(4 * config.hidden_size), config.num_labels))
+                                 nn.Linear(int(2 * config.hidden_size), config.num_labels))
 
     def forward(self, x, lengths):
         if lengths is None:

@@ -12,7 +12,7 @@ from howl.settings import SETTINGS
 
 def main():
     def load_mfa_align():
-        converter = MfaTextGridConverter()
+        converter = MfaTextGridConverter(use_phones=SETTINGS.training.token_type == 'phone')
         id_align_map = {}
 
         for tg_path in args.align_folder.glob('**/*.TextGrid'):
