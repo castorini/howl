@@ -7,7 +7,7 @@ import torch
 import torch.utils.data as tud
 
 from .base import DatasetType, AudioClipMetadata, AudioClipExample, WakeWordClipExample, AudioDatasetStatistics, \
-    AlignedAudioClipMetadata, NEGATIVE_CLASS, ClassificationClipExample, FrameLabeler
+    NEGATIVE_CLASS, ClassificationClipExample, FrameLabeler
 from .phone import PronunciationDictionary
 from howl.settings import SETTINGS
 from howl.utils.audio import silent_load
@@ -87,7 +87,7 @@ class AudioClipDataset(AudioDataset[AudioClipMetadata]):
         return AudioClipExample(metadata=metadata, audio_data=torch.from_numpy(audio_data), sample_rate=self.sr)
 
 
-class WakeWordDataset(AudioDataset[AlignedAudioClipMetadata]):
+class WakeWordDataset(AudioDataset[AudioClipMetadata]):
     def __init__(self,
                  frame_labeler: FrameLabeler,
                  *args,
@@ -103,12 +103,6 @@ class WakeWordDataset(AudioDataset[AlignedAudioClipMetadata]):
                                    audio_data=torch.from_numpy(audio_data),
                                    sample_rate=self.sr,
                                    label_data=self.frame_labeler.compute_frame_labels(metadata))
-
-
-class PhoneticWakeWordDataset(WakeWordDataset):
-    def __init__(self, dictionary: PronunciationDictionary, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.dictionary = dictionary
 
 
 class AudioClassificationDataset(AudioDataset[AudioClipMetadata]):

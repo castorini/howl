@@ -12,19 +12,15 @@ from .base import RegisteredModel
 __all__ = ['MobileNetClassifier', 'Res8']
 
 
-class MobileNetSettings(BaseSettings):
-    num_labels: int = 2
-
-
 class MobileNetClassifier(RegisteredModel, name='mobilenet'):
-    def __init__(self, settings: MobileNetSettings = MobileNetSettings()):
-        super().__init__()
+    def __init__(self, num_labels: int):
+        super().__init__(num_labels)
         self.downsample = nn.Sequential(nn.Conv2d(1, 3, 3, padding=(1, 3)),
                                         nn.BatchNorm2d(3),
                                         nn.ReLU(),
                                         nn.MaxPool2d((1, 2)))
         self.model = mobilenet_v2(pretrained=True)
-        model = MobileNetV2(num_classes=settings.num_labels)
+        model = MobileNetV2(num_classes=num_labels)
         self.model.classifier = model.classifier
 
     def forward(self, x, lengths):
@@ -42,8 +38,8 @@ class CnnSettings(BaseSettings):
 
 
 class SmallCnn(RegisteredModel, name='small-cnn'):
-    def __init__(self, config: CnnSettings = CnnSettings()):
-        super().__init__()
+    def __init__(self, num_labels: int, config: CnnSettings = CnnSettings()):
+        super().__init__(num_labels)
         self.config = config
         conv0 = nn.Conv2d(1, config.num_maps1, (8, 16), padding=(4, 0), stride=(2, 2), bias=True)
         pool = nn.MaxPool2d(2)
@@ -78,8 +74,8 @@ class Res8Settings(BaseSettings):
 
 
 class Res8(RegisteredModel, name='res8'):
-    def __init__(self, config: Res8Settings = Res8Settings()):
-        super().__init__()
+    def __init__(self, num_labels: int, config: Res8Settings = Res8Settings()):
+        super().__init__(num_labels)
         n_maps = config.num_maps
         self.conv0 = nn.Conv2d(1, n_maps, (3, 3), padding=(1, 1), bias=False)
         self.pool = nn.AvgPool2d(config.pooling)  # flipped -- better for 80 log-Mels

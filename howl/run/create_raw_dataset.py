@@ -2,7 +2,7 @@ from pathlib import Path
 import logging
 
 from .args import ArgumentParserBuilder, opt
-from howl.context import InferenceDataContext
+from howl.context import InferenceContext
 from howl.data.dataset import AudioDatasetWriter, AudioDataset, RegisteredPathDatasetLoader
 from howl.settings import SETTINGS
 from howl.utils.hash import sha256_int
@@ -38,7 +38,7 @@ def main():
     if args.input_path is None:
         args.input_path = SETTINGS.raw_dataset.common_voice_dataset_path
 
-    ctx = InferenceDataContext()
+    ctx = InferenceContext()
     loader = RegisteredPathDatasetLoader.find_registered_class(args.dataset_type)()
     ds_kwargs = dict(sr=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono)
     cv_train_ds, cv_dev_ds, cv_test_ds = loader.load_splits(args.input_path, **ds_kwargs)

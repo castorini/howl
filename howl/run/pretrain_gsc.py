@@ -11,7 +11,7 @@ from .args import ArgumentParserBuilder, opt
 from .create_raw_dataset import print_stats
 from howl.data.dataset import AudioClassificationDataset, GoogleSpeechCommandsDatasetLoader, ClassificationBatch
 from howl.data.dataloader import StandardAudioDataLoaderBuilder
-from howl.data.transform import compose, ZmuvTransform, StandardAudioTransform, WakeWordBatchifier,\
+from howl.data.transform import compose, ZmuvTransform, StandardAudioTransform, WakeWordFrameBatchifier,\
     NoiseTransform, batchify, TimestretchTransform, TimeshiftTransform, truncate_length
 from howl.settings import SETTINGS
 from howl.model import find_model, model_names, Workspace

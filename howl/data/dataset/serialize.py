@@ -10,7 +10,7 @@ from tqdm import tqdm
 import pandas as pd
 import soundfile
 
-from .base import DatasetType, AudioClipMetadata, UNKNOWN_TRANSCRIPTION, AlignedAudioClipMetadata
+from .base import DatasetType, AudioClipMetadata, UNKNOWN_TRANSCRIPTION
 from .dataset import AudioClipDataset, WakeWordDataset, AudioClassificationDataset, AudioDataset
 from howl.registered import RegisteredObjectBase
 from howl.utils.audio import silent_load
@@ -127,7 +127,7 @@ class AudioClipDatasetLoader(MetadataLoaderMixin, RegisteredPathDatasetLoader, n
 class WakeWordDatasetLoader(MetadataLoaderMixin, PathDatasetLoader):
     default_prefix = 'aligned-'
     dataset_class = WakeWordDataset
-    metadata_class = AlignedAudioClipMetadata
+    metadata_class = AudioClipMetadata
 
 
 class GoogleSpeechCommandsDatasetLoader(RegisteredPathDatasetLoader, name='gsc'):

@@ -9,12 +9,15 @@ from pydantic import BaseSettings
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from howl.data.dataset import PhonePhrase
 from howl.data.transform import ZmuvTransform, StandardAudioTransform
+from howl.utils.audio import stride
 
 
-__all__ = ['InferenceEngine',
+__all__ = ['FrameInferenceEngine',
+           'SequenceInferenceEngine',
            'InferenceEngineSettings',
            'PhoneticTranscriptSearcher',
            'TranscriptSearcher',
@@ -138,6 +141,7 @@ class InferenceEngine:
         self.reset()
 
     def reset(self):
+        self.curr_time = 0
         self.pred_history = []
         self.label_history = []
 
@@ -199,15 +203,69 @@ class InferenceEngine:
         self.label_history.append((curr_time, max_label))
         return max_label
 
-    @torch.no_grad()
-    def infer(self,
-              x: torch.Tensor,
-              lengths: torch.Tensor = None,
-              curr_time: float = None) -> int:
-
+    def _append_probability_frame(self, p: np.ndarray, curr_time=None):
         if curr_time is None:
             curr_time = self.time_provider() * 1000
+        self.pred_history.append((curr_time, p))
+        label = self._get_prediction(curr_time)
+        logging.debug(([f'{x:.3f}' for x in p.tolist()], label))
+        self.label_history.append((curr_time, label))
+        return label
 
+    def infer(self, audio_data: torch.Tensor) -> bool:
+        raise NotImplementedError
+
+
+class SequenceInferenceEngine(InferenceEngine):
+    @torch.no_grad()
+    def infer(self, audio_data: torch.Tensor) -> bool:
+        self.std = self.std.to(audio_data.device)
+        scores = self.model(self.zmuv(self.std(audio_data.unsqueeze(0))), None)
+        scores = F.softmax(scores, -1).squeeze(1)
+        sequence_present = False
+        for frame in scores:
+            p = frame.cpu().numpy()
+            p *= self.inference_weights
+            p = p / p.sum()
+            self._append_probability_frame(p, curr_time=self.curr_time)
+            if self.sequence_present(self.curr_time):
+                sequence_present = True
+                break
+        return sequence_present
+
+
+class FrameInferenceEngine(InferenceEngine):
+    def __init__(self,
+                 max_window_size_ms,
+                 eval_stride_size_ms,
+                 sample_rate,
+                 *args,
+                 **kwargs):
+        super().__init__(*args, **kwargs)
+        self.max_window_size_ms, self.eval_stride_size_ms = max_window_size_ms, eval_stride_size_ms
+        self.sample_rate = sample_rate
+
+    @torch.no_grad()
+    def infer(self, audio_data: torch.Tensor) -> bool:
+        sequence_present = False
+        for window in stride(audio_data,
+                             self.max_window_size_ms,
+                             self.eval_stride_size_ms,
+                             self.sample_rate):
+            if window.size(-1) < 1000:
+                break
+            self.ingest_frame(window.squeeze(0), curr_time=self.curr_time)
+            self.curr_time += self.eval_stride_size_ms
+            if self.sequence_present(self.curr_time):
+                sequence_present = True
+                break
+        return sequence_present
+
+    @torch.no_grad()
+    def ingest_frame(self,
+                     x: torch.Tensor,
+                     lengths: torch.Tensor = None,
+                     curr_time: float = None) -> int:
         self.std = self.std.to(x.device)
         if lengths is None:
             lengths = torch.tensor([x.size(-1)]).to(x.device)
@@ -217,8 +275,5 @@ class InferenceEngine:
 
         p *= self.inference_weights
         p = p / p.sum()
-
-        self.pred_history.append((curr_time, p))
-        label = self._get_prediction(curr_time)
-        logging.debug(([f'{x:.3f}' for x in p.tolist()], label))
+        label = self._append_probability_frame(p, curr_time=curr_time)
         return label

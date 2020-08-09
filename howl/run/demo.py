@@ -10,12 +10,12 @@ from .args import ArgumentParserBuilder, opt
 from howl.data.transform import ZmuvTransform
 from howl.settings import SETTINGS
 from howl.model import RegisteredModel, Workspace
-from howl.model.inference import InferenceEngine
+from howl.model.inference import FrameInferenceEngine
 
 
 class InferenceClient:
     def __init__(self,
-                 engine: InferenceEngine,
+                 engine: FrameInferenceEngine,
                  device: torch.device,
                  words,
                  chunk_size: int = 500):
@@ -56,7 +56,7 @@ class InferenceClient:
         self._audio_buf = self._audio_buf[2:]
         arr = np.frombuffer(audio_data, dtype=np.int16).astype(np.float) / 32767
         inp = torch.from_numpy(arr).float().to(self.device)
-        self.engine.append_label(self.engine.infer(inp))
+        self.engine.append_label(self.engine.ingest_frame(inp))
         if self.engine.sequence_present():
             phrase = ' '.join(self.words[x] for x in self.engine.sequence).title()
             print(f'{phrase} detected', end='\r')
@@ -80,7 +80,7 @@ def main():
     zmuv_transform.load_state_dict(torch.load(str(ws.path / 'zmuv.pt.bin')))
 
     ws.load_model(model, best=False)
-    engine = InferenceEngine(model, zmuv_transform, len(args.vocab))
+    engine = FrameInferenceEngine(model, zmuv_transform, len(args.vocab))
     print(f'Using {engine.settings.make_wakeword(args.vocab)}')
 
     client = InferenceClient(engine, device, args.vocab)

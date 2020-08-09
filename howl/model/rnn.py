@@ -36,9 +36,32 @@ class LASClassifierConfig(BaseSettings):
     fixed_attn_config: FixedAttentionModuleConfig = FixedAttentionModuleConfig()
 
 
-class SimpleGRU(RegisteredModel, name='gru'):
-    def __init__(self, config: LASEncoderConfig = LASEncoderConfig()):
-        super().__init__()
+class LstmConfig(BaseSettings):
+    num_mels: int = 40
+    hidden_size: int = 96
+    num_labels: int = 2
+
+
+class SequentialLstm(RegisteredModel, name='seq-lstm'):
+    def __init__(self, num_labels: int, config: LstmConfig = LstmConfig()):
+        super().__init__(num_labels)
+        self.lstm = nn.LSTM(config.num_mels, config.hidden_size)
+        self.dnn = nn.Sequential(nn.Linear(config.hidden_size, int(2 * config.hidden_size)),
+                                 nn.ReLU(),
+                                 nn.Linear(int(2 * config.hidden_size), num_labels))
+
+    def forward(self, x, lengths):
+        x = x[:, 0]  # Use log-Mels only
+        # x = x.view(x.size(0), 2, -1, x.size(2))
+        # x = x.contiguous().permute(0, 2, 1, 3).contiguous()
+        # x = x.view(x.size(0), x.size(1) * x.size(2), -1)  # super stacking
+        rnn_seq, _ = self.lstm(x.permute(2, 0, 1).contiguous())
+        return self.dnn(rnn_seq)
+
+
+class SimpleGru(RegisteredModel, name='gru'):
+    def __init__(self, num_labels: int, config: LASEncoderConfig = LASEncoderConfig()):
+        super().__init__(num_labels)
         conv1 = nn.Conv2d(1, config.num_latent_channels, 3, padding=(1, 3))
         conv2 = nn.Conv2d(config.num_latent_channels, 1, 3, padding=1)
         self.conv_encoder = nn.Sequential(conv1,
@@ -129,8 +152,8 @@ class FixedAttentionModule(nn.Module):
 
 
 class LASClassifier(RegisteredModel, name='las'):
-    def __init__(self, config: LASClassifierConfig = LASClassifierConfig()):
-        super().__init__()
+    def __init__(self, num_labels: int, config: LASClassifierConfig = LASClassifierConfig()):
+        super().__init__(num_labels)
         self.encoder = LASEncoder(config.las_config)
         self.attn = FixedAttentionModule(config.fixed_attn_config)
         self.fc = nn.Sequential(nn.Linear(config.las_config.hidden_size * 2, config.dnn_size),
