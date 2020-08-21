@@ -38,13 +38,13 @@ class AudioDatasetStatistics:
 
 
 class AudioClipMetadata(BaseModel):
-    path: Path
+    path: Optional[Path] = Path('.')
     phone_strings: Optional[List[str]]
     words: Optional[List[str]]
     phone_end_timestamps: Optional[List[float]]
     word_end_timestamps: Optional[List[float]]
     end_timestamps: Optional[List[float]]  # TODO: remove, backwards compat right now
-    transcription: str = ''
+    transcription: Optional[str] = ''
 
     @property
     def audio_id(self) -> str:
@@ -218,7 +218,7 @@ class ClassificationClipExample(AudioClipExample[AudioClipMetadata]):
         self.label = label
 
     def emplaced_audio_data(self, audio_data: torch.Tensor, **kwargs) -> 'ClassificationClipExample':
-        return ClassificationClipExample(self.metadata, audio_data, self.sample_rate, self.label)
+        return ClassificationClipExample(self.label, self.metadata, audio_data, self.sample_rate)
 
 
 class DatasetType(enum.Enum):

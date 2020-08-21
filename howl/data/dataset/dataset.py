@@ -15,6 +15,7 @@ from howl.utils.hash import sha256_int
 
 
 __all__ = ['AudioDataset',
+           'HonkSpeechCommandsDataset',
            'AudioClipDataset',
            'WakeWordDataset',
            'AudioClassificationDataset',
@@ -123,6 +124,25 @@ class AudioClassificationDataset(AudioDataset[AudioClipMetadata]):
                                          audio_data=torch.from_numpy(audio_data),
                                          sample_rate=self.sr,
                                          label=self.label_map[metadata.transcription])
+
+
+class HonkSpeechCommandsDataset(AudioClassificationDataset):
+    def __init__(self, *args, silence_proportion: float = 0.1, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.silence_proportion = silence_proportion
+        self.silence_label = self.label_map['__silence__']
+
+    def __getitem__(self, idx) -> ClassificationClipExample:
+        if idx < super().__len__():
+            return super().__getitem__(idx)
+        return ClassificationClipExample(metadata=AudioClipMetadata(),
+                                         audio_data=torch.zeros(16000),
+                                         sample_rate=self.sr,
+                                         label=self.silence_label)
+
+    def __len__(self):
+        orig_len = super().__len__()
+        return orig_len + int(self.silence_proportion * orig_len)
 
 
 class Sha256Splitter:

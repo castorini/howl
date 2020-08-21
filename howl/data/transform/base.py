@@ -135,7 +135,7 @@ class AudioSequenceBatchifier:
 class WakeWordFrameBatchifier:
     def __init__(self,
                  negative_label: int,
-                 positive_sample_prob: float = 1,
+                 positive_sample_prob: float = 0.5,
                  window_size_ms: int = 500,
                  sample_rate: int = 16000,
                  positive_delta_ms: int = 150,
@@ -184,12 +184,9 @@ class WakeWordFrameBatchifier:
                     last_positive = b
                 negative_intervals.append((b, int(len(ex.audio_data) / 16000 * 1000)))
                 a, b = random.choice(negative_intervals)
-                window_sz_samples = int(self.window_size_ms / 1000 * self.sample_rate)
-                a = int(a / 1000 * self.sample_rate)
-                b = int(b / 1000 * self.sample_rate)
-                if b - a > window_sz_samples:
-                    a = random.randint(0, b - window_sz_samples)
-                    b = a + window_sz_samples
+                if b - a > self.window_size_ms:
+                    a = random.randint(0, int(b - self.window_size_ms))
+                    b = a + self.window_size_ms
                 new_examples.append((self.negative_label, ex.emplaced_audio_data(ex.audio_data[..., a:b])))
 
         labels_lst = [x[0] for x in new_examples]

@@ -1,6 +1,5 @@
 from pathlib import Path
 import logging
-import re
 
 from tqdm import trange, tqdm
 from torch.optim.adamw import AdamW
@@ -18,9 +17,8 @@ from howl.data.dataloader import StandardAudioDataLoaderBuilder
 from howl.data.transform import compose, ZmuvTransform, StandardAudioTransform, WakeWordFrameBatchifier,\
     NoiseTransform, batchify, TimestretchTransform, DatasetMixer, AudioSequenceBatchifier
 from howl.settings import SETTINGS
-from howl.model import Workspace, ConfusionMatrix, RegisteredModel
+from howl.model import Workspace, ConfusionMatrix, RegisteredModel, ConvertedStaticModel
 from howl.model.inference import FrameInferenceEngine, SequenceInferenceEngine
-from howl.utils.audio import stride
 from howl.utils.random import set_seed
 
 
@@ -42,7 +40,8 @@ def main():
                                           negative_label=ctx.negative_label,
                                           coloring=ctx.coloring)
         else:
-            engine = SequenceInferenceEngine(model,
+            engine = SequenceInferenceEngine(SETTINGS.audio.sample_rate,
+                                             model,
                                              zmuv_transform,
                                              negative_label=ctx.negative_label,
                                              coloring=ctx.coloring)
@@ -68,6 +67,10 @@ def main():
         if save and not args.eval:
             writer.add_scalar(f'{prefix}/Metric/tp', conf_matrix.tp, epoch_idx)
             ws.increment_model(model, conf_matrix.tp)
+        if args.eval:
+            with (ws.path / 'results.csv').open('a') as f:
+                threshold = engine.threshold
+                f.write(f'{prefix},{threshold},{conf_matrix.tp},{conf_matrix.tn},{conf_matrix.fp},{conf_matrix.fn}\n')
 
     def do_evaluate():
         evaluate_engine(ww_dev_pos_ds, 'Dev positive', positive_set=True)
@@ -147,7 +150,9 @@ def main():
     prep_dl.shuffle = True
     train_dl = StandardAudioDataLoaderBuilder(ww_train_ds, collate_fn=train_comp).build(SETTINGS.training.batch_size)
 
-    model = RegisteredModel.find_registered_class(args.model)(ctx.num_labels).to(device)
+    model = RegisteredModel.find_registered_class(args.model)(ctx.num_labels).to(device).streaming()
+    if SETTINGS.training.convert_static:
+        model = ConvertedStaticModel(model, 40, 10)
     params = list(filter(lambda x: x.requires_grad, model.parameters()))
     optimizer = AdamW(params, SETTINGS.training.learning_rate, weight_decay=SETTINGS.training.weight_decay)
     logging.info(f'{sum(p.numel() for p in params)} parameters')
@@ -176,6 +181,7 @@ def main():
     for epoch_idx in trange(SETTINGS.training.num_epochs, position=0, leave=True):
         model.train()
         std_transform.train()
+        model.streaming_state = None
         pbar = tqdm(train_dl,
                     total=len(train_dl),
                     position=1,
@@ -191,6 +197,7 @@ def main():
                 lengths = std_transform.compute_lengths(batch.audio_lengths)
                 scores = model(zmuv_transform(std_transform(batch.audio_data)), lengths)
                 scores = F.log_softmax(scores, -1)
+                lengths = torch.tensor([model.compute_length(x.item()) for x in lengths]).to(device)
                 loss = criterion(scores, batch.labels, lengths, batch.label_lengths)
             optimizer.zero_grad()
             model.zero_grad()

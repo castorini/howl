@@ -27,7 +27,7 @@ class InferenceContext:
         self.labeler = WordFrameLabeler(vocab)
         self.coloring = None
         use_phone = token_type == 'phone'
-        if pronounce_dict is None:
+        if pronounce_dict is None and use_phone:
             pronounce_dict = PronunciationDictionary.from_file(SETTINGS.training.phone_dictionary)
         if use_phone:
             self.coloring = LabelColoring()

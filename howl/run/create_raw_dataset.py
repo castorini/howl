@@ -38,7 +38,7 @@ def main():
     if args.input_path is None:
         args.input_path = SETTINGS.raw_dataset.common_voice_dataset_path
 
-    ctx = InferenceContext()
+    ctx = InferenceContext(SETTINGS.training.vocab, token_type=SETTINGS.training.token_type)
     loader = RegisteredPathDatasetLoader.find_registered_class(args.dataset_type)()
     ds_kwargs = dict(sr=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono)
     cv_train_ds, cv_dev_ds, cv_test_ds = loader.load_splits(args.input_path, **ds_kwargs)

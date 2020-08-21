@@ -6,19 +6,20 @@ import pyaudio
 import numpy as np
 import torch
 
+from howl.context import InferenceContext
 from .args import ArgumentParserBuilder, opt
 from howl.data.transform import ZmuvTransform
 from howl.settings import SETTINGS
 from howl.model import RegisteredModel, Workspace
-from howl.model.inference import FrameInferenceEngine
+from howl.model.inference import FrameInferenceEngine, InferenceEngine, SequenceInferenceEngine
 
 
 class InferenceClient:
     def __init__(self,
-                 engine: FrameInferenceEngine,
+                 engine: InferenceEngine,
                  device: torch.device,
                  words,
-                 chunk_size: int = 500):
+                 chunk_size: int = 2000):
         self.engine = engine
         self.chunk_size = chunk_size
         self._audio = pyaudio.PyAudio()
@@ -50,14 +51,14 @@ class InferenceClient:
         data_ok = (in_data, pyaudio.paContinue)
         self.last_data = in_data
         self._audio_buf.append(in_data)
-        if len(self._audio_buf) != 16:
-            return data_ok
+        # if len(self._audio_buf) != 8:  # 16:
+        #     return data_ok
         audio_data = b''.join(self._audio_buf)
-        self._audio_buf = self._audio_buf[2:]
+        self._audio_buf = []
         arr = np.frombuffer(audio_data, dtype=np.int16).astype(np.float) / 32767
         inp = torch.from_numpy(arr).float().to(self.device)
-        self.engine.append_label(self.engine.ingest_frame(inp))
-        if self.engine.sequence_present():
+        # self.engine.reset()
+        if self.engine.infer(inp):
             phrase = ' '.join(self.words[x] for x in self.engine.sequence).title()
             print(f'{phrase} detected', end='\r')
         else:
@@ -68,22 +69,35 @@ class InferenceClient:
 def main():
     apb = ArgumentParserBuilder()
     apb.add_options(opt('--model', type=str, choices=RegisteredModel.registered_names(), default='las'),
-                    opt('--workspace', type=str, default=str(Path('workspaces') / 'default')),
-                    opt('--vocab', type=str, nargs='+', default=['hey', 'firefox']))
+                    opt('--workspace', type=str, default=str(Path('workspaces') / 'default')))
     args = apb.parser.parse_args()
+    use_frame = SETTINGS.training.objective == 'frame'
+    ctx = InferenceContext(SETTINGS.training.vocab, token_type=SETTINGS.training.token_type, use_blank=not use_frame)
 
     ws = Workspace(Path(args.workspace), delete_existing=False)
 
     device = torch.device(SETTINGS.training.device)
     zmuv_transform = ZmuvTransform().to(device)
-    model = RegisteredModel.find_registered_class(args.model)().to(device).eval()
+    model = RegisteredModel.find_registered_class(args.model)(ctx.num_labels).to(device).eval()
     zmuv_transform.load_state_dict(torch.load(str(ws.path / 'zmuv.pt.bin')))
 
-    ws.load_model(model, best=False)
-    engine = FrameInferenceEngine(model, zmuv_transform, len(args.vocab))
-    print(f'Using {engine.settings.make_wakeword(args.vocab)}')
-
-    client = InferenceClient(engine, device, args.vocab)
+    ws.load_model(model, best=True)
+    model.streaming()
+    if use_frame:
+        engine = FrameInferenceEngine(int(SETTINGS.training.max_window_size_seconds * 1000),
+                                      int(SETTINGS.training.eval_stride_size_seconds * 1000),
+                                      SETTINGS.audio.sample_rate,
+                                      model,
+                                      zmuv_transform,
+                                      negative_label=ctx.negative_label,
+                                      coloring=ctx.coloring)
+    else:
+        engine = SequenceInferenceEngine(SETTINGS.audio.sample_rate,
+                                         model,
+                                         zmuv_transform,
+                                         negative_label=ctx.negative_label,
+                                         coloring=ctx.coloring)
+    client = InferenceClient(engine, device, SETTINGS.training.vocab)
     client.join()
 
 

@@ -1,3 +1,5 @@
+from typing import Any
+
 from pydantic import BaseSettings
 from torch.nn.utils.rnn import pad_packed_sequence, pack_padded_sequence
 import torch
@@ -17,16 +19,15 @@ __all__ = ['LASEncoderConfig',
 class LASEncoderConfig(BaseSettings):
     num_mels: int = 40
     num_spec_channels: int = 3
-    num_latent_channels: int = 32
-    hidden_size: int = 128
+    num_latent_channels: int = 8
+    hidden_size: int = 96
     num_layers: int = 1
     use_maxpool: bool = True
-    num_labels: int = 2
 
 
 class FixedAttentionModuleConfig(BaseSettings):
     num_heads: int = 4
-    hidden_size: int = 128
+    hidden_size: int = 96
 
 
 class LASClassifierConfig(BaseSettings):
@@ -38,7 +39,7 @@ class LASClassifierConfig(BaseSettings):
 
 class LstmConfig(BaseSettings):
     num_mels: int = 40
-    hidden_size: int = 96
+    hidden_size: int = 128
     num_labels: int = 2
 
 
@@ -49,14 +50,46 @@ class SequentialLstm(RegisteredModel, name='seq-lstm'):
         self.dnn = nn.Sequential(nn.Linear(config.hidden_size, int(2 * config.hidden_size)),
                                  nn.ReLU(),
                                  nn.Linear(int(2 * config.hidden_size), num_labels))
+        self.hc = None
+
+    @property
+    def streaming_state(self) -> Any:
+        return self.hc
+
+    @streaming_state.setter
+    def streaming_state(self, x: Any):
+        self.hc = x
 
     def forward(self, x, lengths):
         x = x[:, 0]  # Use log-Mels only
-        # x = x.view(x.size(0), 2, -1, x.size(2))
-        # x = x.contiguous().permute(0, 2, 1, 3).contiguous()
-        # x = x.view(x.size(0), x.size(1) * x.size(2), -1)  # super stacking
-        rnn_seq, _ = self.lstm(x.permute(2, 0, 1).contiguous())
+        hx = self.streaming_state if self.is_streaming and self.streaming_state is not None else None
+        x = x.permute(2, 0, 1).contiguous()
+        if lengths is not None:
+            x = pack_padded_sequence(x, lengths)
+        rnn_seq, hc = self.lstm(x, hx=hx)
+        if self.is_streaming:
+            self.streaming_state = (hc[0].clone().detach(), hc[1].clone().detach())
+        if lengths is not None:
+            rnn_seq, _ = pad_packed_sequence(rnn_seq)
         return self.dnn(rnn_seq)
+
+
+class SimpleLstm(RegisteredModel, name='lstm'):
+    def __init__(self, num_labels: int, config: LstmConfig = LstmConfig()):
+        super().__init__(num_labels)
+        self.lstm = nn.LSTM(config.num_mels, config.hidden_size)
+        self.dnn = nn.Sequential(nn.Linear(config.hidden_size, int(2 * config.hidden_size)),
+                                 nn.ReLU(),
+                                 nn.Linear(int(2 * config.hidden_size), num_labels))
+        self.hc = None
+
+    def forward(self, x, lengths):
+        x = x[:, 0]  # Use log-Mels only
+        hx = self.streaming_state if self.is_streaming and self.streaming_state is not None else None
+        rnn_seq, hc = self.lstm(pack_padded_sequence(x.permute(2, 0, 1).contiguous(), lengths), hx=hx)
+        if self.is_streaming:
+            self.streaming_state = hc
+        return self.dnn(hc[0].squeeze(0))
 
 
 class SimpleGru(RegisteredModel, name='gru'):
@@ -76,7 +109,7 @@ class SimpleGru(RegisteredModel, name='gru'):
         self.dnn = nn.Sequential(nn.Linear(config.hidden_size, int(2 * config.hidden_size)),
                                  nn.ReLU(),
                                  nn.Dropout(0.2),
-                                 nn.Linear(int(2 * config.hidden_size), config.num_labels))
+                                 nn.Linear(int(2 * config.hidden_size), num_labels))
 
     def forward(self, x, lengths):
         if lengths is None:
@@ -110,7 +143,7 @@ class LASEncoder(nn.Module):
                                           nn.BatchNorm2d(out_channels),
                                           nn.ReLU(),
                                           nn.MaxPool2d((1, 2 if config.use_maxpool else 1)))
-        self.lstm_encoder = nn.LSTM(out_channels * 84, hidden_size, config.num_layers, bias=True, bidirectional=True)
+        self.lstm_encoder = nn.LSTM(out_channels * 44, hidden_size, config.num_layers, bias=True, bidirectional=True)
 
     def forward(self, x, lengths):
         if lengths is None:
@@ -159,7 +192,7 @@ class LASClassifier(RegisteredModel, name='las'):
         self.fc = nn.Sequential(nn.Linear(config.las_config.hidden_size * 2, config.dnn_size),
                                 nn.ReLU(),
                                 nn.Dropout(config.dropout),
-                                nn.Linear(config.dnn_size, 2))
+                                nn.Linear(config.dnn_size, num_labels))
 
     def forward(self, x, lengths):
         rnn_seq, rnn_out = self.encoder(x, lengths)
