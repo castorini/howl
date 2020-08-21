@@ -11,7 +11,9 @@ A proper Pip package is coming soon.
 
 2. Install [PyTorch](https://pytorch.org) by following your platform-specific instructions.
 
-3. `pip install -r requirements.txt`
+3. Install PyAudio and its dependencies through your distribution's package system.
+
+4. `pip install -r requirements.txt`
 
 ### Preparing a Dataset
 
