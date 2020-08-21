@@ -1,18 +1,21 @@
-from typing import Sequence, Iterable
+from typing import Sequence, Iterable, List
 import random
 
 import librosa.effects as effects
+import numpy as np
 import torch
 import torch.nn as nn
 
-from howl.data.dataset import WakeWordClipExample, ClassificationBatch, EmplacableExample
+from howl.data.dataset import WakeWordClipExample, ClassificationBatch, EmplacableExample, SequenceBatch
+from howl.data.tokenize import TranscriptTokenizer
 
 
 __all__ = ['Composition',
            'compose',
            'ZmuvTransform',
            'random_slice',
-           'WakeWordBatchifier',
+           'WakeWordFrameBatchifier',
+           'AudioSequenceBatchifier',
            'batchify',
            'identity',
            'trim',
@@ -76,10 +79,63 @@ def batchify(examples: Sequence[EmplacableExample], label_provider=None):
     return ClassificationBatch(audio_tensor, labels, lengths)
 
 
-class WakeWordBatchifier:
+def tensorize_audio_data(audio_data_lst: List[torch.Tensor],
+                         max_length: int = None,
+                         rand_append: bool = False,
+                         **extra_data_lists):
+    lengths = np.array([audio_data.size(-1) for audio_data in audio_data_lst])
+    sort_indices = np.argsort(-lengths)
+    audio_data_lst = np.array(audio_data_lst, dtype=object)[sort_indices].tolist()
+    extra_data_lists = {k: np.array(v, dtype=object)[sort_indices].tolist() for k, v in extra_data_lists.items()}
+
+    if max_length is None:
+        max_length = max(audio_data.size(-1) for audio_data in audio_data_lst)
+    audio_tensor = []
+    for audio_data in audio_data_lst:
+        if rand_append and random.random() < 0.5:
+            x = (torch.zeros(max_length - audio_data.size(-1)), audio_data.squeeze())
+        else:
+            x = (audio_data.squeeze(), torch.zeros(max_length - audio_data.size(-1)))
+        audio_tensor.append(torch.cat(x, -1))
+    return torch.stack(audio_tensor), extra_data_lists
+
+
+def pad(data_list, element=0, max_length=None):
+    if max_length is None:
+        max_length = max(map(len, data_list))
+    data_list = [x + [element] * (max_length - len(x)) for x in data_list]
+    return data_list
+
+
+class AudioSequenceBatchifier:
+    def __init__(self,
+                 tokenizer: TranscriptTokenizer,
+                 sample_rate: int = 16000):
+        self.sample_rate = sample_rate
+        self.tokenizer = tokenizer
+
+    def __call__(self, examples: Sequence[WakeWordClipExample]) -> SequenceBatch:
+        audio_data_lst = []
+        labels_lst = []
+        for ex in examples:
+            labels = self.tokenizer.encode(ex.metadata.transcription)  # TODO: generalize
+            labels_lst.append(labels)
+            audio_data_lst.append(ex.audio_data)
+        audio_data_lengths = [audio_data.size(-1) for audio_data in audio_data_lst]
+        labels_lengths = list(map(len, labels_lst))
+        audio_tensor, data = tensorize_audio_data(audio_data_lst,
+                                                  labels_lst=labels_lst,
+                                                  labels_lengths=labels_lengths,
+                                                  input_lengths=audio_data_lengths)
+        labels_lst = torch.tensor(pad(data['labels_lst']))
+        labels_lengths = torch.tensor(data['labels_lengths'])
+        return SequenceBatch(audio_tensor, labels_lst, torch.tensor(data['input_lengths']), labels_lengths)
+
+
+class WakeWordFrameBatchifier:
     def __init__(self,
                  negative_label: int,
-                 positive_sample_prob: float = 1,
+                 positive_sample_prob: float = 0.5,
                  window_size_ms: int = 500,
                  sample_rate: int = 16000,
                  positive_delta_ms: int = 150,
@@ -128,29 +184,20 @@ class WakeWordBatchifier:
                     last_positive = b
                 negative_intervals.append((b, int(len(ex.audio_data) / 16000 * 1000)))
                 a, b = random.choice(negative_intervals)
-                window_sz_samples = int(self.window_size_ms / 1000 * self.sample_rate)
-                a = int(a / 1000 * self.sample_rate)
-                b = int(b / 1000 * self.sample_rate)
-                if b - a > window_sz_samples:
-                    a = random.randint(0, b - window_sz_samples)
-                    b = a + window_sz_samples
+                if b - a > self.window_size_ms:
+                    a = random.randint(0, int(b - self.window_size_ms))
+                    b = a + self.window_size_ms
                 new_examples.append((self.negative_label, ex.emplaced_audio_data(ex.audio_data[..., a:b])))
-        new_examples = sorted(new_examples, key=lambda x: x[1].audio_data.size()[-1], reverse=True)
-        lengths = torch.tensor([ex.audio_data.size(-1) for _, ex in new_examples])
-        if self.pad_to_window:
-            max_length = int(self.sample_rate * self.window_size_ms / 1000)
-        else:
-            max_length = max(ex.audio_data.size(-1) for _, ex in new_examples)
-        audio_tensor = []
-        for _, ex in new_examples:
-            if random.random() < 0.5:
-                x = (torch.zeros(max_length - ex.audio_data.size(-1)), ex.audio_data.squeeze())
-            else:
-                x = (ex.audio_data.squeeze(), torch.zeros(max_length - ex.audio_data.size(-1)))
-            audio_tensor.append(torch.cat(x, -1))
 
-        audio_tensor = torch.stack(audio_tensor)
-        labels_tensor = torch.tensor([lidx for lidx, _ in new_examples])
+        labels_lst = [x[0] for x in new_examples]
+        max_length = int(self.window_size_ms / 1000 * self.sample_rate) if self.pad_to_window else None
+        audio_tensor, extra_data = tensorize_audio_data([x[1].audio_data for x in new_examples],
+                                                        rand_append=True,
+                                                        max_length=max_length,
+                                                        labels_lst=labels_lst,
+                                                        lengths=[x[1].audio_data.size(-1) for x in new_examples])
+        labels_tensor = torch.tensor(extra_data['labels_lst'])
+        lengths = torch.tensor(extra_data['lengths'])
         return ClassificationBatch(audio_tensor, labels_tensor, lengths)
 
 

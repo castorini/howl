@@ -1,7 +1,7 @@
 from collections import defaultdict
 from copy import deepcopy
 from functools import partial
-from typing import Tuple, TypeVar
+from typing import Tuple, TypeVar, List
 from pathlib import Path
 import json
 import logging
@@ -10,8 +10,9 @@ from tqdm import tqdm
 import pandas as pd
 import soundfile
 
-from .base import DatasetType, AudioClipMetadata, UNKNOWN_TRANSCRIPTION, AlignedAudioClipMetadata
-from .dataset import AudioClipDataset, WakeWordDataset, AudioClassificationDataset, AudioDataset
+from .base import DatasetType, AudioClipMetadata, UNKNOWN_TRANSCRIPTION
+from .dataset import AudioClipDataset, WakeWordDataset, AudioClassificationDataset, AudioDataset, \
+    HonkSpeechCommandsDataset
 from howl.registered import RegisteredObjectBase
 from howl.utils.audio import silent_load
 from howl.utils.hash import sha256_int
@@ -127,10 +128,14 @@ class AudioClipDatasetLoader(MetadataLoaderMixin, RegisteredPathDatasetLoader, n
 class WakeWordDatasetLoader(MetadataLoaderMixin, PathDatasetLoader):
     default_prefix = 'aligned-'
     dataset_class = WakeWordDataset
-    metadata_class = AlignedAudioClipMetadata
+    metadata_class = AudioClipMetadata
 
 
 class GoogleSpeechCommandsDatasetLoader(RegisteredPathDatasetLoader, name='gsc'):
+    def __init__(self, vocab: List[str] = None, use_bg_noise: bool = False):
+        self.vocab = vocab
+        self.use_bg_noise = use_bg_noise
+
     def load_splits(self, path: Path, **dataset_kwargs) -> Tuple[AudioClassificationDataset,
                                                                  AudioClassificationDataset,
                                                                  AudioClassificationDataset]:
@@ -153,9 +158,12 @@ class GoogleSpeechCommandsDatasetLoader(RegisteredPathDatasetLoader, name='gsc')
         with (path / 'validation_list.txt').open() as f:
             file_map.update({k: DatasetType.DEV for k in f.read().split('\n')})
         all_list = list(path.glob('*/*.wav'))
+        if not self.use_bg_noise:
+            all_list = list(filter(lambda x: 'noise' not in str(x), all_list))
         folders = sorted(list(path.glob('*/')))
-        label_map = defaultdict(lambda: len(folders))
-        label_map.update({k.name: idx for idx, k in enumerate(folders)})
+        vocab = [x.name for x in folders] if self.vocab is None else self.vocab
+        label_map = defaultdict(lambda: len(vocab))
+        label_map.update({k: idx for idx, k in enumerate(vocab)})
         return load(DatasetType.TRAINING), load(DatasetType.DEV), load(DatasetType.TEST)
 
 

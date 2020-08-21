@@ -77,7 +77,7 @@ class PronunciationDictionary:
         self.word2phone = data_dict
 
     def encode(self, word: str) -> List[PhonePhrase]:
-        return self.word2phone[word]
+        return self.word2phone[word.lower().strip()]
 
     @classmethod
     def from_file(cls, filename: Path):

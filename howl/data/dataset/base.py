@@ -1,3 +1,4 @@
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import Mapping, Optional, List, TypeVar, Generic
 from pathlib import Path
@@ -6,7 +7,7 @@ import enum
 from pydantic import BaseModel
 import torch
 
-from .phone import PhonePhrase
+from .phone import PhonePhrase, Phone
 
 
 __all__ = ['AudioClipExample',
@@ -16,11 +17,11 @@ __all__ = ['AudioClipExample',
            'ClassificationClipExample',
            'DatasetType',
            'EmplacableExample',
-           'AlignedAudioClipMetadata',
            'WakeWordClipExample',
            'FrameLabeler',
            'WordFrameLabeler',
            'FrameLabelData',
+           'SequenceBatch',
            'PhoneticFrameLabeler',
            'UNKNOWN_TRANSCRIPTION',
            'NEGATIVE_CLASS']
@@ -37,16 +38,21 @@ class AudioDatasetStatistics:
 
 
 class AudioClipMetadata(BaseModel):
-    path: Path
-    transcription: str = ''
+    path: Optional[Path] = Path('.')
+    phone_strings: Optional[List[str]]
+    words: Optional[List[str]]
+    phone_end_timestamps: Optional[List[float]]
+    word_end_timestamps: Optional[List[float]]
+    end_timestamps: Optional[List[float]]  # TODO: remove, backwards compat right now
+    transcription: Optional[str] = ''
 
     @property
-    def audio_id(self):
+    def audio_id(self) -> str:
         return self.path.name.split('.', 1)[0]
 
-
-class AlignedAudioClipMetadata(AudioClipMetadata):
-    end_timestamps: List[float]
+    @property
+    def phone_phrase(self) -> Optional[PhonePhrase]:
+        return PhonePhrase([Phone(x) for x in self.phone_strings]) if self.phone_strings else None
 
 
 @dataclass
@@ -55,7 +61,7 @@ class FrameLabelData:
 
 
 class FrameLabeler:
-    def compute_frame_labels(self, metadata: AlignedAudioClipMetadata) -> FrameLabelData:
+    def compute_frame_labels(self, metadata: AudioClipMetadata) -> FrameLabelData:
         raise NotImplementedError
 
 
@@ -63,7 +69,7 @@ class PhoneticFrameLabeler(FrameLabeler):
     def __init__(self, phrases: List[PhonePhrase]):
         self.phrases = phrases
 
-    def compute_frame_labels(self, metadata: AlignedAudioClipMetadata) -> FrameLabelData:
+    def compute_frame_labels(self, metadata: AudioClipMetadata) -> FrameLabelData:
         frame_labels = dict()
         start = 0
         pp = PhonePhrase.from_string(metadata.transcription)
@@ -85,7 +91,7 @@ class WordFrameLabeler(FrameLabeler):
         self.words = words
         self.ceil_word_boundary = ceil_word_boundary
 
-    def compute_frame_labels(self, metadata: AlignedAudioClipMetadata) -> FrameLabelData:
+    def compute_frame_labels(self, metadata: AudioClipMetadata) -> FrameLabelData:
         frame_labels = dict()
         t = f' {metadata.transcription} '
         start = 0
@@ -129,8 +135,12 @@ class AudioClipExample(EmplacableExample, Generic[T]):
                             audio_data: torch.Tensor,
                             scale: float = 1,
                             bias: float = 0,
-                            new: bool = False) -> 'EmplacableExample':
-        return AudioClipExample(self.metadata, audio_data, self.sample_rate)
+                            new: bool = False) -> 'AudioClipExample':
+        metadata = self.metadata
+        if new:
+            metadata = deepcopy(metadata)
+            metadata.transcription = ''
+        return AudioClipExample(metadata, audio_data, self.sample_rate)
 
 
 @dataclass
@@ -157,7 +167,36 @@ class ClassificationBatch:
 
 
 @dataclass
-class WakeWordClipExample(AudioClipExample[AlignedAudioClipMetadata]):
+class SequenceBatch:
+    audio_data: torch.Tensor  # (batch size, max audio length)
+    labels: torch.Tensor  # (batch size, max label length)
+    audio_lengths: Optional[torch.Tensor]
+    label_lengths: Optional[torch.Tensor]
+
+    def __post_init__(self):
+        if self.audio_lengths is None:
+            self.audio_lengths = torch.tensor([self.audio_data.size(0) for _ in range(self.audio_data.size(1))])
+            self.audio_lengths = self.audio_lengths.to(self.audio_data.device)
+        if self.label_lengths is None:
+            self.label_lengths = torch.tensor([self.labels.size(0) for _ in range(self.labels.size(1))])
+            self.label_lengths = self.label_lengths.to(self.label_lengths.device)
+
+    def pin_memory(self):
+        self.audio_data.pin_memory()
+        self.labels.pin_memory()
+        self.audio_lengths.pin_memory()
+        self.label_lengths.pin_memory()
+
+    def to(self, device: torch.device) -> 'SequenceBatch':
+        self.audio_data = self.audio_data.to(device)
+        self.labels = self.labels.to(device)
+        self.audio_lengths = self.audio_lengths.to(device)
+        self.label_lengths = self.label_lengths.to(device)
+        return self
+
+
+@dataclass
+class WakeWordClipExample(AudioClipExample[AudioClipMetadata]):
     def __init__(self, label_data: FrameLabelData, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.label_data = label_data
@@ -167,8 +206,9 @@ class WakeWordClipExample(AudioClipExample[AlignedAudioClipMetadata]):
                             scale: float = 1,
                             bias: float = 0,
                             new: bool = False) -> 'WakeWordClipExample':
+        ex = super().emplaced_audio_data(audio_data, scale, bias, new)
         label_data = {} if new else {scale * k + bias: v for k, v in self.label_data.timestamp_label_map.items()}
-        return WakeWordClipExample(FrameLabelData(label_data), self.metadata, audio_data, self.sample_rate)
+        return WakeWordClipExample(FrameLabelData(label_data), ex.metadata, audio_data, self.sample_rate)
 
 
 @dataclass
@@ -178,7 +218,7 @@ class ClassificationClipExample(AudioClipExample[AudioClipMetadata]):
         self.label = label
 
     def emplaced_audio_data(self, audio_data: torch.Tensor, **kwargs) -> 'ClassificationClipExample':
-        return ClassificationClipExample(self.metadata, audio_data, self.sample_rate, self.label)
+        return ClassificationClipExample(self.label, self.metadata, audio_data, self.sample_rate)
 
 
 class DatasetType(enum.Enum):

@@ -1,3 +1,4 @@
+from collections import Counter
 from functools import partial
 from pathlib import Path
 import logging
@@ -8,13 +9,12 @@ import torch
 import torch.nn as nn
 
 from .args import ArgumentParserBuilder, opt
-from .create_raw_dataset import print_stats
 from howl.data.dataset import AudioClassificationDataset, GoogleSpeechCommandsDatasetLoader, ClassificationBatch
 from howl.data.dataloader import StandardAudioDataLoaderBuilder
-from howl.data.transform import compose, ZmuvTransform, StandardAudioTransform, WakeWordBatchifier,\
+from howl.data.transform import compose, ZmuvTransform, StandardAudioTransform, WakeWordFrameBatchifier,\
     NoiseTransform, batchify, TimestretchTransform, TimeshiftTransform, truncate_length
 from howl.settings import SETTINGS
-from howl.model import find_model, model_names, Workspace
+from howl.model import RegisteredModel, Workspace
 from howl.utils.random import set_seed
 
 
@@ -25,21 +25,26 @@ def main():
         pbar = tqdm(data_loader, desc=prefix, leave=True, total=len(data_loader))
         num_corr = 0
         num_tot = 0
+        counter = Counter()
         for idx, batch in enumerate(pbar):
             batch = batch.to(device)
             scores = model(zmuv_transform(std_transform(batch.audio_data)),
                            std_transform.compute_lengths(batch.lengths))
             num_tot += scores.size(0)
-            labels = torch.tensor([l % SETTINGS.training.num_labels for l in batch.labels.tolist()]).to(device)
+            labels = batch.labels.to(device)
+            counter.update(labels.tolist())
             num_corr += (scores.max(1)[1] == labels).float().sum().item()
             acc = num_corr / num_tot
             pbar.set_postfix(accuracy=f'{acc:.4}')
         if save and not args.eval:
             writer.add_scalar(f'{prefix}/Metric/acc', acc, epoch_idx)
             ws.increment_model(model, acc / 10)
+        elif args.eval:
+            tqdm.write(str(counter))
+            tqdm.write(str(acc))
 
     apb = ArgumentParserBuilder()
-    apb.add_options(opt('--model', type=str, choices=model_names(), default='las'),
+    apb.add_options(opt('--model', type=str, choices=RegisteredModel.registered_names(), default='las'),
                     opt('--workspace', type=str, default=str(Path('workspaces') / 'default')),
                     opt('--load-weights', action='store_true'),
                     opt('--eval', action='store_true'))
@@ -48,7 +53,7 @@ def main():
     ws = Workspace(Path(args.workspace), delete_existing=not args.eval)
     writer = ws.summary_writer
     set_seed(SETTINGS.training.seed)
-    loader = GoogleSpeechCommandsDatasetLoader()
+    loader = GoogleSpeechCommandsDatasetLoader(SETTINGS.training.vocab)
     sr = SETTINGS.audio.sample_rate
     ds_kwargs = dict(sr=sr, mono=SETTINGS.audio.use_mono)
     train_ds, dev_ds, test_ds = loader.load_splits(SETTINGS.dataset.dataset_path, **ds_kwargs)
@@ -69,7 +74,7 @@ def main():
     dev_dl = StandardAudioDataLoaderBuilder(dev_ds, collate_fn=compose(truncater, batchifier)).build(SETTINGS.training.batch_size)
     test_dl = StandardAudioDataLoaderBuilder(test_ds, collate_fn=compose(truncater, batchifier)).build(SETTINGS.training.batch_size)
 
-    model = find_model(args.model)().to(device)
+    model = RegisteredModel.find_registered_class(args.model)(30).to(device)
     params = list(filter(lambda x: x.requires_grad, model.parameters()))
     optimizer = AdamW(params, SETTINGS.training.learning_rate, weight_decay=SETTINGS.training.weight_decay)
     logging.info(f'{sum(p.numel() for p in params)} parameters')
@@ -111,7 +116,7 @@ def main():
             scores = model(audio_data, std_transform.compute_lengths(batch.lengths))
             optimizer.zero_grad()
             model.zero_grad()
-            labels = torch.tensor([l % SETTINGS.training.num_labels for l in batch.labels.tolist()]).to(device)
+            labels = batch.labels.to(device)
             loss = criterion(scores, labels)
             loss.backward()
             optimizer.step()

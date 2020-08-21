@@ -48,3 +48,23 @@ DATASET_PATH=data/fire-positive python -m howl.run.attach_alignment --align-type
 1. Source the relevant environment variables for training the `res8` model: `source envs/res8.env`.
 2. Train the model: `python -m howl.run.train -i data/fire-negative data/fire-positive --model res8 --workspace workspaces/fire-res8`.
 3. For the CLI demo, run `python -m howl.run.demo --model res8 --workspace workspaces/fire-res8`.
+
+## Reproducing Paper Results
+
+First, follow the installation instructions in the quickstart guide.
+
+### Google Speech Commands
+
+1. Download [the Google Speech Commands dataset](https://ai.googleblog.com/2017/08/launching-speech-commands-dataset.html) and extract it.
+2. Source the appropriate environment variables: `source envs/res8.env`
+3. Set the dataset path to the root folder of the Speech Commands dataset: `export DATASET_PATH=/path/to/dataset`
+4. Train the `res8` model: `NUM_EPOCHS=20 MAX_WINDOW_SIZE_SECONDS=1 VOCAB='["yes","no","up","down","left","right","on","off","stop","go"]' BATCH_SIZE=64 LR_DECAY=0.8 LEARNING_RATE=0.01 python -m howl.run.pretrain_gsc --model res8`
+
+### Hey Firefox
+
+1. Download [the Hey Firefox corpus](http://nlp.rocks/firefox), licensed under CC0, and extract it.
+2. Download [our noise dataset](http://nlp.rocks/ffnoise), built from Microsoft SNSD and MUSAN, and extract it.
+3. Source the appropriate environment variables: `source envs/res8.env`
+4. Set the noise dataset path to the root folder: `export NOISE_DATASET_PATH=/path/to/snsd`
+5. Train the model: `LR_DECAY=0.98 VOCAB='[" hey","fire","fox"]' USE_NOISE_DATASET=True BATCH_SIZE=16 INFERENCE_THRESHOLD=0 NUM_EPOCHS=300 NUM_MELS=40 INFERENCE_SEQUENCE=[0,1,2] MAX_WINDOW_SIZE_SECONDS=0.5 python -m howl.run.train --model res8 --workspace workspaces/hey-ff-res8 -i /path/to/hey/firefox`
+

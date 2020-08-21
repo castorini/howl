@@ -9,12 +9,17 @@ from pydantic import BaseSettings
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from howl.data.dataset import PhonePhrase
 from howl.data.transform import ZmuvTransform, StandardAudioTransform
+from howl.model import RegisteredModel
+from howl.utils.audio import stride
 
 
-__all__ = ['InferenceEngine',
+__all__ = ['FrameInferenceEngine',
+           'InferenceEngine',
+           'SequenceInferenceEngine',
            'InferenceEngineSettings',
            'PhoneticTranscriptSearcher',
            'TranscriptSearcher',
@@ -81,7 +86,7 @@ class WordTranscriptSearcher(TranscriptSearcher):
         self.wakeword = ' '.join(np.array(self.vocab)[self.settings.inference_sequence])
 
     def search(self, item: str) -> bool:
-        return self.wakeword in item
+        return self.wakeword in f' {item} '
 
     def contains_any(self, item: str) -> bool:
         return any(word in f' {item.lower()} ' for word in self.vocab)
@@ -115,7 +120,7 @@ class PhoneticTranscriptSearcher(TranscriptSearcher):
 
 class InferenceEngine:
     def __init__(self,
-                 model: nn.Module,
+                 model: RegisteredModel,
                  zmuv_transform: ZmuvTransform,
                  negative_label: int,
                  settings: InferenceEngineSettings = InferenceEngineSettings(),
@@ -138,6 +143,8 @@ class InferenceEngine:
         self.reset()
 
     def reset(self):
+        self.model.streaming_state = None
+        self.curr_time = 0
         self.pred_history = []
         self.label_history = []
 
@@ -199,15 +206,79 @@ class InferenceEngine:
         self.label_history.append((curr_time, max_label))
         return max_label
 
-    @torch.no_grad()
-    def infer(self,
-              x: torch.Tensor,
-              lengths: torch.Tensor = None,
-              curr_time: float = None) -> int:
-
+    def _append_probability_frame(self, p: np.ndarray, curr_time=None):
         if curr_time is None:
             curr_time = self.time_provider() * 1000
+        self.pred_history.append((curr_time, p))
+        label = self._get_prediction(curr_time)
+        self.label_history.append((curr_time, label))
+        return label
 
+    def infer(self, audio_data: torch.Tensor) -> bool:
+        raise NotImplementedError
+
+
+class SequenceInferenceEngine(InferenceEngine):
+    def __init__(self, sample_rate: int, *args, blank_idx: int = 0, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.blank_idx = blank_idx
+        self.sample_rate = sample_rate
+
+    @torch.no_grad()
+    def infer(self, audio_data: torch.Tensor) -> bool:
+        delta_ms = int(audio_data.size(-1) / self.sample_rate * 1000)
+        self.std = self.std.to(audio_data.device)
+        scores = self.model(self.zmuv(self.std(audio_data.unsqueeze(0))), None)
+        scores = F.softmax(scores, -1).squeeze(1)
+        sequence_present = False
+        delta_ms /= len(scores)
+        for frame in scores:
+            p = frame.cpu().numpy()
+            p *= self.inference_weights
+            p = p / p.sum()
+            logging.debug(([f'{x:.3f}' for x in p.tolist()], np.argmax(p)))
+            self.curr_time += delta_ms
+            if np.argmax(p) == self.blank_idx:
+                continue
+            self._append_probability_frame(p, curr_time=self.curr_time)
+            if self.sequence_present(self.curr_time):
+                sequence_present = True
+                break
+        return sequence_present
+
+
+class FrameInferenceEngine(InferenceEngine):
+    def __init__(self,
+                 max_window_size_ms,
+                 eval_stride_size_ms,
+                 sample_rate,
+                 *args,
+                 **kwargs):
+        super().__init__(*args, **kwargs)
+        self.max_window_size_ms, self.eval_stride_size_ms = max_window_size_ms, eval_stride_size_ms
+        self.sample_rate = sample_rate
+
+    @torch.no_grad()
+    def infer(self, audio_data: torch.Tensor) -> bool:
+        sequence_present = False
+        for window in stride(audio_data,
+                             self.max_window_size_ms,
+                             self.eval_stride_size_ms,
+                             self.sample_rate):
+            if window.size(-1) < 1000:
+                break
+            self.ingest_frame(window.squeeze(0), curr_time=self.curr_time)
+            self.curr_time += self.eval_stride_size_ms
+            if self.sequence_present(self.curr_time):
+                sequence_present = True
+                break
+        return sequence_present
+
+    @torch.no_grad()
+    def ingest_frame(self,
+                     x: torch.Tensor,
+                     lengths: torch.Tensor = None,
+                     curr_time: float = None) -> int:
         self.std = self.std.to(x.device)
         if lengths is None:
             lengths = torch.tensor([x.size(-1)]).to(x.device)
@@ -217,8 +288,5 @@ class InferenceEngine:
 
         p *= self.inference_weights
         p = p / p.sum()
-
-        self.pred_history.append((curr_time, p))
-        label = self._get_prediction(curr_time)
-        logging.debug(([f'{x:.3f}' for x in p.tolist()], label))
+        label = self._append_probability_frame(p, curr_time=curr_time)
         return label

@@ -5,19 +5,20 @@ from tqdm import trange, tqdm
 from torch.optim.adamw import AdamW
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from .args import ArgumentParserBuilder, opt
 from .create_raw_dataset import print_stats
-from howl.context import InferenceDataContext
+from howl.context import InferenceContext
+from howl.data.tokenize import WakeWordTokenizer
 from howl.data.dataset import WakeWordDatasetLoader, WakeWordDataset, RecursiveNoiseDatasetLoader, Sha256Splitter,\
     DatasetType
 from howl.data.dataloader import StandardAudioDataLoaderBuilder
-from howl.data.transform import compose, ZmuvTransform, StandardAudioTransform, WakeWordBatchifier,\
-    NoiseTransform, batchify, TimestretchTransform, DatasetMixer
+from howl.data.transform import compose, ZmuvTransform, StandardAudioTransform, WakeWordFrameBatchifier,\
+    NoiseTransform, batchify, TimestretchTransform, DatasetMixer, AudioSequenceBatchifier
 from howl.settings import SETTINGS
-from howl.model import Workspace, ConfusionMatrix, RegisteredModel
-from howl.model.inference import InferenceEngine
-from howl.utils.audio import stride
+from howl.model import Workspace, ConfusionMatrix, RegisteredModel, ConvertedStaticModel
+from howl.model.inference import FrameInferenceEngine, SequenceInferenceEngine
 from howl.utils.random import set_seed
 
 
@@ -30,7 +31,20 @@ def main():
                         mixer: DatasetMixer = None):
         std_transform.eval()
 
-        engine = InferenceEngine(model, zmuv_transform, negative_label=ctx.negative_label, coloring=ctx.coloring)
+        if use_frame:
+            engine = FrameInferenceEngine(int(SETTINGS.training.max_window_size_seconds * 1000),
+                                          int(SETTINGS.training.eval_stride_size_seconds * 1000),
+                                          SETTINGS.audio.sample_rate,
+                                          model,
+                                          zmuv_transform,
+                                          negative_label=ctx.negative_label,
+                                          coloring=ctx.coloring)
+        else:
+            engine = SequenceInferenceEngine(SETTINGS.audio.sample_rate,
+                                             model,
+                                             zmuv_transform,
+                                             negative_label=ctx.negative_label,
+                                             coloring=ctx.coloring)
         model.eval()
         conf_matrix = ConfusionMatrix()
         pbar = tqdm(dataset, desc=prefix)
@@ -42,18 +56,7 @@ def main():
                 ex, = mixer([ex])
             audio_data = ex.audio_data.to(device)
             engine.reset()
-            seq_present = False
-            curr_time = 0
-            for window in stride(audio_data,
-                                 SETTINGS.training.max_window_size_seconds * 1000,
-                                 SETTINGS.training.eval_stride_size_seconds * 1000,
-                                 SETTINGS.audio.sample_rate):
-                if window.size(-1) < 1000:
-                    break
-                pred = engine.infer(window.squeeze(0), curr_time=curr_time)
-                engine.append_label(pred, curr_time=curr_time)
-                seq_present = seq_present or engine.sequence_present(curr_time=curr_time)
-                curr_time += SETTINGS.training.eval_stride_size_seconds * 1000
+            seq_present = engine.infer(audio_data)
             if seq_present != positive_set and write_errors:
                 with (ws.path / 'errors.tsv').open('a') as f:
                     f.write(f'{ex.metadata.transcription}\t{int(seq_present)}\t{int(positive_set)}\t{ex.metadata.path}\n')
@@ -64,6 +67,10 @@ def main():
         if save and not args.eval:
             writer.add_scalar(f'{prefix}/Metric/tp', conf_matrix.tp, epoch_idx)
             ws.increment_model(model, conf_matrix.tp)
+        if args.eval:
+            with (ws.path / 'results.csv').open('a') as f:
+                threshold = engine.threshold
+                f.write(f'{prefix},{threshold},{conf_matrix.tp},{conf_matrix.tn},{conf_matrix.fp},{conf_matrix.fn}\n')
 
     def do_evaluate():
         evaluate_engine(ww_dev_pos_ds, 'Dev positive', positive_set=True)
@@ -87,15 +94,25 @@ def main():
                     opt('--eval', action='store_true'))
     args = apb.parser.parse_args()
 
-    ctx = InferenceDataContext()
+    use_frame = SETTINGS.training.objective == 'frame'
+    ctx = InferenceContext(SETTINGS.training.vocab, token_type=SETTINGS.training.token_type, use_blank=not use_frame)
+    if use_frame:
+        batchifier = WakeWordFrameBatchifier(ctx.negative_label,
+                                             window_size_ms=int(SETTINGS.training.max_window_size_seconds * 1000))
+        criterion = nn.CrossEntropyLoss()
+    else:
+        tokenizer = WakeWordTokenizer(ctx.vocab)
+        batchifier = AudioSequenceBatchifier(tokenizer)
+        criterion = nn.CTCLoss()
+
     ws = Workspace(Path(args.workspace), delete_existing=not args.eval)
     writer = ws.summary_writer
     set_seed(SETTINGS.training.seed)
     loader = WakeWordDatasetLoader()
     ds_kwargs = dict(sr=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono, frame_labeler=ctx.labeler)
 
-    ww_train_ds, ww_dev_ds, ww_test_ds = WakeWordDataset(metadata_list=[], set_type=DatasetType.TRAINING, **ds_kwargs),\
-                                         WakeWordDataset(metadata_list=[], set_type=DatasetType.DEV, **ds_kwargs),\
+    ww_train_ds, ww_dev_ds, ww_test_ds = WakeWordDataset(metadata_list=[], set_type=DatasetType.TRAINING, **ds_kwargs), \
+                                         WakeWordDataset(metadata_list=[], set_type=DatasetType.DEV, **ds_kwargs), \
                                          WakeWordDataset(metadata_list=[], set_type=DatasetType.TEST, **ds_kwargs)
     for ds_path in args.dataset_paths:
         ds_path = Path(ds_path)
@@ -114,8 +131,7 @@ def main():
     device = torch.device(SETTINGS.training.device)
     std_transform = StandardAudioTransform().to(device).eval()
     zmuv_transform = ZmuvTransform().to(device)
-    batchifier = WakeWordBatchifier(ctx.negative_label,
-                                    window_size_ms=int(SETTINGS.training.max_window_size_seconds * 1000))
+
     train_comp = (NoiseTransform().train(), batchifier)
 
     if SETTINGS.training.use_noise_dataset:
@@ -134,11 +150,12 @@ def main():
     prep_dl.shuffle = True
     train_dl = StandardAudioDataLoaderBuilder(ww_train_ds, collate_fn=train_comp).build(SETTINGS.training.batch_size)
 
-    model = RegisteredModel.find_registered_class(args.model)().to(device)
+    model = RegisteredModel.find_registered_class(args.model)(ctx.num_labels).to(device).streaming()
+    if SETTINGS.training.convert_static:
+        model = ConvertedStaticModel(model, 40, 10)
     params = list(filter(lambda x: x.requires_grad, model.parameters()))
     optimizer = AdamW(params, SETTINGS.training.learning_rate, weight_decay=SETTINGS.training.weight_decay)
     logging.info(f'{sum(p.numel() for p in params)} parameters')
-    criterion = nn.CrossEntropyLoss()
 
     if (ws.path / 'zmuv.pt.bin').exists():
         zmuv_transform.load_state_dict(torch.load(str(ws.path / 'zmuv.pt.bin')))
@@ -164,6 +181,7 @@ def main():
     for epoch_idx in trange(SETTINGS.training.num_epochs, position=0, leave=True):
         model.train()
         std_transform.train()
+        model.streaming_state = None
         pbar = tqdm(train_dl,
                     total=len(train_dl),
                     position=1,
@@ -171,11 +189,18 @@ def main():
                     leave=True)
         for batch in pbar:
             batch.to(device)
-            scores = model(zmuv_transform(std_transform(batch.audio_data)),
-                           std_transform.compute_lengths(batch.lengths))
+            if use_frame:
+                scores = model(zmuv_transform(std_transform(batch.audio_data)),
+                               std_transform.compute_lengths(batch.lengths))
+                loss = criterion(scores, batch.labels)
+            else:
+                lengths = std_transform.compute_lengths(batch.audio_lengths)
+                scores = model(zmuv_transform(std_transform(batch.audio_data)), lengths)
+                scores = F.log_softmax(scores, -1)
+                lengths = torch.tensor([model.compute_length(x.item()) for x in lengths]).to(device)
+                loss = criterion(scores, batch.labels, lengths, batch.label_lengths)
             optimizer.zero_grad()
             model.zero_grad()
-            loss = criterion(scores, batch.labels)
             loss.backward()
             optimizer.step()
             pbar.set_postfix(dict(loss=f'{loss.item():.3}'))
