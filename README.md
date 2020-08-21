@@ -11,7 +11,9 @@ A proper Pip package is coming soon.
 
 2. Install [PyTorch](https://pytorch.org) by following your platform-specific instructions.
 
-3. `pip install -r requirements.txt`
+3. Install PyAudio and its dependencies through your distribution's package system.
+
+4. `pip install -r requirements.txt`
 
 ### Preparing a Dataset
 
@@ -65,3 +67,4 @@ First, follow the installation instructions in the quickstart guide.
 3. Source the appropriate environment variables: `source envs/res8.env`
 4. Set the noise dataset path to the root folder: `export NOISE_DATASET_PATH=/path/to/snsd`
 5. Train the model: `LR_DECAY=0.98 VOCAB='[" hey","fire","fox"]' USE_NOISE_DATASET=True BATCH_SIZE=16 INFERENCE_THRESHOLD=0 NUM_EPOCHS=300 NUM_MELS=40 INFERENCE_SEQUENCE=[0,1,2] MAX_WINDOW_SIZE_SECONDS=0.5 python -m howl.run.train --model res8 --workspace workspaces/hey-ff-res8 -i /path/to/hey/firefox`
+
