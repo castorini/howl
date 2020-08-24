@@ -1,6 +1,16 @@
 # Howl
 Wake word detection modeling for Firefox Voice, supporting open datasets like Google Speech Commands and Mozilla Common Voice.
 
+Citation:
+```
+@article{tang2020howl,
+  title={Howl: A Deployed, Open-Source Wake Word Detection System},
+  author={Raphael Tang and Jaejun Lee and Afsaneh Razi and Julia Cambre and Ian Bicking and Jofish Kaye and Jimmy Lin},
+  journal={arXiv:2008.09606},
+  year={2020}
+}
+```
+
 ## Quickstart Guide
 
 ### Installation
