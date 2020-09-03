@@ -46,7 +46,7 @@ DATASET_PATH=data/fire-negative python -m howl.run.attach_alignment --align-type
 ```
 6. Use MFA to generate alignment for the positive set:
 ```bash
-mfa_align data/fire-positive eng.dict pretrained_models/english.zip output-folder
+mfa_align data/fire-positive/audio eng.dict pretrained_models/english.zip output-folder
 ```
 7. Attach the MFA alignment to the positive dataset:
 ```bash
