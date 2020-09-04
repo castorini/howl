@@ -13,7 +13,7 @@ def main():
     apb.add_options(opt('--n',
                         type=int,
                         default=1,
-                        help='number of experiments to run')
+                        help='number of experiments to run'),
                     opt('--dataset_path',
                         type=str,
                         default="/data/kws/gsc/v1"))
@@ -67,7 +67,7 @@ def main():
     os.environ["LR_DECAY"] = "0.8"
     os.environ["NUM_MELS"] = "40"
 
-    vocabs = [ name for name in os.listdir(dataset_path) if os.path.isdir(os.path.join(dataset_path, name)) ]
+    vocabs = [ name for name in os.listdir(args.dataset_path) if os.path.isdir(os.path.join(args.dataset_path, name)) ]
     vocabs.remove('_background_noise_')
 
     results = {
