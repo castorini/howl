@@ -80,7 +80,7 @@ def main():
     for i in range(args.n):
         selected_vocab = random.sample(vocabs, 10)
         print("\titeration: ", i )
-        print("\tvocabs: ", selected_vocab )
+        print("\tvocabs: ", selected_vocab)
         os.environ["VOCAB"] = str(selected_vocab).replace(" ", "").replace("\'", "\"")
         os.environ["SEED"] = str(random.randint(1,1000000))
 
@@ -89,6 +89,7 @@ def main():
         test_sheet['A'+row_index] = str(i)
 
         for model_type in model_types:
+            print("\tmodel: ", model_type, " - ", datetime.now().strftime("%H-%M"), flush=True)
 
             if model_type == 'res8':
                 os.environ["LEARNING_RATE"] = "0.01"
@@ -101,7 +102,6 @@ def main():
             os.system("mkdir -p " + workspace_path)
             log_path =  workspace_path + "/exp.log"
             exp_execution = os.system("touch " + log_path)
-            print("python -m howl.run.pretrain_gsc --model " + model_type + " --workspace " + workspace_path + " 2>&1 | tee " + log_path)
             exp_execution = os.system("python -m howl.run.pretrain_gsc --model " + model_type + " --workspace " + workspace_path + " 2>&1 | tee " + log_path)
 
             raw_log = subprocess.check_output(['cat', log_path]).decode("utf-8") 
