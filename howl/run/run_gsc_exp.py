@@ -78,10 +78,11 @@ def main():
     }
 
     for i in range(args.n):
-        selected_vocab = random.sample(vocabs, 10)
+        # selected_vocab = random.sample(vocabs, 10)
         print("\titeration: ", i )
-        print("\tvocabs: ", selected_vocab)
-        os.environ["VOCAB"] = str(selected_vocab).replace(" ", "").replace("\'", "\"")
+        # print("\tvocabs: ", selected_vocab)
+        # os.environ["VOCAB"] = str(selected_vocab).replace(" ", "").replace("\'", "\"")
+        os.environ["VOCAB"] = '["yes","no","up","down","left","right","on","off","stop","go"]'
         os.environ["SEED"] = str(random.randint(1,1000000))
 
         row_index = str(i + 8)
