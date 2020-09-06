@@ -78,6 +78,7 @@ def main():
     }
 
     for i in range(args.n):
+<<<<<<< HEAD
         # selected_vocab = random.sample(vocabs, 10)
         print("\titeration: ", i )
         # print("\tvocabs: ", selected_vocab)
@@ -88,6 +89,17 @@ def main():
         row_index = str(i + 8)
         dev_sheet['A'+row_index] = os.environ["SEED"]
         test_sheet['A'+row_index] = os.environ["SEED"]
+=======
+        selected_vocab = random.sample(vocabs, 10)
+        print("\titeration: ", i )
+        print("\tvocabs: ", selected_vocab)
+        os.environ["VOCAB"] = str(selected_vocab).replace(" ", "").replace("\'", "\"")
+        os.environ["SEED"] = str(random.randint(1,1000000))
+
+        row_index = str(i + 8)
+        dev_sheet['A'+row_index] = str(i)
+        test_sheet['A'+row_index] = str(i)
+>>>>>>> exp for hey_ff
 
         for model_type in model_types:
             print("\tmodel: ", model_type, " - ", datetime.now().strftime("%H-%M"), flush=True)
