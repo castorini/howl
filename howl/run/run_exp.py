@@ -123,7 +123,6 @@ def main():
     clean_cols_aggregated = {}
     noisy_cols_aggregated = {}
     
-
     def fill_in_outline(sheet):
 
         sheet['A3'] = 'mean'
@@ -182,7 +181,6 @@ def main():
 
     os.environ['VOCAB'] = '[" hey","fire","fox"]'
     os.environ['NOISE_DATASET_PATH'] = args.noiseset_path
-
 
     def fill_aggregated(sheet, col_idx, results):
         sheet[col_idx + '3'] = str(results.mean())
