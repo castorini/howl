@@ -147,8 +147,8 @@ def main():
             noisy_sheet = noisy_sheets[threshold]
 
             row_index = str(i + 10)
-            clean_sheet['A'+row_index] = str(i)
-            noisy_sheet['A'+row_index] = str(i)
+            clean_sheet['A'+row_index] = os.environ["SEED"]
+            noisy_sheet['A'+row_index] = os.environ["SEED"]
 
             workspace_path = os.getcwd() + "/workspaces/exp_hey_ff_res8/" + str(i) + "/" + str(threshold)
             os.system("mkdir -p " + workspace_path)
