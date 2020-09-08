@@ -86,8 +86,8 @@ def main():
         os.environ["SEED"] = str(random.randint(1,1000000))
 
         row_index = str(i + 8)
-        dev_sheet['A'+row_index] = str(i)
-        test_sheet['A'+row_index] = str(i)
+        dev_sheet['A'+row_index] = os.environ["SEED"]
+        test_sheet['A'+row_index] = os.environ["SEED"]
 
         for model_type in model_types:
             print("\tmodel: ", model_type, " - ", datetime.now().strftime("%H-%M"), flush=True)
