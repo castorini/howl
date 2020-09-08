@@ -6,6 +6,7 @@ import numpy as np
 
 from datetime import datetime
 from openpyxl import Workbook, load_workbook
+from tqdm import tqdm
 
 
 def get_col(char, ind):
@@ -18,6 +19,10 @@ def main():
                         type=int,
                         default=1,
                         help='number of experiments to run'),
+                    opt('--hop_size',
+                        type=float,
+                        default=0.05,
+                        help='hop size for threshold'),
                     opt('--dataset_path',
                         type=str,
                         default="/data/speaker-id-split-medium"),
@@ -27,13 +32,17 @@ def main():
 
     args = apb.parser.parse_args()
 
-    # Create new workbook
-    wb = Workbook()
+    # Create clean workbook
+    clean_wb = Workbook()
+    noisy_wb = Workbook()
     now = datetime.now()
-    clean_sheet = wb.create_sheet('clean', 0)
-    noisy_sheet = wb.create_sheet('noisy', 1)
 
-    model_types = ['res8', 'las', 'lstm', 'mobilenet']
+    thresholds = np.arange(0, 1.000001, args.hop_size)
+
+    clean_sheets = {}
+    noisy_sheets = {}
+
+
     col_map = {
         'Dev positive': 'B',
         'Dev noisy positive': 'B',
@@ -44,61 +53,70 @@ def main():
         'Test negative': 'T',
         'Test noisy negative': 'T'
     }
-    metrics = ["threshold", "tp", "tn", "fp", "fn"]
 
+    total_map = {
+        'Dev positive': '76',
+        'Dev negative': '2531',
+        'Test positive': '54',
+        'Test negative': '2504'
+    }
+    metrics = ["threshold", "tp", "tn", "fp", "fn",]
     clean_col_names = ["Dev positive", "Dev negative", "Test positive", "Test negative"]
-    noisy_col_names = ["Dev noisy positive", "Dev noisy negative", "Test noisy positive", "Test noisy negative"]
 
     clean_cols_aggregated = {}
     noisy_cols_aggregated = {}
     
-    for col in clean_col_names:
-        ind = col_map[col] + '1'
-        clean_sheet[ind] = col
 
-        for i, metric in enumerate(metrics):
-            ind = get_col(col_map[col], i) + '2'
-            clean_sheet[ind] = metric
+    def fill_in_outline(sheet):
 
-            clean_cols_aggregated[get_col(col_map[col], i)] = []
+        sheet['A3'] = "mean"
+        sheet['A4'] = "std"
+        sheet['A5'] = "p90"
+        sheet['A6'] = "p95"
+        sheet['A7'] = "p99"
+        sheet['A8'] = "sum"
 
-    for col in noisy_col_names:
-        ind = col_map[col] + '1'
-        noisy_sheet[ind] = col
+        for col in clean_col_names:
+            ind = col_map[col] + '1'
+            sheet[ind] = col
 
-        for i, metric in enumerate(metrics):
-            ind = get_col(col_map[col], i) + '2'
-            noisy_sheet[ind] = metric
+            ind = get_col(col_map[col], 1) + '1'
+            sheet[ind] = total_map[col]
 
-            noisy_cols_aggregated[get_col(col_map[col], i)] = []
+            for i, metric in enumerate(metrics):
+                ind = get_col(col_map[col], i) + '2'
+                sheet[ind] = metric
 
+    for idx, threshold in enumerate(thresholds):
+        clean_sheets[threshold] = clean_wb.create_sheet(str(round(threshold, 2)), idx)
+        fill_in_outline(clean_sheets[threshold])
+        noisy_sheets[threshold] = noisy_wb.create_sheet(str(round(threshold, 2)), idx)
+        fill_in_outline(noisy_sheets[threshold])
 
+        for col in clean_col_names:
+            for metric_idx, metric in enumerate(metrics):
+                target_metric = str(round(threshold, 2)) + '_' + get_col(col_map[col], metric_idx)
+                clean_cols_aggregated[target_metric] = []
+                noisy_cols_aggregated[target_metric] = []
 
-    clean_sheet['A3'] = "mean"
-    clean_sheet['A4'] = "std"
-    clean_sheet['A5'] = "p90"
-    clean_sheet['A6'] = "p95"
-    clean_sheet['A7'] = "p99"
-    clean_sheet['A8'] = "sum"
-
-    noisy_sheet['A3'] = "mean"
-    noisy_sheet['A4'] = "std"
-    noisy_sheet['A5'] = "p90"
-    noisy_sheet['A6'] = "p95"
-    noisy_sheet['A7'] = "p99"
-    noisy_sheet['A8'] = "sum"
 
 
     os.system("mkdir -p exp_results")
     dt_string = now.strftime("%b-%d-%H-%M")
-    file_name = "exp_results/hey_ff_" + dt_string + ".xlsx"
-    print("exp_result stored at ", file_name)
+
+    clean_file_name = "exp_results/hey_ff_clean_" + dt_string + ".xlsx"
+    noisy_file_name = "exp_results/hey_ff_noisy_" + dt_string + ".xlsx"
+
+    clean_wb.save(clean_file_name)
+    noisy_wb.save(noisy_file_name)
+    print("\tclean exp result stored at ", clean_file_name)
+    print("\tnoisy exp result stored at ", noisy_file_name)
 
 
     os.environ["DATASET_PATH"] = args.dataset_path
     os.environ["WEIGHT_DECAY"] = "0.00001"
     os.environ["NUM_EPOCHS"] = "300"
-    os.environ["LEARNING_RATE"] = "0.001"
+    os.environ["LEARNING_RATE"] = "0.01"
     os.environ["LR_DECAY"] = "0.98"
     os.environ["BATCH_SIZE"] = "16"
     os.environ["MAX_WINDOW_SIZE_SECONDS"] = "0.5"
@@ -108,64 +126,70 @@ def main():
 
     os.environ["VOCAB"] = '[" hey","fire","fox"]'
     os.environ["NOISE_DATASET_PATH"] = args.noiseset_path
-    os.environ["INFERENCE_THRESHOLD"] = "0"
 
+
+    def fill_aggregated(sheet, col_idx, results):
+        sheet[col_idx + '3'] = str(results.mean())
+        sheet[col_idx + '4'] = str(results.std())
+        sheet[col_idx + '5'] = str(np.percentile(results, 90))
+        sheet[col_idx + '6'] = str(np.percentile(results, 95))
+        sheet[col_idx + '7'] = str(np.percentile(results, 99))
+        sheet[col_idx + '8'] = str(results.sum())
 
     for i in range(args.n):
         print("\titeration: ", i , " - ", datetime.now().strftime("%H-%M"), flush=True)
         os.environ["SEED"] = str(random.randint(1,1000000))
 
-        row_index = str(i + 10)
-        clean_sheet['A'+row_index] = str(i)
-        noisy_sheet['A'+row_index] = str(i)
+        for threshold_idx, threshold in tqdm(enumerate(thresholds)):
+            os.environ["INFERENCE_THRESHOLD"] = str(threshold)
 
-        workspace_path = os.getcwd() + "/workspaces/exp_hey_ff_res8/" + str(i)
-        os.system("mkdir -p " + workspace_path)
+            clean_sheet = clean_sheets[threshold]
+            noisy_sheet = noisy_sheets[threshold]
 
-        exp_execution = os.system("python -m howl.run.train --model res8 --workspace " + workspace_path + "  -i " + args.dataset_path)
+            row_index = str(i + 10)
+            clean_sheet['A'+row_index] = str(i)
+            noisy_sheet['A'+row_index] = str(i)
 
-        log_path = workspace_path + "/results.csv"
-        raw_log = subprocess.check_output(['tail', '-n', '8', log_path]).decode("utf-8") 
-        logs = raw_log.split('\n')
+            workspace_path = os.getcwd() + "/workspaces/exp_hey_ff_res8/" + str(i) + "/" + str(threshold)
+            os.system("mkdir -p " + workspace_path)
 
-        for log in logs:
-            if len(log) == 0:
-                break
-            vals = log.split(',')
-            key = vals[0]
-            start_col = col_map[key]
+            exp_execution = os.system("python -m howl.run.train --model res8 --workspace " + workspace_path + "  -i " + args.dataset_path)
 
-            for i, metric in enumerate(vals[1:]):
-                ind = get_col(start_col, i) + str(row_index)
+            log_path = workspace_path + "/results.csv"
+            raw_log = subprocess.check_output(['tail', '-n', '8', log_path]).decode("utf-8") 
+            logs = raw_log.split('\n')
+
+            for log in logs:
+                if len(log) == 0:
+                    break
+                vals = log.split(',')
+                key = vals[0]
+                start_col = col_map[key]
 
                 if "noisy" in key:
-                    noisy_sheet[ind] = metric
-                    noisy_cols_aggregated[get_col(start_col, i)].append(float(metric))
+                    for metric_idx, metric in enumerate(vals[1:]):
+                        col_idx = get_col(start_col, metric_idx)
+                        ind = col_idx + str(row_index)
+                        noisy_sheet[ind] = metric
+
+                        target_metric = str(round(threshold, 2)) + '_' + col_idx
+                        noisy_cols_aggregated[target_metric].append(float(metric))
+
+                        fill_aggregated(noisy_sheet, col_idx, np.array(noisy_cols_aggregated[target_metric]))
                 else:
-                    clean_sheet[ind] = metric
-                    clean_cols_aggregated[get_col(start_col, i)].append(float(metric))
+                    for metric_idx, metric in enumerate(vals[1:]):
+                        col_idx = get_col(start_col, metric_idx)
 
-        for idx, agg_results in clean_cols_aggregated.items():
-            results = np.array(agg_results)
-            clean_sheet[idx + '3'] = str(results.mean())
-            clean_sheet[idx + '4'] = str(results.std())
-            clean_sheet[idx + '5'] = str(np.percentile(results, 90))
-            clean_sheet[idx + '6'] = str(np.percentile(results, 95))
-            clean_sheet[idx + '7'] = str(np.percentile(results, 99))
-            clean_sheet[idx + '8'] = str(results.sum())
+                        ind = col_idx + str(row_index)
+                        clean_sheet[ind] = metric
 
-        for idx, agg_results in noisy_cols_aggregated.items():
-            results = np.array(agg_results)
-            noisy_sheet[idx + '3'] = str(results.mean())
-            noisy_sheet[idx + '4'] = str(results.std())
-            noisy_sheet[idx + '5'] = str(np.percentile(results, 90))
-            noisy_sheet[idx + '6'] = str(np.percentile(results, 95))
-            noisy_sheet[idx + '7'] = str(np.percentile(results, 99))
-            noisy_sheet[idx + '8'] = str(results.sum())
+                        target_metric = str(round(threshold, 2)) + '_' + col_idx
+                        clean_cols_aggregated[target_metric].append(float(metric))
 
+                        fill_aggregated(clean_sheet, col_idx, np.array(clean_cols_aggregated[target_metric]))
 
-        wb.save(file_name)
-
+        clean_wb.save(clean_file_name)
+        noisy_wb.save(noisy_file_name)
 
 
 if __name__ == '__main__':
