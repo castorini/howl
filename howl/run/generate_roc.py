@@ -81,7 +81,6 @@ def main():
     print("noisy_test_faph:", [round(num, 3) for num in noisy_test_far])
     print("noisy_test_frr:", [round(num, 3) for num in noisy_test_frr])
 
-
     plt.plot(clean_dev_far, clean_dev_frr, 'r--+', label = 'clean dev')
     plt.plot(clean_test_far, clean_test_frr, 'r-+', label = 'clean test')
     plt.plot(noisy_dev_far, noisy_dev_frr, 'b--+', label = 'noisy dev')
