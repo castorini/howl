@@ -130,6 +130,27 @@ class WakeWordDatasetLoader(MetadataLoaderMixin, PathDatasetLoader):
     dataset_class = WakeWordDataset
     metadata_class = AudioClipMetadata
 
+class HeySnipsWakeWordLoader(RegisteredPathDatasetLoader, name='hey-snips'):
+    def load_splits(self, path: Path, **dataset_kwargs) -> Tuple[AudioClipDataset, AudioClipDataset, AudioClipDataset]:
+        def load(filename, set_type):
+            logging.info(f'Loading split {filename}...')
+
+            metadata_list = []
+            with open(filename) as f:
+                raw_metadata_list = json.load(f)
+
+            df = pd.read_csv(str(path / filename), sep='\t', quoting=3, na_filter=False)
+            metadata_list = []
+            for tup in df.itertuples():
+                metadata_list.append(AudioClipMetadata(path=(path / 'clips' / tup.path).absolute(), transcription=tup.sentence))
+            return AudioClipDataset(metadata_list=metadata_list, set_type=set_type, **dataset_kwargs)
+
+        assert path.exists(), 'dataset path doesn\'t exist'
+        filenames = ('train.json', 'dev.json', 'test.json')
+        assert all((path / x).exists() for x in filenames), 'dataset missing metadata'
+        return (load('train.json', DatasetType.TRAINING),
+                load('dev.json', DatasetType.DEV),
+                load('test.json', DatasetType.TEST))
 
 class GoogleSpeechCommandsDatasetLoader(RegisteredPathDatasetLoader, name='gsc'):
     def __init__(self, vocab: List[str] = None, use_bg_noise: bool = False):
