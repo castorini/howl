@@ -3,6 +3,9 @@ import random
 import os
 import subprocess
 import numpy as np
+import torch
+import sys
+import time
 
 from datetime import datetime
 from openpyxl import Workbook, load_workbook
@@ -11,6 +14,11 @@ from tqdm import tqdm
 
 def get_col(char, ind):
     return chr(ord(char) + ind)
+
+def is_job_running():
+    out = subprocess.check_output('ps aux | grep howl.run.train', shell=True)
+    num_proc = out.decode('utf-8').count('python -m howl.run.train')
+    return num_proc > 0
 
 
 def main():
@@ -31,6 +39,11 @@ def main():
                         default="/data/MS-SNSD"))
 
     args = apb.parser.parse_args()
+
+    random.seed()
+
+    num_gpu = torch.cuda.device_count()
+    print('availble GPU is', num_gpu)
 
     # Create clean workbook
     clean_wb = Workbook()
@@ -136,9 +149,51 @@ def main():
         sheet[col_idx + '7'] = str(np.percentile(results, 99))
         sheet[col_idx + '8'] = str(results.sum())
 
+    check_up_delay = 600 # 10mins
+
     for i in range(args.n):
         print("\titeration: ", i , " - ", datetime.now().strftime("%H-%M"), flush=True)
-        os.environ["SEED"] = str(random.randint(1,1000000))
+        seed = str(random.randint(1,1000000))
+        os.environ["SEED"] = seed
+
+        counter = 0
+
+        for threshold_idx, threshold in tqdm(enumerate(thresholds)):
+            workspace_path = os.getcwd() + "/workspaces/exp_hey_ff_res8/" + str(seed) + "/" + str(round(threshold, 2))
+            os.system("mkdir -p " + workspace_path)
+
+            command = "python -m howl.run.train --model res8 --workspace " + workspace_path + "  -i " + args.dataset_path
+
+            if counter == num_gpu:
+                sleep_counter = 0
+                while is_job_running():
+                    sleep_counter += 1
+                    print("job is running, wait time is {} min".format(sleep_counter * check_up_delay / 60))
+                    sys.stdout.flush()
+                    sys.stderr.flush()
+                    time.sleep(check_up_delay)
+                counter = 0
+
+            new_env = os.environ.copy()
+            new_env["CUDA_VISIBLE_DEVICES"] = str(counter)
+            new_env["INFERENCE_THRESHOLD"] = str(threshold)
+
+            print("exec", command)
+            proc = subprocess.Popen(command.split(), \
+                                    preexec_fn=os.setpgrp, \
+                                    env=new_env)
+
+            print("processor {}".format(proc.pid), command)
+            time.sleep(60) # add some delay
+            counter += 1
+
+        sleep_counter = 0
+        while is_job_running():
+            sleep_counter += 1
+            print("job is running, wait time is {} min".format(sleep_counter * check_up_delay / 60))
+            sys.stdout.flush()
+            sys.stderr.flush()
+            time.sleep(check_up_delay)
 
         for threshold_idx, threshold in tqdm(enumerate(thresholds)):
             os.environ["INFERENCE_THRESHOLD"] = str(threshold)
@@ -147,13 +202,8 @@ def main():
             noisy_sheet = noisy_sheets[threshold]
 
             row_index = str(i + 10)
-            clean_sheet['A'+row_index] = os.environ["SEED"]
-            noisy_sheet['A'+row_index] = os.environ["SEED"]
-
-            workspace_path = os.getcwd() + "/workspaces/exp_hey_ff_res8/" + str(i) + "/" + str(threshold)
-            os.system("mkdir -p " + workspace_path)
-
-            exp_execution = os.system("python -m howl.run.train --model res8 --workspace " + workspace_path + "  -i " + args.dataset_path)
+            clean_sheet['A'+row_index] = seed
+            noisy_sheet['A'+row_index] = seed
 
             log_path = workspace_path + "/results.csv"
             raw_log = subprocess.check_output(['tail', '-n', '8', log_path]).decode("utf-8") 
