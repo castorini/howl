@@ -20,20 +20,22 @@ def get_metrics(wb, thresholds):
     for threshold in thresholds:
         sheet = wb[str(threshold)]
 
-        dev_tp = float(sheet['C3'].value) + float(sheet['I3'].value)
-        dev_tn = float(sheet['D3'].value) + float(sheet['J3'].value)
-        dev_fp = float(sheet['E3'].value) + float(sheet['K3'].value)
-        dev_fn = float(sheet['F3'].value) + float(sheet['L3'].value)
+        dev_tp = float(sheet['C3'].value)
+        dev_fn = float(sheet['F3'].value)
+        dev_tn = float(sheet['J3'].value)
+        dev_fp = float(sheet['K3'].value)
 
-        dev_far.append(dev_fp / (dev_fp + dev_tn))
+        # dev_far.append(dev_fp / (dev_fp + dev_tn))
+        dev_far.append(dev_fp / 3)
         dev_frr.append(dev_fn / (dev_fn + dev_tp))
 
-        test_tp = float(sheet['O3'].value) + float(sheet['U3'].value)
-        test_tn = float(sheet['P3'].value) + float(sheet['V3'].value)
-        test_fp = float(sheet['Q3'].value) + float(sheet['W3'].value)
-        test_fn = float(sheet['R3'].value) + float(sheet['X3'].value)
+        test_tp = float(sheet['O3'].value)
+        test_fn = float(sheet['R3'].value)
+        test_tn = float(sheet['V3'].value)
+        test_fp = float(sheet['W3'].value)
 
-        test_far.append(test_fp / (test_fp + test_tn))
+        # test_far.append(test_fp / (test_fp + test_tn))
+        test_far.append(test_fp / 3)
         test_frr.append(test_fn / (test_fn + test_tp))
 
     return dev_far, dev_frr, test_far, test_frr
@@ -43,7 +45,7 @@ def main():
     apb = ArgumentParserBuilder()
     apb.add_options(opt('--exp_timestemp',
                         type=str,
-                        default="Sep-08-21-35"))
+                        default="Sep-08-11-28"))
 
     args = apb.parser.parse_args()
 
@@ -65,8 +67,20 @@ def main():
 
 
     plt.title('ROC curve')
-    plt.xlabel('False Acceptance Rate')
+    plt.xlabel('False Acceptance Per Hour')
     plt.ylabel('False Rejection Rate')
+
+    print("thresholds:", thresholds)
+    print("clean_dev_faph:", [round(num, 3) for num in clean_dev_far])
+    print("clean_dev_frr:", [round(num, 3) for num in clean_dev_frr])
+    print("clean_test_faph:", [round(num, 3) for num in clean_test_far])
+    print("clean_test_frr:", [round(num, 3) for num in clean_test_frr])
+
+    print("noisy_dev_faph:", [round(num, 3) for num in noisy_dev_far])
+    print("noisy_dev_frr:", [round(num, 3) for num in noisy_dev_frr])
+    print("noisy_test_faph:", [round(num, 3) for num in noisy_test_far])
+    print("noisy_test_frr:", [round(num, 3) for num in noisy_test_frr])
+
 
     plt.plot(clean_dev_far, clean_dev_frr, 'r--+', label = 'clean dev')
     plt.plot(clean_test_far, clean_test_frr, 'r-+', label = 'clean test')
