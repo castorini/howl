@@ -9,6 +9,8 @@ import logging
 from tqdm import tqdm
 import pandas as pd
 import soundfile
+import gc
+
 
 from .base import DatasetType, AudioClipMetadata, UNKNOWN_TRANSCRIPTION
 from .dataset import AudioClipDataset, WakeWordDataset, AudioClassificationDataset, AudioDataset, \
@@ -28,7 +30,8 @@ __all__ = ['AudioDatasetWriter',
            'GoogleSpeechCommandsDatasetLoader',
            'MozillaKeywordLoader',
            'PathDatasetLoader',
-           'RecursiveNoiseDatasetLoader']
+           'RecursiveNoiseDatasetLoader',
+           'HeySnipsWakeWordLoader']
 
 
 class AudioDatasetMetadataWriter:
@@ -132,22 +135,27 @@ class WakeWordDatasetLoader(MetadataLoaderMixin, PathDatasetLoader):
 
 class HeySnipsWakeWordLoader(RegisteredPathDatasetLoader, name='hey-snips'):
     def load_splits(self, path: Path, **dataset_kwargs) -> Tuple[AudioClipDataset, AudioClipDataset, AudioClipDataset]:
+        self.path = path
+
         def load(filename, set_type):
             logging.info(f'Loading split {filename}...')
 
             metadata_list = []
-            with open(filename) as f:
+            with open(str(self.path / filename)) as f:
                 raw_metadata_list = json.load(f)
 
-            df = pd.read_csv(str(path / filename), sep='\t', quoting=3, na_filter=False)
-            metadata_list = []
-            for tup in df.itertuples():
-                metadata_list.append(AudioClipMetadata(path=(path / 'clips' / tup.path).absolute(), transcription=tup.sentence))
+            for metadata in raw_metadata_list:
+                path = (self.path / metadata["audio_file_path"]).absolute()
+                transcription = ""
+                if metadata["is_hotword"] == 1:
+                    transcription = "hey snips"
+                metadata_list.append(AudioClipMetadata(path=path, transcription=transcription))
             return AudioClipDataset(metadata_list=metadata_list, set_type=set_type, **dataset_kwargs)
 
         assert path.exists(), 'dataset path doesn\'t exist'
         filenames = ('train.json', 'dev.json', 'test.json')
         assert all((path / x).exists() for x in filenames), 'dataset missing metadata'
+
         return (load('train.json', DatasetType.TRAINING),
                 load('dev.json', DatasetType.DEV),
                 load('test.json', DatasetType.TEST))
