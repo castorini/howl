@@ -95,4 +95,5 @@ DATASET_PATH=data/hey-snips python -m howl.run.attach_alignment --align-type mfa
 ```
 5. Source the appropriate environment variables: `source envs/res8.env`
 6. Set the noise dataset path to the root folder: `export NOISE_DATASET_PATH=/path/to/snsd`
-7. Train the model: `LR_DECAY=0.98 VOCAB='[" hey","snips"]' USE_NOISE_DATASET=True BATCH_SIZE=16 INFERENCE_THRESHOLD=0 NUM_EPOCHS=300 NUM_MELS=40 INFERENCE_SEQUENCE=[0,1] MAX_WINDOW_SIZE_SECONDS=0.5 python -m howl.run.train --model res8 --workspace workspaces/hey-snips-res8 -i /path/to/hey-snips`
+7. Set the noise dataset path to the root folder: `export DATASET_PATH=/path/to/hey-snips`
+8. Train the model: `LR_DECAY=0.98 VOCAB='[" hey","snips"]' USE_NOISE_DATASET=True BATCH_SIZE=16 INFERENCE_THRESHOLD=0 NUM_EPOCHS=300 NUM_MELS=40 INFERENCE_SEQUENCE=[0,1] MAX_WINDOW_SIZE_SECONDS=0.5 python -m howl.run.train --model res8 --workspace workspaces/hey-snips-res8`
