@@ -9,8 +9,6 @@ import logging
 from tqdm import tqdm
 import pandas as pd
 import soundfile
-import gc
-
 
 from .base import DatasetType, AudioClipMetadata, UNKNOWN_TRANSCRIPTION
 from .dataset import AudioClipDataset, WakeWordDataset, AudioClassificationDataset, AudioDataset, \
