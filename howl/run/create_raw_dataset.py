@@ -42,9 +42,12 @@ def main():
     loader = RegisteredPathDatasetLoader.find_registered_class(args.dataset_type)()
     ds_kwargs = dict(sr=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono)
     cv_train_ds, cv_dev_ds, cv_test_ds = loader.load_splits(args.input_path, **ds_kwargs)
-    cv_train_ds = cv_train_ds.filter(filter_fn)
-    cv_dev_ds = cv_dev_ds.filter(filter_fn)
-    cv_test_ds = cv_test_ds.filter(filter_fn)
+
+    if args.dataset_type == 'mozilla-cv':
+        cv_train_ds = cv_train_ds.filter(filter_fn)
+        cv_dev_ds = cv_dev_ds.filter(filter_fn)
+        cv_test_ds = cv_test_ds.filter(filter_fn)
+        
     print_stats('Dataset', cv_train_ds, cv_dev_ds, cv_test_ds, skip_length=True)
 
     for ds in cv_train_ds, cv_dev_ds, cv_test_ds:
