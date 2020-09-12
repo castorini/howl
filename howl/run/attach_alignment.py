@@ -34,7 +34,7 @@ def main():
     args = parser.parse_args()
 
     ds_kwargs = dict(sr=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono)
-    ds_path = SETTINGS.dataset.dataset_path
+    ds_path = Path(SETTINGS.dataset.dataset_path)
     train_ds, dev_ds, test_ds = AudioClipDatasetLoader().load_splits(ds_path, **ds_kwargs)
 
     if args.align_type == 'mfa':
