@@ -83,7 +83,7 @@ First, follow the installation instructions in the quickstart guide.
 1. Download [hey snips dataset](https://github.com/sonos/keyword-spotting-research-datasets)
 2. Process the dataset to a format howl can load
 ```bash
-VOCAB='["hey" "snips"]' INFERENCE_SEQUENCE=[0,1] DATASET_PATH=data/hey-snips python -m howl.run.create_raw_dataset -i ~/path/to/hey_snips_dataset
+VOCAB='["hey","snips"]' INFERENCE_SEQUENCE=[0,1] DATASET_PATH=data/hey-snips python -m howl.run.create_raw_dataset --dataset-type 'hey-snips' -i ~/path/to/hey_snips_dataset
 ```
 3. Use MFA to generate alignment for the dataset set:
 ```bash
