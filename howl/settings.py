@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import List
 
 from pydantic import BaseSettings
@@ -32,19 +31,19 @@ class TrainingSettings(BaseSettings):
     convert_static: bool = False
     objective: str = 'frame'  # frame or ctc
     token_type: str = 'word'
-    phone_dictionary: Path = None
+    phone_dictionary: str = None
     use_noise_dataset: bool = False
 
 
 class RawDatasetSettings(BaseSettings):
-    common_voice_dataset_path: Path = None
-    wake_word_dataset_path: Path = None
-    keyword_voice_dataset_path: Path = None
-    noise_dataset_path: Path = None
+    common_voice_dataset_path: str = None
+    wake_word_dataset_path: str = None
+    keyword_voice_dataset_path: str = None
+    noise_dataset_path: str = None
 
 
 class DatasetSettings(BaseSettings):
-    dataset_path: Path
+    dataset_path: str = None
 
 
 class LazySettingsSingleton:
