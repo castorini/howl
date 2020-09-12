@@ -76,5 +76,6 @@ First, follow the installation instructions in the quickstart guide.
 2. Download [our noise dataset](http://nlp.rocks/ffnoise), built from Microsoft SNSD and MUSAN, and extract it.
 3. Source the appropriate environment variables: `source envs/res8.env`
 4. Set the noise dataset path to the root folder: `export NOISE_DATASET_PATH=/path/to/snsd`
-5. Train the model: `LR_DECAY=0.98 VOCAB='[" hey","fire","fox"]' USE_NOISE_DATASET=True BATCH_SIZE=16 INFERENCE_THRESHOLD=0 NUM_EPOCHS=300 NUM_MELS=40 INFERENCE_SEQUENCE=[0,1,2] MAX_WINDOW_SIZE_SECONDS=0.5 python -m howl.run.train --model res8 --workspace workspaces/hey-ff-res8 -i /path/to/hey/firefox`
+5. Set the firefox dataset path to the root folder: `export DATASET_PATH=/path/to/hey_firefox`
+6. Train the model: `LR_DECAY=0.98 VOCAB='[" hey","fire","fox"]' USE_NOISE_DATASET=True BATCH_SIZE=16 INFERENCE_THRESHOLD=0 NUM_EPOCHS=300 NUM_MELS=40 INFERENCE_SEQUENCE=[0,1,2] MAX_WINDOW_SIZE_SECONDS=0.5 python -m howl.run.train --model res8 --workspace workspaces/hey-ff-res8`
 
