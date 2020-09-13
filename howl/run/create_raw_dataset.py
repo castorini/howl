@@ -49,7 +49,7 @@ def main():
 
     for ds in cv_train_ds, cv_dev_ds, cv_test_ds:
         try:
-            AudioDatasetWriter(ds).write(SETTINGS.dataset.dataset_path)
+            AudioDatasetWriter(ds).write(Path(SETTINGS.dataset.dataset_path))
         except KeyboardInterrupt:
             logging.info('Skipping...')
             pass
