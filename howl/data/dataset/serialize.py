@@ -143,7 +143,7 @@ def transcribe_hey_snips_audio(path, metadata):
     return path, transcription
 
 class HeySnipsWakeWordLoader(RegisteredPathDatasetLoader, name='hey-snips'):
-    def __init__(self, num_processes=16):
+    def __init__(self, num_processes=8):
         self.stt = SpeechToText()
         self.num_processes = num_processes
         self.pool = Pool(processes=self.num_processes)
