@@ -23,7 +23,7 @@ A proper Pip package is coming soon.
 
 3. Install PyAudio and its dependencies through your distribution's package system.
 
-4. `pip install -r requirements.txt`
+4. `pip install -r requirements.txt` (some apt packages might need to be installed)
 
 ### Preparing a Dataset
 
