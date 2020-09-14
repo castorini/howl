@@ -135,7 +135,7 @@ def main():
     train_comp = (NoiseTransform().train(), batchifier)
 
     if SETTINGS.training.use_noise_dataset:
-        noise_ds = RecursiveNoiseDatasetLoader().load(SETTINGS.raw_dataset.noise_dataset_path,
+        noise_ds = RecursiveNoiseDatasetLoader().load(Path(SETTINGS.raw_dataset.noise_dataset_path),
                                                       sr=SETTINGS.audio.sample_rate,
                                                       mono=SETTINGS.audio.use_mono)
         logging.info(f'Loaded {len(noise_ds.metadata_list)} noise files.')

@@ -29,7 +29,7 @@ def main():
                         help='The percentage of the dataset to check for negative examples.'),
                     opt('--positive-pct', type=int, default=100,
                         help='The percentage of the dataset to check for positive examples.'),
-                    opt('--input-path', '-i', type=Path),
+                    opt('--input-path', '-i', type=str),
                     opt('--dataset-type',
                         type=str,
                         default='mozilla-cv',
@@ -41,7 +41,7 @@ def main():
     ctx = InferenceContext(SETTINGS.training.vocab, token_type=SETTINGS.training.token_type)
     loader = RegisteredPathDatasetLoader.find_registered_class(args.dataset_type)()
     ds_kwargs = dict(sr=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono)
-    cv_train_ds, cv_dev_ds, cv_test_ds = loader.load_splits(args.input_path, **ds_kwargs)
+    cv_train_ds, cv_dev_ds, cv_test_ds = loader.load_splits(Path(args.input_path), **ds_kwargs)
     cv_train_ds = cv_train_ds.filter(filter_fn)
     cv_dev_ds = cv_dev_ds.filter(filter_fn)
     cv_test_ds = cv_test_ds.filter(filter_fn)
@@ -49,7 +49,7 @@ def main():
 
     for ds in cv_train_ds, cv_dev_ds, cv_test_ds:
         try:
-            AudioDatasetWriter(ds).write(SETTINGS.dataset.dataset_path)
+            AudioDatasetWriter(ds).write(Path(SETTINGS.dataset.dataset_path))
         except KeyboardInterrupt:
             logging.info('Skipping...')
             pass
