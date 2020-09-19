@@ -43,7 +43,7 @@ class RawDatasetSettings(BaseSettings):
 
 
 class DatasetSettings(BaseSettings):
-    dataset_path: str
+    dataset_path: str = None
 
 
 class LazySettingsSingleton:
