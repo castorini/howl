@@ -85,7 +85,7 @@ First, follow the installation instructions in the quickstart guide.
 ```bash
 VOCAB='["hey","snips"]' INFERENCE_SEQUENCE=[0,1] DATASET_PATH=data/hey-snips python -m howl.run.create_raw_dataset --dataset-type 'hey-snips' -i ~/path/to/hey_snips_dataset
 ```
-3. Generate some mock alignment for the negative set, where we don't care about alignment:
+3. Generate some mock alignment for the dataset, where we don't care about alignment:
 ```bash
 DATASET_PATH=data/hey-snips python -m howl.run.attach_alignment --align-type stub
 ```
