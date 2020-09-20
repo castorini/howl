@@ -19,7 +19,7 @@ class SpeechToText():
 
     def transcribe(self, audio_file: Path):
         self.config['audio_file'] = audio_file
-        transcription = ""
+        transcription = ''
         for phase in AudioFile(**self.config):
             transcription = str(phase)
             break;
