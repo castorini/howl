@@ -135,9 +135,9 @@ class WakeWordDatasetLoader(MetadataLoaderMixin, PathDatasetLoader):
 
 def transcribe_hey_snips_audio(path, metadata):
     stt = SpeechToText();
-    path = (path / metadata["audio_file_path"]).absolute()
-    transcription = "hey snips"
-    if metadata["is_hotword"] == 0: # negative sample
+    path = (path / metadata['audio_file_path']).absolute()
+    transcription = 'hey snips'
+    if metadata['is_hotword'] == 0: # negative sample
         transcription = stt.transcribe(path)
 
     return path, transcription
@@ -147,7 +147,6 @@ class HeySnipsWakeWordLoader(RegisteredPathDatasetLoader, name='hey-snips'):
         self.stt = SpeechToText()
         self.num_processes = num_processes
         self.pool = Pool(processes=self.num_processes)
-
 
     def load_splits(self, path: Path, **dataset_kwargs) -> Tuple[AudioClipDataset, AudioClipDataset, AudioClipDataset]:
         self.path = path
@@ -174,7 +173,7 @@ class HeySnipsWakeWordLoader(RegisteredPathDatasetLoader, name='hey-snips'):
                     pbar.set_postfix(dict(transcription_fail_rate=f'{transcription_fail_count}/{processing_count}'))
                     path, transcription = result.get()
 
-                    if transcription == "":
+                    if transcription == '':
                         transcription_fail_count += 1
                         continue
 
