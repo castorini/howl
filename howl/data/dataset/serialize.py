@@ -165,7 +165,9 @@ class HeySnipsWakeWordLoader(RegisteredPathDatasetLoader, name='hey-snips'):
             for starting_idx in pbar:
                 transcription_results = []
                 for metadata in raw_metadata_list[starting_idx:starting_idx+self.num_processes]:
-                    transcription_results.append(self.pool.apply_async(transcribe_hey_snips_audio, (self.path, metadata, )))
+                    transcription_results.append(self.pool.apply_async(
+                        transcribe_hey_snips_audio,
+                        (self.path, metadata, )))
 
                 processing_count = starting_idx + len(transcription_results)
 
