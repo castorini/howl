@@ -23,7 +23,7 @@ A proper Pip package is coming soon.
 
 3. Install PyAudio and its dependencies through your distribution's package system.
 
-4. `pip install -r requirements.txt`
+4. `pip install -r requirements.txt` (some apt packages might need to be installed)
 
 ### Preparing a Dataset
 
@@ -79,3 +79,26 @@ First, follow the installation instructions in the quickstart guide.
 5. Set the firefox dataset path to the root folder: `export DATASET_PATH=/path/to/hey_firefox`
 6. Train the model: `LR_DECAY=0.98 VOCAB='[" hey","fire","fox"]' USE_NOISE_DATASET=True BATCH_SIZE=16 INFERENCE_THRESHOLD=0 NUM_EPOCHS=300 NUM_MELS=40 INFERENCE_SEQUENCE=[0,1,2] MAX_WINDOW_SIZE_SECONDS=0.5 python -m howl.run.train --model res8 --workspace workspaces/hey-ff-res8`
 
+### Hey Snips
+
+1. Download [hey snips dataset](https://github.com/sonos/keyword-spotting-research-datasets)
+2. Process the dataset to a format howl can load
+```bash
+VOCAB='["hey","snips"]' INFERENCE_SEQUENCE=[0,1] DATASET_PATH=data/hey-snips python -m howl.run.create_raw_dataset --dataset-type 'hey-snips' -i ~/path/to/hey_snips_dataset
+```
+3. Generate some mock alignment for the dataset, where we don't care about alignment:
+```bash
+DATASET_PATH=data/hey-snips python -m howl.run.attach_alignment --align-type stub
+```
+4. Use MFA to generate alignment for the dataset set:
+```bash
+mfa_align data/hey-snips/audio eng.dict pretrained_models/english.zip output-folder
+```
+5. Attach the MFA alignment to the dataset:
+```bash
+DATASET_PATH=data/hey-snips python -m howl.run.attach_alignment --align-type mfa -i output-folder
+```
+6. Source the appropriate environment variables: `source envs/res8.env`
+7. Set the noise dataset path to the root folder: `export NOISE_DATASET_PATH=/path/to/snsd`
+8. Set the noise dataset path to the root folder: `export DATASET_PATH=/path/to/hey-snips`
+9. Train the model: `LR_DECAY=0.98 VOCAB='[" hey","snips"]' USE_NOISE_DATASET=True BATCH_SIZE=16 INFERENCE_THRESHOLD=0 NUM_EPOCHS=300 NUM_MELS=40 INFERENCE_SEQUENCE=[0,1] MAX_WINDOW_SIZE_SECONDS=0.5 python -m howl.run.train --model res8 --workspace workspaces/hey-snips-res8`
