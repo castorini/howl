@@ -8,7 +8,7 @@ from howl.data.dataset import AudioDataset, DatasetType
 class StandardAudioDataLoaderBuilder:
     def __init__(self,
                  dataset: AudioDataset,
-                 num_workers=mp.cpu_count(),
+                 num_workers=1,
                  collate_fn=None):
         self.dataset = dataset
         self.num_workers = num_workers

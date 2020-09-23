@@ -67,10 +67,10 @@ def main():
         if save and not args.eval:
             writer.add_scalar(f'{prefix}/Metric/tp', conf_matrix.tp, epoch_idx)
             ws.increment_model(model, conf_matrix.tp)
-        # if args.eval:
-        with (ws.path / 'results.csv').open('a') as f:
+        if args.eval:
             threshold = engine.threshold
-            f.write(f'{prefix},{threshold},{conf_matrix.tp},{conf_matrix.tn},{conf_matrix.fp},{conf_matrix.fn}\n')
+            with (ws.path / (str(round(threshold, 2)) + '_results.csv') ).open('a') as f:
+                f.write(f'{prefix},{threshold},{conf_matrix.tp},{conf_matrix.tn},{conf_matrix.fp},{conf_matrix.fn}\n')
 
     def do_evaluate():
         evaluate_engine(ww_dev_pos_ds, 'Dev positive', positive_set=True)
