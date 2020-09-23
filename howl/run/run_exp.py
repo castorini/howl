@@ -212,7 +212,6 @@ def main():
         commands.append(command)
         envs.append(env)
 
-
     print('seeds: ', seeds)
 
     print('-- training --')
