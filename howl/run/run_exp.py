@@ -66,7 +66,6 @@ def run_batch_commands(commands, envs, grep_command = 'howl.run.train', count_co
         time.sleep(check_up_delay)
 
 
-
 def main():
     apb = ArgumentParserBuilder()
     apb.add_options(opt('--n',
@@ -156,7 +155,6 @@ def main():
                 target_metric = str(round(threshold, 2)) + '_' + get_col(col_map[col], metric_idx)
                 clean_cols_aggregated[target_metric] = []
                 noisy_cols_aggregated[target_metric] = []
-
 
 
     os.system('mkdir -p exp_results')
