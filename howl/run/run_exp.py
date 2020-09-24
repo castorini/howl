@@ -215,12 +215,11 @@ def main():
         commands.append(command)
         envs.append(env)
 
-    # seeds = ['740491', '269565', '188567', '261805']
     print('seeds: ', seeds)
 
     print('-- training --')
 
-    run_batch_commands(commands, envs)
+    # run_batch_commands(commands, envs)
 
     commands = []
     envs = []
@@ -243,10 +242,10 @@ def main():
 
     print('-- collecting metrics --')
 
-    run_batch_commands(commands, envs)
+    # run_batch_commands(commands, envs)
 
-    for seed in seeds:
-        for threshold_idx, threshold in tqdm(enumerate(thresholds)):
+    for i, seed in enumerate(seeds):
+        for threshold_idx, threshold in enumerate(thresholds):
 
             clean_sheet = clean_sheets[threshold]
             noisy_sheet = noisy_sheets[threshold]
