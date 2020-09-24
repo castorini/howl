@@ -172,7 +172,6 @@ def main():
     os.environ['DATASET_PATH'] = args.dataset_path
     os.environ['WEIGHT_DECAY'] = '0.00001'
     os.environ['NUM_EPOCHS'] = '300'
-    os.environ['NUM_EPOCHS'] = '1'
     os.environ['LEARNING_RATE'] = '0.01'
     os.environ['LR_DECAY'] = '0.98'
     os.environ['BATCH_SIZE'] = '16'
@@ -219,7 +218,7 @@ def main():
 
     print('-- training --')
 
-    # run_batch_commands(commands, envs)
+    run_batch_commands(commands, envs)
 
     commands = []
     envs = []
@@ -242,7 +241,7 @@ def main():
 
     print('-- collecting metrics --')
 
-    # run_batch_commands(commands, envs)
+    run_batch_commands(commands, envs)
 
     for i, seed in enumerate(seeds):
         for threshold_idx, threshold in enumerate(thresholds):
