@@ -117,6 +117,17 @@ def main():
         'Test positive': '54',
         'Test negative': '2504'
     }
+
+    # TODO :: to be updated
+    if args.exp_type == "hey_snips":
+        total_map = {
+            'Dev positive': '76',
+            'Dev negative': '2531',
+            'Test positive': '54',
+            'Test negative': '2504'
+        }
+
+
     metrics = ['threshold', 'tp', 'tn', 'fp', 'fn',]
     clean_col_names = ['Dev positive', 'Dev negative', 'Test positive', 'Test negative']
 
@@ -177,10 +188,15 @@ def main():
     os.environ['MAX_WINDOW_SIZE_SECONDS'] = '0.5'
     os.environ['USE_NOISE_DATASET'] = 'True'
     os.environ['NUM_MELS'] = '40'
+    os.environ['NOISE_DATASET_PATH'] = args.noiseset_path
+    os.environ['VOCAB'] = '[" hey","fire","fox"]'
     os.environ['INFERENCE_SEQUENCE'] = '[0,1,2]'
 
-    os.environ['VOCAB'] = '[" hey","fire","fox"]'
-    os.environ['NOISE_DATASET_PATH'] = args.noiseset_path
+    if args.exp_type == "hey_snips":
+        os.environ['NUM_EPOCHS'] = '100'
+
+        os.environ['VOCAB'] = '[" hey","snips"]'
+        os.environ['INFERENCE_SEQUENCE'] = '[0,1]'
 
     def fill_aggregated(sheet, col_idx, results):
         sheet[col_idx + '3'] = str(results.mean())
