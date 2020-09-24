@@ -214,6 +214,7 @@ def main():
         commands.append(command)
         envs.append(env)
 
+
     print('seeds: ', seeds)
 
     print('-- training --')
@@ -231,7 +232,6 @@ def main():
             env['INFERENCE_THRESHOLD'] = str(threshold)
 
             workspace_path = os.getcwd() + '/workspaces/exp_'+ args.exp_type +'_res8/' + str(seed)
-            os.system('mkdir -p ' + workspace_path)
 
             command = 'python -m howl.run.train --eval --model res8 --workspace ' + workspace_path + '  -i ' + args.dataset_path
 
@@ -252,6 +252,8 @@ def main():
             row_index = str(i + 10)
             clean_sheet['A'+row_index] = seed
             noisy_sheet['A'+row_index] = seed
+
+            workspace_path = os.getcwd() + '/workspaces/exp_'+ args.exp_type +'_res8/' + str(seed)
 
             log_path = workspace_path + '/' + str(round(threshold, 2)) + '_results.csv'
             raw_log = subprocess.check_output(['tail', '-n', '8', log_path]).decode('utf-8') 
