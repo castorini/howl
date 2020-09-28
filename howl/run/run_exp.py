@@ -1,6 +1,8 @@
 from .args import ArgumentParserBuilder, opt
 import random
 import os
+import os.path
+from os import path
 import subprocess
 import numpy as np
 import torch
@@ -81,13 +83,15 @@ def main():
                         default='/data/speaker-id-split-medium'),
                     opt('--exp_type', 
                         type=str, choices=['hey_ff', 'hey_snips'], default='hey_ff'),
+                    opt('--seed', 
+                        type=int, default=0),
                     opt('--noiseset_path',
                         type=str,
                         default='/data/MS-SNSD'))
 
     args = apb.parser.parse_args()
 
-    random.seed()
+    random.seed(args.seed)
 
     # Create clean workbook
     clean_wb = Workbook()
@@ -121,10 +125,10 @@ def main():
     # TODO :: to be updated
     if args.exp_type == "hey_snips":
         total_map = {
-            'Dev positive': '76',
-            'Dev negative': '2531',
-            'Test positive': '54',
-            'Test negative': '2504'
+            'Dev positive': '2484',
+            'Dev negative': '13598',
+            'Test positive': '2529',
+            'Test negative': '13943'
         }
 
 
@@ -213,26 +217,28 @@ def main():
     commands = []
     envs = []
 
-    # train
-    for i in range(args.n):
-        seed = str(random.randint(1,1000000))
-        seeds.append(seed)
-        env = {}
-        env['SEED'] = seed
+    # # train
+    # for i in range(args.n):
+    #     seed = str(random.randint(1,1000000))
+    #     seeds.append(seed)
+    #     env = {}
+    #     env['SEED'] = seed
 
-        workspace_path = os.getcwd() + '/workspaces/exp_'+ args.exp_type +'_res8/' + str(seed)
-        os.system('mkdir -p ' + workspace_path)
+    #     workspace_path = os.getcwd() + '/workspaces/exp_'+ args.exp_type +'_res8/' + str(seed)
+    #     os.system('mkdir -p ' + workspace_path)
 
-        command = 'python -m howl.run.train --model res8 --workspace ' + workspace_path + '  -i ' + args.dataset_path
+    #     command = 'python -m howl.run.train --model res8 --workspace ' + workspace_path + '  -i ' + args.dataset_path
 
-        commands.append(command)
-        envs.append(env)
+    #     commands.append(command)
+    #     envs.append(env)
 
-    print('seeds: ', seeds)
+    # print('seeds: ', seeds)
 
-    print('-- training --')
+    # print('-- training --')
 
-    run_batch_commands(commands, envs)
+    # run_batch_commands(commands, envs)
+
+    seeds = ['224217', '302781', '31406',  '417046', '46786',  '480853', '610867', '732478', '864152', '887303']
 
     commands = []
     envs = []
@@ -248,8 +254,11 @@ def main():
 
             command = 'python -m howl.run.train --eval --model res8 --workspace ' + workspace_path + '  -i ' + args.dataset_path
 
-            commands.append(command)
-            envs.append(env)
+            log_path = workspace_path + '/' + str(round(threshold, 2)) + '_results.csv'
+
+            if not path.exists:
+                commands.append(command)
+                envs.append(env)
 
 
     print('-- collecting metrics --')

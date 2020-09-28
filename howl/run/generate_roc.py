@@ -45,14 +45,17 @@ def main():
     apb = ArgumentParserBuilder()
     apb.add_options(opt('--exp_timestemp',
                         type=str,
-                        default="Sep-08-11-28"))
+                        default="Sep-08-11-28"),
+                    opt('--exp_type',
+                        type=str,
+                        default="hey_ff"))
 
     args = apb.parser.parse_args()
 
-    print("clean file: ", "exp_results/hey_ff_clean_"+args.exp_timestemp+".xlsx")
-    print("noisy file: ", "exp_results/hey_ff_noisy_"+args.exp_timestemp+".xlsx")
-    clean_wb = load_workbook("exp_results/hey_ff_clean_"+args.exp_timestemp+".xlsx")
-    noisy_wb = load_workbook("exp_results/hey_ff_noisy_"+args.exp_timestemp+".xlsx")
+    print("clean file: ", "exp_results/"+args.exp_type"_clean_"+args.exp_timestemp+".xlsx")
+    print("noisy file: ", "exp_results/"+args.exp_type"_noisy_"+args.exp_timestemp+".xlsx")
+    clean_wb = load_workbook("exp_results/"+args.exp_type"_clean_"+args.exp_timestemp+".xlsx")
+    noisy_wb = load_workbook("exp_results/"+args.exp_type"_noisy_"+args.exp_timestemp+".xlsx")
 
     thresholds = []
 
@@ -89,7 +92,7 @@ def main():
     plt.legend()
 
     # plt.show()
-    plt.savefig("exp_results/" +args.exp_timestemp + '.png')
+    plt.savefig("exp_results/" args.exp_type+ "_" +args.exp_timestemp + '.png')
 
 if __name__ == '__main__':
     main()
