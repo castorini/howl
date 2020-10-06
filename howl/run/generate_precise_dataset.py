@@ -1,5 +1,6 @@
 from pathlib import Path
 from shutil import copyfile
+import os
 import logging
 import numpy as np
 
@@ -17,19 +18,29 @@ from howl.settings import SETTINGS
 
 def main():
 
-    def copy_files(dataset, output_dir):
-        print('copying files to ', output_dir)
+    def copy_files(dataset, output_dir, deep_copy=False):
+        print('copying files to', output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
         for item in tqdm(dataset):
             output_path = output_dir / item.metadata.path.name
-            copyfile(item.metadata.path, output_path)
+            if deep_copy:
+                copyfile(item.metadata.path, output_path)
+            else:
+                os.symlink(item.metadata.path, output_path)
 
 
     apb = ArgumentParserBuilder()
     apb.add_options(
         opt('--dataset-paths', '-i', type=str, nargs='+', default=[SETTINGS.dataset.dataset_path]),
-        opt('--output-paths', '-o', type=str, default='data/precise'))
+        opt('--output-paths', '-o', type=str, default='data/precise'),
+        opt('--deep-copy', action='store_true'))
     args = apb.parser.parse_args()
+
+    if args.deep_copy:
+        print('copying the audio files')
+    else:
+        print('generating symlink files')
+
 
     use_frame = SETTINGS.training.objective == 'frame'
     ctx = InferenceContext(SETTINGS.training.vocab, token_type=SETTINGS.training.token_type, use_blank=not use_frame)
@@ -58,27 +69,30 @@ def main():
 
     ww_train_pos_ds = ww_train_ds.filter(lambda x: ctx.searcher.search(x.transcription), clone=True)
     print_stats(f'train positive dataset', ww_train_pos_ds)
-    copy_files(ww_train_pos_ds, output_path / 'wake-word')
+    copy_files(ww_train_pos_ds, output_path / 'wake-word', args.deep_copy)
 
     ww_train_neg_ds = ww_train_ds.filter(lambda x: not ctx.searcher.search(x.transcription), clone=True)
     print_stats(f'train negative dataset', ww_train_neg_ds)
-    copy_files(ww_train_neg_ds, output_path / 'not-wake-word')
+    copy_files(ww_train_neg_ds, output_path / 'not-wake-word', args.deep_copy)
+
 
     ww_dev_pos_ds = ww_dev_ds.filter(lambda x: ctx.searcher.search(x.transcription), clone=True)
     print_stats(f'dev positive dataset', ww_dev_pos_ds)
-    copy_files(ww_dev_pos_ds, output_path / 'dev/wake-word')
+    copy_files(ww_dev_pos_ds, output_path / 'dev/wake-word', args.deep_copy)
 
     ww_dev_neg_ds = ww_dev_ds.filter(lambda x: not ctx.searcher.search(x.transcription), clone=True)
     print_stats(f'dev negative dataset', ww_dev_neg_ds)
-    copy_files(ww_dev_neg_ds, output_path / 'dev/not-wake-word')
+    copy_files(ww_dev_neg_ds, output_path / 'dev/not-wake-word', args.deep_copy)
+
 
     ww_test_pos_ds = ww_test_ds.filter(lambda x: ctx.searcher.search(x.transcription), clone=True)
     print_stats(f'test positive dataset', ww_test_pos_ds)
-    copy_files(ww_test_pos_ds, output_path / 'test/wake-word')
+    copy_files(ww_test_pos_ds, output_path / 'test/wake-word', args.deep_copy)
 
     ww_test_neg_ds = ww_test_ds.filter(lambda x: not ctx.searcher.search(x.transcription), clone=True)
     print_stats(f'test negative dataset', ww_test_neg_ds)
-    copy_files(ww_test_neg_ds, output_path / 'test/not-wake-word')
+    copy_files(ww_test_neg_ds, output_path / 'test/not-wake-word', args.deep_copy)
+
 
 
 if __name__ == '__main__':
