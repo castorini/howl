@@ -8,6 +8,7 @@ import numpy as np
 import torch
 import sys
 import time
+import io
 
 from datetime import datetime
 from openpyxl import Workbook, load_workbook
@@ -49,12 +50,11 @@ def run_batch_commands(commands, envs, grep_command = 'howl.run.train', count_co
         new_env = os.environ.copy()
         new_env['CUDA_VISIBLE_DEVICES'] = str(counter)
 
-        print('exec', command)
         proc = subprocess.Popen(command.split(), \
                                 preexec_fn=os.setpgrp, \
                                 env=new_env)
 
-        print('execute processor {}'.format(proc.pid), command, env)
+        print('execute processor {}'.format(proc.pid), command, new_env, flush=True)
         time.sleep(60) # add some delay
         counter += 1
 
@@ -62,9 +62,7 @@ def run_batch_commands(commands, envs, grep_command = 'howl.run.train', count_co
     sleep_counter = 0
     while is_job_running(grep_command, count_command):
         sleep_counter += 1
-        print('job is running, wait time is {} min'.format(sleep_counter * check_up_delay / 60))
-        sys.stdout.flush()
-        sys.stderr.flush()
+        print('job is running, wait time is {} min'.format(sleep_counter * check_up_delay / 60), flush=True)
         time.sleep(check_up_delay)
 
 
@@ -115,6 +113,7 @@ def main():
         'Test noisy negative': 'T'
     }
 
+    # hey_firefox
     total_map = {
         'Dev positive': '76',
         'Dev negative': '2531',
@@ -122,7 +121,6 @@ def main():
         'Test negative': '2504'
     }
 
-    # TODO :: to be updated
     if args.exp_type == "hey_snips":
         total_map = {
             'Dev positive': '2484',
@@ -217,28 +215,26 @@ def main():
     commands = []
     envs = []
 
-    # # train
-    # for i in range(args.n):
-    #     seed = str(random.randint(1,1000000))
-    #     seeds.append(seed)
-    #     env = {}
-    #     env['SEED'] = seed
+    # train
+    for i in range(args.n):
+        seed = str(random.randint(1,1000000))
+        seeds.append(seed)
+        env = {}
+        env['SEED'] = seed
 
-    #     workspace_path = os.getcwd() + '/workspaces/exp_'+ args.exp_type +'_res8/' + str(seed)
-    #     os.system('mkdir -p ' + workspace_path)
+        workspace_path = os.getcwd() + '/workspaces/exp_'+ args.exp_type +'_res8/' + str(seed)
+        os.system('mkdir -p ' + workspace_path)
 
-    #     command = 'python -m howl.run.train --model res8 --workspace ' + workspace_path + '  -i ' + args.dataset_path
+        command = 'python -m howl.run.train --model res8 --workspace ' + workspace_path + '  -i ' + args.dataset_path
 
-    #     commands.append(command)
-    #     envs.append(env)
+        commands.append(command)
+        envs.append(env)
 
-    # print('seeds: ', seeds)
+    print('seeds: ', seeds)
 
-    # print('-- training --')
+    print('-- training --')
 
-    # run_batch_commands(commands, envs)
-
-    seeds = ['224217', '302781', '31406',  '417046', '46786',  '480853', '610867', '732478', '864152', '887303']
+    run_batch_commands(commands, envs)
 
     commands = []
     envs = []
@@ -254,16 +250,21 @@ def main():
 
             command = 'python -m howl.run.train --eval --model res8 --workspace ' + workspace_path + '  -i ' + args.dataset_path
 
-            log_path = workspace_path + '/' + str(round(threshold, 2)) + '_results.csv'
+            result_path = workspace_path + '/' + str(round(threshold, 2)) + '_results.csv'
 
-            if not path.exists:
+            if not path.exists(result_path):
                 commands.append(command)
                 envs.append(env)
+
+    for command in commands:
+        print('\t', command)
 
 
     print('-- collecting metrics --')
 
     run_batch_commands(commands, envs)
+
+
 
     for i, seed in enumerate(seeds):
         for threshold_idx, threshold in enumerate(thresholds):
@@ -277,14 +278,14 @@ def main():
 
             workspace_path = os.getcwd() + '/workspaces/exp_'+ args.exp_type +'_res8/' + str(seed)
 
-            log_path = workspace_path + '/' + str(round(threshold, 2)) + '_results.csv'
-            raw_log = subprocess.check_output(['tail', '-n', '8', log_path]).decode('utf-8') 
-            logs = raw_log.split('\n')
+            result_path = workspace_path + '/' + str(round(threshold, 2)) + '_results.csv'
+            raw_result = subprocess.check_output(['tail', '-n', '8', result_path]).decode('utf-8') 
+            results = raw_result.split('\n')
 
-            for log in logs:
-                if len(log) == 0:
+            for result in results:
+                if len(result) == 0:
                     break
-                vals = log.split(',')
+                vals = result.split(',')
                 key = vals[0]
                 start_col = col_map[key]
 
