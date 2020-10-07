@@ -16,7 +16,6 @@ def get_metrics(exp_type, wb, thresholds):
 
     test_far = []
     test_frr = []
-
     if exp_type == "hey_ff":
         total_train_len = 111928.04543750011
         total_dev_len = 10679.505062500015
@@ -89,7 +88,7 @@ def main():
     plt.rcParams.update({'font.size': 15})
 
     # plt.title('ROC curve')
-    plt.xlabel('False Alarm Per Hour')
+    plt.xlabel('False Alarms Per Hour')
     plt.ylabel('False Rejection Rate')
 
     print("thresholds:", thresholds)
