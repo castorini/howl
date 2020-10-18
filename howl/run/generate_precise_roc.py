@@ -57,9 +57,18 @@ def get_metrics(exp_type, wb, thresholds):
 
 def main():
     apb = ArgumentParserBuilder()
-    apb.add_options(opt('--exp_timestemp',
+    apb.add_options(opt('--howl_exp_timestemp',
                         type=str,
                         default="Sep-08-11-28"),
+                    opt('--precise_exp_timestemp',
+                        type=str,
+                        default="Sep-08-11-28"),
+                    opt('--howl_exp_dir',
+                        type=str,
+                        default="exp_results/"),
+                    opt('--precise_exp_dir',
+                        type=str,
+                        default="../mycroft-precise/exp_results/"),
                     opt('--exp_type',
                         type=str,
                         default="hey_ff"))
@@ -68,11 +77,11 @@ def main():
 
     print("exp type: ", args.exp_type)
 
-    print("clean file: ", "exp_results/"+args.exp_type+"_clean_"+args.exp_timestemp+".xlsx")
-    print("noisy file: ", "exp_results/"+args.exp_type+"_noisy_"+args.exp_timestemp+".xlsx")
-    clean_wb = load_workbook("exp_results/hey_snips_v2/"+args.exp_type+"_clean_"+args.exp_timestemp+".xlsx")
-    noisy_wb = load_workbook("exp_results/hey_snips_v2/"+args.exp_type+"_noisy_"+args.exp_timestemp+".xlsx")
-    precise_wb = load_workbook("exp_results/hey_snips_v2/"+args.exp_type+"_precise_Oct-13-08-31.xlsx")
+    clean_wb = load_workbook(args.howl_exp_dir+args.exp_type+"_clean_"+args.howl_exp_timestemp+".xlsx")
+    noisy_wb = load_workbook(args.howl_exp_dir+args.exp_type+"_noisy_"+args.howl_exp_timestemp+".xlsx")
+    precise_clean_wb = load_workbook(args.precise_exp_dir+args.exp_type+"_clean_"+args.precise_exp_timestemp+".xlsx")
+    precise_noisy_wb = load_workbook(args.precise_exp_dir+args.exp_type+"_noisy_"+args.precise_exp_timestemp+".xlsx")
+    print(args.precise_exp_dir+args.exp_type+"_noisy_"+args.precise_exp_timestemp+".xlsx")
 
 
     thresholds = []
@@ -86,8 +95,22 @@ def main():
     clean_dev_far, clean_dev_frr, clean_test_far, clean_test_frr = get_metrics(args.exp_type, clean_wb, thresholds)
     noisy_dev_far, noisy_dev_frr, noisy_test_far, noisy_test_frr  = get_metrics(args.exp_type, noisy_wb, thresholds)
 
-    precise_dev_far, precise_dev_frr, precise_test_far, precise_test_frr  = get_metrics(args.exp_type, precise_wb, thresholds)
+    precise_clean_dev_far, precise_clean_dev_frr, precise_clean_test_far, precise_clean_test_frr = get_metrics(args.exp_type, precise_clean_wb, thresholds)
+    precise_noisy_dev_far, precise_noisy_dev_frr, precise_noisy_test_far, precise_noisy_test_frr  = get_metrics(args.exp_type, precise_noisy_wb, thresholds)
 
+
+    # print("thresholds:", thresholds)
+    # print("clean_dev_faph:", [round(num, 3) for num in clean_dev_far])
+    # print("clean_dev_frr:", [round(num, 3) for num in clean_dev_frr])
+    # print("clean_test_faph:", [round(num, 3) for num in clean_test_far])
+    # print("clean_test_frr:", [round(num, 3) for num in clean_test_frr])
+
+    # print("noisy_dev_faph:", [round(num, 3) for num in noisy_dev_far])
+    # print("noisy_dev_frr:", [round(num, 3) for num in noisy_dev_frr])
+    # print("noisy_test_faph:", [round(num, 3) for num in noisy_test_far])
+    # print("noisy_test_frr:", [round(num, 3) for num in noisy_test_frr])
+
+    plt.figure(0)
 
     plt.rcParams.update({'font.size': 12})
 
@@ -95,30 +118,41 @@ def main():
     plt.xlabel('False Alarms Per Hour')
     plt.ylabel('False Rejection Rate')
 
-    print("thresholds:", thresholds)
-    print("clean_dev_faph:", [round(num, 3) for num in clean_dev_far])
-    print("clean_dev_frr:", [round(num, 3) for num in clean_dev_frr])
-    print("clean_test_faph:", [round(num, 3) for num in clean_test_far])
-    print("clean_test_frr:", [round(num, 3) for num in clean_test_frr])
+    plt.plot(clean_test_far[1:-1], clean_test_frr[1:-1], '-+', color='tab:blue', label = 'howl clean')
+    plt.plot(noisy_test_far[1:-1], noisy_test_frr[1:-1], '-+', color='tab:orange', label = 'howl noisy')
 
-    print("noisy_dev_faph:", [round(num, 3) for num in noisy_dev_far])
-    print("noisy_dev_frr:", [round(num, 3) for num in noisy_dev_frr])
-    print("noisy_test_faph:", [round(num, 3) for num in noisy_test_far])
-    print("noisy_test_frr:", [round(num, 3) for num in noisy_test_frr])
-
-    plt.plot(clean_dev_far[1:-1], clean_dev_frr[1:-1], '--+', color='tab:blue', label = 'clean dev')
-    plt.plot(clean_test_far[1:-1], clean_test_frr[1:-1], '-+', color='tab:blue', label = 'clean test')
-    plt.plot(noisy_dev_far[1:-1], noisy_dev_frr[1:-1], '--+', color='tab:orange', label = 'noisy dev')
-    plt.plot(noisy_test_far[1:-1], noisy_test_frr[1:-1], '-+', color='tab:orange', label = 'noisy test')
-    plt.plot(precise_dev_far[1:-1], precise_dev_frr[1:-1], '--+', color='tab:green', label = 'precise dev')
-    plt.plot(precise_test_far[1:-1], precise_test_frr[1:-1], '-+', color='tab:green', label = 'precise test')
+    plt.plot(precise_noisy_test_far[1:-1], precise_noisy_test_frr[1:-1], '-+', color='tab:purple', label = 'precise noisy')
+    plt.plot(precise_clean_test_far[1:-1], precise_clean_test_frr[1:-1], '-+', color='tab:green', label = 'precise clean')
 
     plt.grid()
 
     plt.legend()
 
     # plt.show()
-    plt.savefig("exp_results/" + args.exp_type+ "_" +args.exp_timestemp + '.pdf')
+    plt.savefig("exp_results/" + args.exp_type+ "_test_" +args.howl_exp_timestemp + '.pdf')
+
+    plt.clf()
+
+    plt.figure(1)
+
+    plt.rcParams.update({'font.size': 12})
+
+    # plt.title('ROC curve')
+    plt.xlabel('False Alarms Per Hour')
+    plt.ylabel('False Rejection Rate')
+
+
+    plt.plot(clean_dev_far[1:-1], clean_dev_frr[1:-1], '--+', color='tab:blue', label = 'howl clean')
+    plt.plot(noisy_dev_far[1:-1], noisy_dev_frr[1:-1], '--+', color='tab:orange', label = 'howl noisy')
+
+    plt.plot(precise_clean_dev_far[1:-1], precise_clean_dev_frr[1:-1], '--+', color='tab:green', label = 'precise clean')
+    plt.plot(precise_noisy_dev_far[1:-1], precise_noisy_dev_frr[1:-1], '--+', color='tab:purple', label = 'precise noisy')
+
+    plt.grid()
+
+    plt.legend()
+
+    plt.savefig("exp_results/" + args.exp_type+ "_dev_" +args.howl_exp_timestemp + '.pdf')
 
 if __name__ == '__main__':
     main()
