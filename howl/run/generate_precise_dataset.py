@@ -2,6 +2,7 @@ from pathlib import Path
 from shutil import copyfile
 import os
 import logging
+import librosa
 import numpy as np
 
 from tqdm import trange, tqdm
@@ -29,6 +30,15 @@ def main():
                 os.symlink(item.metadata.path, output_path)
 
 
+
+    def write_files(dataset, output_dir, mixer: DatasetMixer):
+        print('copying files to', output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        for item in tqdm(dataset):
+            item, = mixer([item])
+            output_path = output_dir / item.metadata.path.name
+            librosa.output.write_wav(output_path, item.audio_data.numpy(), 16000)
+
     apb = ArgumentParserBuilder()
     apb.add_options(
         opt('--dataset-paths', '-i', type=str, nargs='+', default=[SETTINGS.dataset.dataset_path]),
@@ -49,7 +59,7 @@ def main():
     ds_kwargs = dict(sr=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono, frame_labeler=ctx.labeler)
 
     inference_settings = InferenceEngineSettings();
-    wakeword = '-'.join(np.array(SETTINGS.training.vocab)[inference_settings.inference_sequence]).strip()
+    wakeword = '_'.join(np.array(SETTINGS.training.vocab)[inference_settings.inference_sequence]).strip()
 
     ww_train_ds, ww_dev_ds, ww_test_ds = WakeWordDataset(metadata_list=[], set_type=DatasetType.TRAINING, **ds_kwargs), \
                                          WakeWordDataset(metadata_list=[], set_type=DatasetType.DEV, **ds_kwargs), \
@@ -75,23 +85,36 @@ def main():
     print_stats(f'train negative dataset', ww_train_neg_ds)
     copy_files(ww_train_neg_ds, output_path / 'not-wake-word', args.deep_copy)
 
+    noise_ds = RecursiveNoiseDatasetLoader().load(Path(SETTINGS.raw_dataset.noise_dataset_path),
+                                                      sr=SETTINGS.audio.sample_rate,
+                                                      mono=SETTINGS.audio.use_mono)
+    noise_ds_train, noise_ds_dev = noise_ds.split(Sha256Splitter(80))
+    noise_ds_dev, noise_ds_test = noise_ds_dev.split(Sha256Splitter(50))
+
+    dev_mixer = DatasetMixer(noise_ds_dev, seed=10, do_replace=False)
+    test_mixer = DatasetMixer(noise_ds_test, seed=10, do_replace=False)
 
     ww_dev_pos_ds = ww_dev_ds.filter(lambda x: ctx.searcher.search(x.transcription), clone=True)
     print_stats(f'dev positive dataset', ww_dev_pos_ds)
     copy_files(ww_dev_pos_ds, output_path / 'dev/wake-word', args.deep_copy)
+    write_files(ww_dev_pos_ds, output_path / 'noisy-dev/wake-word',dev_mixer)
 
     ww_dev_neg_ds = ww_dev_ds.filter(lambda x: not ctx.searcher.search(x.transcription), clone=True)
     print_stats(f'dev negative dataset', ww_dev_neg_ds)
     copy_files(ww_dev_neg_ds, output_path / 'dev/not-wake-word', args.deep_copy)
+    write_files(ww_dev_neg_ds, output_path / 'noisy-dev/not-wake-word', dev_mixer)
 
 
     ww_test_pos_ds = ww_test_ds.filter(lambda x: ctx.searcher.search(x.transcription), clone=True)
     print_stats(f'test positive dataset', ww_test_pos_ds)
     copy_files(ww_test_pos_ds, output_path / 'test/wake-word', args.deep_copy)
+    write_files(ww_test_pos_ds, output_path / 'noisy-test/wake-word', test_mixer)
 
     ww_test_neg_ds = ww_test_ds.filter(lambda x: not ctx.searcher.search(x.transcription), clone=True)
     print_stats(f'test negative dataset', ww_test_neg_ds)
     copy_files(ww_test_neg_ds, output_path / 'test/not-wake-word', args.deep_copy)
+    write_files(ww_test_neg_ds, output_path / 'noisy-test/not-wake-word', test_mixer)
+
 
 
 
