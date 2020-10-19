@@ -24,10 +24,13 @@ def main():
         output_dir.mkdir(parents=True, exist_ok=True)
         for item in tqdm(dataset):
             output_path = output_dir / item.metadata.path.name
-            if deep_copy:
-                copyfile(item.metadata.path, output_path)
-            else:
-                os.symlink(item.metadata.path, output_path)
+            try:
+                if deep_copy:
+                    copyfile(item.metadata.path, output_path)
+                else:
+                    os.symlink(item.metadata.path, output_path)
+            except FileExistsError:
+                # print("file already exists")
 
 
 
