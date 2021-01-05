@@ -215,54 +215,57 @@ def main():
     commands = []
     envs = []
 
-    # train
-    for i in range(args.n):
-        seed = str(random.randint(1,1000000))
-        seeds.append(seed)
-        env = {}
-        env['SEED'] = seed
+    seeds = ['224217', '302781', '31406', '417046', '610867', '732478', '864152', '887303']
+    seeds = ['885441', '403959', '794773', '441002', '42451', '271494', '536111', '509533', '424605']
 
-        workspace_path = os.getcwd() + '/workspaces/exp_'+ args.exp_type +'_res8/' + str(seed)
-        os.system('mkdir -p ' + workspace_path)
+    # # train
+    # for i in range(args.n):
+    #     seed = str(random.randint(1,1000000))
+    #     seeds.append(seed)
+    #     env = {}
+    #     env['SEED'] = seed
 
-        command = 'python -m howl.run.train --model res8 --workspace ' + workspace_path + '  -i ' + args.dataset_path
+    #     workspace_path = os.getcwd() + '/workspaces/exp_'+ args.exp_type +'_res8/' + str(seed)
+    #     os.system('mkdir -p ' + workspace_path)
 
-        commands.append(command)
-        envs.append(env)
+    #     command = 'python -m howl.run.train --model res8 --workspace ' + workspace_path + '  -i ' + args.dataset_path
+
+    #     commands.append(command)
+    #     envs.append(env)
 
     print('seeds: ', seeds)
 
     print('-- training --')
 
-    run_batch_commands(commands, envs)
+    # run_batch_commands(commands, envs)
 
     commands = []
     envs = []
 
-    for seed in seeds:
-        for threshold_idx, threshold in enumerate(thresholds):
+    # for seed in seeds:
+    #     for threshold_idx, threshold in enumerate(thresholds):
 
-            env = {}
-            env['SEED'] = seed
-            env['INFERENCE_THRESHOLD'] = str(threshold)
+    #         env = {}
+    #         env['SEED'] = seed
+    #         env['INFERENCE_THRESHOLD'] = str(threshold)
 
-            workspace_path = os.getcwd() + '/workspaces/exp_'+ args.exp_type +'_res8/' + str(seed)
+    #         workspace_path = os.getcwd() + '/workspaces/exp_'+ args.exp_type +'_res8/' + str(seed)
 
-            command = 'python -m howl.run.train --eval --model res8 --workspace ' + workspace_path + '  -i ' + args.dataset_path
+    #         command = 'python -m howl.run.train --eval --model res8 --workspace ' + workspace_path + '  -i ' + args.dataset_path
 
-            result_path = workspace_path + '/' + str(round(threshold, 2)) + '_results.csv'
+    #         result_path = workspace_path + '/' + str(round(threshold, 2)) + '_results.csv'
 
-            if not path.exists(result_path):
-                commands.append(command)
-                envs.append(env)
+    #         if not path.exists(result_path):
+    #             commands.append(command)
+    #             envs.append(env)
 
-    for command in commands:
-        print('\t', command)
+    # for command in commands:
+    #     print('\t', command)
 
 
     print('-- collecting metrics --')
 
-    run_batch_commands(commands, envs)
+    # run_batch_commands(commands, envs)
 
 
 
