@@ -3,11 +3,16 @@ Wake word detection modeling for Firefox Voice, supporting open datasets like Go
 
 Citation:
 ```
-@article{tang2020howl,
-  title={Howl: A Deployed, Open-Source Wake Word Detection System},
-  author={Raphael Tang and Jaejun Lee and Afsaneh Razi and Julia Cambre and Ian Bicking and Jofish Kaye and Jimmy Lin},
-  journal={arXiv:2008.09606},
-  year={2020}
+@inproceedings{tang-etal-2020-howl,
+    title = "Howl: A Deployed, Open-Source Wake Word Detection System",
+    author = "Tang, Raphael and Lee, Jaejun and Razi, Afsaneh and Cambre, Julia and Bicking, Ian and Kaye, Jofish and Lin, Jimmy",
+    booktitle = "Proceedings of Second Workshop for NLP Open Source Software (NLP-OSS)",
+    month = nov,
+    year = "2020",
+    publisher = "Association for Computational Linguistics",
+    url = "https://www.aclweb.org/anthology/2020.nlposs-1.9",
+    doi = "10.18653/v1/2020.nlposs-1.9",
+    pages = "61--65"
 }
 ```
 
@@ -58,6 +63,17 @@ DATASET_PATH=data/fire-positive python -m howl.run.attach_alignment --align-type
 1. Source the relevant environment variables for training the `res8` model: `source envs/res8.env`.
 2. Train the model: `python -m howl.run.train -i data/fire-negative data/fire-positive --model res8 --workspace workspaces/fire-res8`.
 3. For the CLI demo, run `python -m howl.run.demo --model res8 --workspace workspaces/fire-res8`.
+
+### Pretrained Models
+
+[howl-models](https://github.com/castorini/howl-models) contains workspaces with pretrained models
+
+to get the latest models, simply run `git submodule update --init --recursive`
+
+* [hey firefox](https://github.com/castorini/howl-models/tree/master/howl/hey-fire-fox)
+```bash
+VOCAB='[" hey","fire","fox"]' INFERENCE_SEQUENCE=[0,1,2] INFERENCE_THRESHOLD=0 NUM_MELS=40 MAX_WINDOW_SIZE_SECONDS=0.5 python -m howl.run.demo --model res8 --workspace howl-models/howl/hey-fire-fox
+```
 
 ## Reproducing Paper Results
 
