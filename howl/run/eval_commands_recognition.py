@@ -13,12 +13,12 @@ This script uses every GPU on the machine to train every models in this repo for
 target keywords include “yes,” “no,” “up,” “down,” “left,” “right,” “on,” “off,”, “stop,” “go,” unknown, or silence.
 
 sample command:
-python -m howl.run.eval_commands_recognition --num_models x --dataset_path < path_to_gsc_datasets >
+python -m howl.run.eval_commands_recognition --num_iterations x --dataset_path < path_to_gsc_datasets >
 """
 
 def main():
     apb = ArgumentParserBuilder()
-    apb.add_options(opt('--n',
+    apb.add_options(opt('--num_iterations',
                         type=int,
                         default=1,
                         help='number of experiments to run'),
@@ -81,8 +81,8 @@ def main():
         'mobilenet': [[],[]],
     }
 
-    for i in range(args.n):
-        print("\titeration: ", i)
+    for i in range(args.num_iterations):
+        print("\titeration: ", i, "/", args.num_iterations)
         os.environ["SEED"] = str(random.randint(1,1000000))
 
         row_index = str(i + 8)
@@ -90,7 +90,7 @@ def main():
         test_sheet['A'+row_index] = os.environ["SEED"]
 
         for model_type in model_types:
-            print("\tmodel: ", model_type, " - ", datetime.now().strftime("%H-%M"), flush=True)
+            print("\tmodel: ", model_type, " - ", datetime.now().strftime("%H:%M"), flush=True)
 
             if model_type == 'res8':
                 os.environ["LEARNING_RATE"] = "0.01"

@@ -58,7 +58,7 @@ def main():
     loader = GoogleSpeechCommandsDatasetLoader(SETTINGS.training.vocab)
     sr = SETTINGS.audio.sample_rate
     ds_kwargs = dict(sr=sr, mono=SETTINGS.audio.use_mono)
-    train_ds, dev_ds, test_ds = loader.load_splits(SETTINGS.dataset.dataset_path, **ds_kwargs)
+    train_ds, dev_ds, test_ds = loader.load_splits(Path(SETTINGS.dataset.dataset_path), **ds_kwargs)
 
     sr = SETTINGS.audio.sample_rate
     device = torch.device(SETTINGS.training.device)

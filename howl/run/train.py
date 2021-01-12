@@ -147,9 +147,9 @@ def main():
         test_mixer = DatasetMixer(noise_ds_test, seed=0, do_replace=False)
     train_comp = compose(*train_comp)
 
-    prep_dl = StandardAudioDataLoaderBuilder(ww_train_ds, num_workers=0, collate_fn=batchify).build(1)
+    prep_dl = StandardAudioDataLoaderBuilder(ww_train_ds, collate_fn=batchify).build(1)
     prep_dl.shuffle = True
-    train_dl = StandardAudioDataLoaderBuilder(ww_train_ds, num_workers=0, collate_fn=train_comp).build(SETTINGS.training.batch_size)
+    train_dl = StandardAudioDataLoaderBuilder(ww_train_ds, collate_fn=train_comp).build(SETTINGS.training.batch_size)
 
     model = RegisteredModel.find_registered_class(args.model)(ctx.num_labels).to(device).streaming()
     if SETTINGS.training.convert_static:
