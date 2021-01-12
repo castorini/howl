@@ -20,7 +20,7 @@ evaluates them with different threashold, and generate performance reports
 Two different performance reports are generated, one with the clean audio and one with audios with noise
 
 sample command:
-python -m howl.run.eval_wake_word_detection --num_models 10 --hop_size 0.05 --exp_type hey_ff --dataset_path "x" --noiseset_path "y"
+python -m howl.run.eval_wake_word_detection --num_models 10 --hop_size 0.05 --exp_type hey_firefox --dataset_path "x" --noiseset_path "y"
 
 train 10 models for hey firefox with random seeds using datasets x and y
 then evaluate them for thresholds ranging from 0 to 1 in increments of 0.05
@@ -215,7 +215,7 @@ def main():
     os.environ['NOISE_DATASET_PATH'] = args.noiseset_path
 
     if args.exp_type == "hey_firefox":
-        os.environ['NUM_EPOCHS'] = '300'
+        os.environ['NUM_EPOCHS'] = '5'
         os.environ['VOCAB'] = '[" hey","fire","fox"]'
         os.environ['INFERENCE_SEQUENCE'] = '[0,1,2]'
     elif args.exp_type == "hey_snips":
@@ -226,7 +226,7 @@ def main():
     seeds = []
 
 
-    print('-- training ' + args.num_models + ' models --')
+    print('-- training ', args.num_models, ' models --')
     training_commands = []
     training_envs = []
 
