@@ -215,7 +215,7 @@ def main():
     os.environ['NOISE_DATASET_PATH'] = args.noiseset_path
 
     if args.exp_type == "hey_firefox":
-        os.environ['NUM_EPOCHS'] = '5'
+        os.environ['NUM_EPOCHS'] = '300'
         os.environ['VOCAB'] = '[" hey","fire","fox"]'
         os.environ['INFERENCE_SEQUENCE'] = '[0,1,2]'
     elif args.exp_type == "hey_snips":
