@@ -20,7 +20,7 @@ evaluates them with different threashold, and generate performance reports
 Two different performance reports are generated, one with the clean audio and one with audios with noise
 
 sample command:
-python -m howl.run.run_exp --num_models 10 --hop_size 0.05 --exp_type hey_ff --dataset_path "x" --noiseset_path "y"
+python -m howl.run.eval_wake_word_detection --num_models 10 --hop_size 0.05 --exp_type hey_ff --dataset_path "x" --noiseset_path "y"
 
 train 10 models for hey firefox with random seeds using datasets x and y
 then evaluate them for thresholds ranging from 0 to 1 in increments of 0.05
@@ -203,7 +203,7 @@ def main():
     noisy_wb.save(noisy_file_name)
     print('\treport for noisy setting is generated at ', noisy_file_name)
 
-    # training settings
+    # Training settings
     os.environ['DATASET_PATH'] = args.dataset_path
     os.environ['WEIGHT_DECAY'] = '0.00001'
     os.environ['LEARNING_RATE'] = '0.01'
@@ -322,7 +322,6 @@ def main():
     print('-- report generation has been completed --')
     print('\treport for clean setting is generated at ', clean_file_name)
     print('\treport for noisy setting is generated at ', noisy_file_name)
-    
     
 if __name__ == '__main__':
     main()
