@@ -52,6 +52,12 @@ def main():
     dev_sheet['D1'] = model_types[2]
     dev_sheet['E1'] = model_types[3]
 
+    test_sheet['A2'] = "mean"
+    test_sheet['A3'] = "std"
+    test_sheet['A4'] = "p90"
+    test_sheet['A5'] = "p95"
+    test_sheet['A6'] = "p99"
+
     test_sheet['B1'] = model_types[0]
     test_sheet['C1'] = model_types[1]
     test_sheet['D1'] = model_types[2]
