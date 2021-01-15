@@ -67,11 +67,11 @@ def main():
 
     clean_file_name = "exp_results/"+args.exp_type+"_clean_"+args.exp_timestemp+".xlsx"
     print('\treport for clean setting is ', clean_file_name)
-    clean_wb = load_workbook("exp_results/"+args.exp_type+"_clean_"+args.exp_timestemp+".xlsx")
+    clean_wb = load_workbook(clean_file_name)
 
     noisy_file_name = "exp_results/"+args.exp_type+"_noisy_"+args.exp_timestemp+".xlsx"
     print('\treport for noisy setting is ', noisy_file_name)
-    noisy_wb = load_workbook("exp_results/"+args.exp_type+"_noisy_"+args.exp_timestemp+".xlsx")
+    noisy_wb = load_workbook(noisy_file_name)
 
     thresholds = []
     for name in clean_wb.sheetnames:
