@@ -79,3 +79,32 @@ First, follow the installation instructions in the quickstart guide.
 5. Set the firefox dataset path to the root folder: `export DATASET_PATH=/path/to/hey_firefox`
 6. Train the model: `LR_DECAY=0.98 VOCAB='[" hey","fire","fox"]' USE_NOISE_DATASET=True BATCH_SIZE=16 INFERENCE_THRESHOLD=0 NUM_EPOCHS=300 NUM_MELS=40 INFERENCE_SEQUENCE=[0,1,2] MAX_WINDOW_SIZE_SECONDS=0.5 python -m howl.run.train --model res8 --workspace workspaces/hey-ff-res8`
 
+
+## Experiments
+
+To verify the correctness of our implementation, we first train and evaluate our models on the Google Speech Commands dataset, for which there exists many known results. Next, we curate a wake word detection datasets and report our resulting model quality.
+
+For both experiments, we generate reports in excel format. [experiments](https://github.com/castorini/howl/tree/master/experiments) folder includes sample outputs from the for each experiment and corresponding workspaces can be found [here](https://github.com/castorini/howl-models/tree/master/howl/experiments)
+
+### commands_recognition
+
+For command recognition, we train the four different models (res8, LSTM, LAS encoder, MobileNetv2) to detect twelve different keywords: “yes”, “no”, “up”, “down”, “left”, “right”, “on”, “off”, “stop”, “go”, unknown, or silence.
+
+```bash
+python -m howl.run.eval_commands_recognition --num_iterations n --dataset_path < path_to_gsc_datasets >
+```
+
+### word_detection
+
+In this experiment, we train our best commands recognition model, res8, for `hey firefox` and `hey snips` and evaluate them with different threashold.
+
+Two different performance reports are generated, one with the clean audio and one with audios with noise
+
+```bash
+python -m howl.run.eval_wake_word_detection --num_models n --hop_size < number between 0 and 1 > --exp_type < hey_firefox | hey_snips > --dataset_path "x" --noiseset_path "y"
+```
+
+We also provide a script for generating ROC curve. `exp_timestamp` can be found from the reports generated from previous command
+```bash
+python -m howl.run.generate_roc --exp_timestamp < experiment timestamp > --exp_type < hey_firefox | hey_snips >
+```
