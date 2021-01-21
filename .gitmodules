@@ -1,0 +1,3 @@
+[submodule "howl-models"]
+	path = howl-models
+	url = git@github.com:castorini/howl-models.git
