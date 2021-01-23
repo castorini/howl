@@ -2,6 +2,8 @@ data
 workspaces
 exp_results
 
+.vscode/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

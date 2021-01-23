@@ -9,10 +9,10 @@ import torch
 import torch.nn as nn
 
 from .args import ArgumentParserBuilder, opt
-from howl.data.dataset import AudioClassificationDataset, GoogleSpeechCommandsDatasetLoader, ClassificationBatch
+from howl.data.dataset import GoogleSpeechCommandsDatasetLoader
 from howl.data.dataloader import StandardAudioDataLoaderBuilder
-from howl.data.transform import compose, ZmuvTransform, StandardAudioTransform, WakeWordFrameBatchifier,\
-    NoiseTransform, batchify, TimestretchTransform, TimeshiftTransform, truncate_length
+from howl.data.transform import compose, ZmuvTransform, StandardAudioTransform,\
+    NoiseTransform, batchify, TimeshiftTransform, truncate_length
 from howl.settings import SETTINGS
 from howl.model import RegisteredModel, Workspace
 from howl.utils.random import set_seed

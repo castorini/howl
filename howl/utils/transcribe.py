@@ -1,7 +1,7 @@
 from pathlib import Path
 import os
 
-from pocketsphinx import AudioFile, get_model_path, get_data_path
+from pocketsphinx import AudioFile, get_model_path
 
 
 class SpeechToText():
@@ -22,5 +22,5 @@ class SpeechToText():
         transcription = ''
         for phase in AudioFile(**self.config):
             transcription = str(phase)
-            break;
+            break
         return transcription

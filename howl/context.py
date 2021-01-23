@@ -2,9 +2,9 @@ from dataclasses import dataclass
 from typing import List
 import logging
 
-from .data.dataset import WordFrameLabeler, PhoneticFrameLabeler, PronunciationDictionary, PhonePhrase
-from .model.inference import LabelColoring, PhoneticTranscriptSearcher, WordTranscriptSearcher, FrameInferenceEngine
-from .settings import SETTINGS
+from howl.data.dataset import WordFrameLabeler, PhoneticFrameLabeler, PronunciationDictionary, PhonePhrase
+from howl.model.inference import LabelColoring, PhoneticTranscriptSearcher, WordTranscriptSearcher
+from howl.settings import SETTINGS
 from howl.data.dataset import WakeWordDataset
 from howl.data.tokenize import Vocab
 
