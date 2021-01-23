@@ -43,6 +43,8 @@ def main():
             tqdm.write(str(counter))
             tqdm.write(str(acc))
 
+        return num_corr / num_tot
+
     apb = ArgumentParserBuilder()
     apb.add_options(opt('--model', type=str, choices=RegisteredModel.registered_names(), default='las'),
                     opt('--workspace', type=str, default=str(Path('workspaces') / 'default')),
@@ -56,7 +58,7 @@ def main():
     loader = GoogleSpeechCommandsDatasetLoader(SETTINGS.training.vocab)
     sr = SETTINGS.audio.sample_rate
     ds_kwargs = dict(sr=sr, mono=SETTINGS.audio.use_mono)
-    train_ds, dev_ds, test_ds = loader.load_splits(SETTINGS.dataset.dataset_path, **ds_kwargs)
+    train_ds, dev_ds, test_ds = loader.load_splits(Path(SETTINGS.dataset.dataset_path), **ds_kwargs)
 
     sr = SETTINGS.audio.sample_rate
     device = torch.device(SETTINGS.training.device)
@@ -102,6 +104,7 @@ def main():
     ws.write_args(args)
     ws.write_setting(SETTINGS)
     writer.add_scalar('Meta/Parameters', sum(p.numel() for p in params))
+    dev_acc = 0
     for epoch_idx in trange(SETTINGS.training.num_epochs, position=0, leave=True):
         model.train()
         std_transform.train()
@@ -125,8 +128,12 @@ def main():
 
         for group in optimizer.param_groups:
             group['lr'] *= SETTINGS.training.lr_decay
-        evaluate_accuracy(dev_dl, 'Dev', save=True)
-    evaluate_accuracy(test_dl, 'Test')
+        dev_acc = evaluate_accuracy(dev_dl, 'Dev', save=True)
+    test_acc = evaluate_accuracy(test_dl, 'Test')
+
+    print("model: ", args.model)
+    print("dev_acc: ", dev_acc)
+    print("test_acc: ", test_acc)
 
 
 if __name__ == '__main__':
