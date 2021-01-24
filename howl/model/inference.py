@@ -142,6 +142,10 @@ class InferenceEngine:
         self.time_provider = time_provider
         self.reset()
 
+    def to(self, device: torch.device):
+        self.model = self.model.to(device)
+        self.zmuv = self.zmuv.to(device)
+
     def reset(self):
         self.model.streaming_state = None
         self.curr_time = 0
