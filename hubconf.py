@@ -21,7 +21,7 @@ def hey_fire_fox(pretrained=True, **kwargs) -> typing.Tuple[inference.InferenceE
     Pretrained model for Firefox Voice
     """
     # TODO: Refactor into pretrained model settings class
-    path = "howl-models/hey-fire-fox"
+    path = "howl-models/howl/hey-fire-fox"
     model_name = "res8"
     vocab = ["hey", "fire", "fox"]
     inference_sequence = [0, 1, 2]

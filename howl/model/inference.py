@@ -145,6 +145,7 @@ class InferenceEngine:
     def to(self, device: torch.device):
         self.model = self.model.to(device)
         self.zmuv = self.zmuv.to(device)
+        return self
 
     def reset(self):
         self.model.streaming_state = None

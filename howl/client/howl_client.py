@@ -1,4 +1,3 @@
-from howl.context import InferenceContext
 import logging
 import time
 from typing import Callable
@@ -6,8 +5,9 @@ from typing import Callable
 import numpy as np
 import pyaudio
 import torch
-from howl.model.inference import InferenceEngine
 
+from howl.context import InferenceContext
+from howl.model.inference import InferenceEngine
 
 class HowlClient:
     """
@@ -42,24 +42,24 @@ class HowlClient:
         self.engine: InferenceEngine = engine
         self.ctx: InferenceContext = context
 
-        self._audio = pyaudio.PyAudio()
         self._audio_buf = []
         self._audio_buf_len = 16
         self._audio_float_size = 32767
         self.last_data = np.zeros(self.chunk_size)
 
     @staticmethod
-    def list_pretrained(self):
+    def list_pretrained(force_reload: bool = False):
         """Show a list of available pretrained models"""
-        print(torch.hub.list('castorini/howl:howl-pip'))
+        print(torch.hub.list('castorini/howl:howl-pip', force_reload=force_reload))
 
+    @staticmethod
     def _get_device(device: int):
         if device == -1:
             return torch.device('cpu')
         else:
             return torch.device('cuda:{}'.format(device))
 
-    def _on_audio(self, in_data):
+    def _on_audio(self, in_data, frame_count, time_info, status):
         data_ok = (in_data, pyaudio.paContinue)
         self.last_data = in_data
         self._audio_buf.append(in_data)
@@ -97,6 +97,7 @@ class HowlClient:
             )
 
         chosen_idx = 0
+        self._audio = pyaudio.PyAudio()
         for idx in range(self._audio.get_device_count()):
             info = self._audio.get_device_info_by_index(idx)
             if info['name'] == 'pulse':
@@ -112,15 +113,16 @@ class HowlClient:
                                   stream_callback=self._on_audio)
         self.stream = stream
         stream.start_stream()
+        return self
 
     def join(self):
         """Block while the audio inference stream is active"""
         while self.stream.is_active():
             time.sleep(0.1)
 
-    def from_pretrained(self, name: str):
+    def from_pretrained(self, name: str, force_reload: bool = False):
         """Load a pretrained model using the provided name"""
-        engine, ctx = torch.hub.load('castorini/howl:howl-pip', name)
+        engine, ctx = torch.hub.load('castorini/howl:howl-pip', name, force_reload=force_reload)
         self.engine = engine.to(self.device)
         self.ctx = ctx
 
