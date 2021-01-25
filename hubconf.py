@@ -3,7 +3,7 @@ Configuration file for loading pretrained models using PyTorch hub
 
 Usage example: torch.hub.load("castorini/howl", "hey_fire_fox")
 """
-dependencies = ['torch']
+dependencies = ['howl', 'torch']
 
 from pathlib import Path
 from typing import Tuple
@@ -32,7 +32,8 @@ def hey_fire_fox(pretrained=True, **kwargs) -> Tuple[InferenceEngine, InferenceC
     use_frame = True
 
     # Set up context and workspace
-    ctx = InferenceContext(vocab, token_type=token_type, use_blank=not use_frame)
+    ctx = InferenceContext(vocab, token_type=token_type,
+                           use_blank=not use_frame)
     ws = Workspace(Path(path), delete_existing=False)
 
     # Load models
@@ -40,7 +41,8 @@ def hey_fire_fox(pretrained=True, **kwargs) -> Tuple[InferenceEngine, InferenceC
     model = RegisteredModel.find_registered_class(model)(ctx.num_labels).eval()
 
     if pretrained:
-        zmuv_transform.load_state_dict(torch.load(str(ws.path / 'zmuv.pt.bin')))
+        zmuv_transform.load_state_dict(
+            torch.load(str(ws.path / 'zmuv.pt.bin')))
         ws.load_model(model, best=True)
 
     model.streaming()
@@ -58,6 +60,6 @@ def hey_fire_fox(pretrained=True, **kwargs) -> Tuple[InferenceEngine, InferenceC
                                          zmuv_transform,
                                          negative_label=ctx.negative_label,
                                          coloring=ctx.coloring)
-    
+
     engine.sequence = inference_sequence
     return engine, ctx

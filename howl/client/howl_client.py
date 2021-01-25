@@ -26,14 +26,14 @@ class HowlClient:
         """
         Initializes the client.
 
-            Parameters:
-                engine (InferenceEngine): An InferenceEngine for processing audio input, provided
-                                          on initialization or by loading a pretrained model.
-                context (InferenceContext): An InferenceContext object containing vocab, provided
-                                            on initialization or by loading a pretrained model.
-                device (int): Device for CPU/GPU support. Defaults to -1 for running on CPU,
-                              positive values will run the model on the associated CUDA device.
-                chunk_size (int): Number of frames per buffer for audio.
+        Parameters:
+            engine (InferenceEngine): An InferenceEngine for processing audio input, provided
+                                        on initialization or by loading a pretrained model.
+            context (InferenceContext): An InferenceContext object containing vocab, provided
+                                        on initialization or by loading a pretrained model.
+            device (int): Device for CPU/GPU support. Defaults to -1 for running on CPU,
+                            positive values will run the model on the associated CUDA device.
+            chunk_size (int): Number of frames per buffer for audio.
         """
         self.listeners = []
         self.chunk_size = chunk_size
@@ -125,5 +125,11 @@ class HowlClient:
         self.ctx = ctx
 
     def add_listener(self, listener: Callable):
-        """Add a listener callback to be executed when a sequence is detected"""
+        """
+        Add a listener callback to be executed when a sequence is detected
+        
+        Parameters:
+            listener (Callable): A function that takes in a list of strings as an argument,
+                                 which will contain the detected wake words.
+        """
         self.listeners.append(listener)

@@ -20,10 +20,26 @@ Citation:
 
 ## Quickstart Guide
 
-To immediately use a pre-trained Howl model for inference, we provide the `client` API.
+1. Install PyAudio and and PyTorch through your distribution's package system.
+
+2. Install Howl using `pip`
 
 ```
-TODO: Add example here
+pip install howl
+```
+
+3. To immediately use a pre-trained Howl model for inference, we provide the `client` API. The following example loads the "hey_fire_fox" pretrained model with a simple callback and starts the inference client.
+
+```
+from howl.client import HowlClient
+
+def hello_callback(detected_words):
+    print("Detected: {}".format(detected_words))
+
+client = HowlClient()
+client.from_pretrained("hey_fire_fox")
+client.add_listener(hello_callback)
+client.start.join()
 ```
 
 ## Training Guide
@@ -37,7 +53,6 @@ TODO: Add example here
 3. Install PyAudio and its dependencies through your distribution's package system.
 
 4. `pip install -r requirements.txt -r requirements_training.txt` (some apt packages might need to be installed)
-
 
 ### Preparing a Dataset
 
