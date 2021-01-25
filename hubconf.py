@@ -1,3 +1,8 @@
+"""
+Configuration file for loading pretrained models using PyTorch hub
+
+Usage example: torch.hub.load("castorini/howl", "hey_fire_fox")
+"""
 dependencies = ['torch']
 
 from pathlib import Path

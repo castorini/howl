@@ -11,7 +11,7 @@ setuptools.setup(
     version="0.0.1",
     author="Anserini Gaggle",
     author_email="anserini.gaggle@gmail.com",
-    description="A wake word detection modeling toolkit",
+    description="A wake word detection toolkit",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/castorini/howl",
