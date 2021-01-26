@@ -30,9 +30,7 @@ def main():
                 else:
                     os.symlink(item.metadata.path, output_path)
             except FileExistsError:
-                # print("file already exists")
-
-
+                pass
 
     def write_files(dataset, output_dir, mixer: DatasetMixer):
         print('copying files to', output_dir)

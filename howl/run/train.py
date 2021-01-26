@@ -68,8 +68,8 @@ def main():
             writer.add_scalar(f'{prefix}/Metric/tp', conf_matrix.tp, epoch_idx)
             ws.increment_model(model, conf_matrix.tp)
         if args.eval:
-            with (ws.path / 'results.csv').open('a') as f:
-                threshold = engine.threshold
+            threshold = engine.threshold
+            with (ws.path / (str(round(threshold, 2)) + '_results.csv') ).open('a') as f:
                 f.write(f'{prefix},{threshold},{conf_matrix.tp},{conf_matrix.tn},{conf_matrix.fp},{conf_matrix.fn}\n')
 
     def do_evaluate():
@@ -127,7 +127,8 @@ def main():
     ww_test_pos_ds = ww_test_ds.filter(lambda x: ctx.searcher.search(x.transcription), clone=True)
     ww_test_neg_ds = ww_test_ds.filter(lambda x: not ctx.searcher.search(x.transcription), clone=True)
 
-    print_stats(f'Negative dataset', ww_dev_neg_ds, ww_test_neg_ds)
+    print_stats(f'Dev dataset', ww_dev_pos_ds, ww_dev_neg_ds)
+    print_stats(f'Test dataset', ww_test_pos_ds, ww_test_neg_ds)
     device = torch.device(SETTINGS.training.device)
     std_transform = StandardAudioTransform().to(device).eval()
     zmuv_transform = ZmuvTransform().to(device)

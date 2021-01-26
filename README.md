@@ -3,11 +3,16 @@ Wake word detection modeling for Firefox Voice, supporting open datasets like Go
 
 Citation:
 ```
-@article{tang2020howl,
-  title={Howl: A Deployed, Open-Source Wake Word Detection System},
-  author={Raphael Tang and Jaejun Lee and Afsaneh Razi and Julia Cambre and Ian Bicking and Jofish Kaye and Jimmy Lin},
-  journal={arXiv:2008.09606},
-  year={2020}
+@inproceedings{tang-etal-2020-howl,
+    title = "Howl: A Deployed, Open-Source Wake Word Detection System",
+    author = "Tang, Raphael and Lee, Jaejun and Razi, Afsaneh and Cambre, Julia and Bicking, Ian and Kaye, Jofish and Lin, Jimmy",
+    booktitle = "Proceedings of Second Workshop for NLP Open Source Software (NLP-OSS)",
+    month = nov,
+    year = "2020",
+    publisher = "Association for Computational Linguistics",
+    url = "https://www.aclweb.org/anthology/2020.nlposs-1.9",
+    doi = "10.18653/v1/2020.nlposs-1.9",
+    pages = "61--65"
 }
 ```
 
@@ -59,6 +64,17 @@ DATASET_PATH=data/fire-positive python -m howl.run.attach_alignment --align-type
 2. Train the model: `python -m howl.run.train -i data/fire-negative data/fire-positive --model res8 --workspace workspaces/fire-res8`.
 3. For the CLI demo, run `python -m howl.run.demo --model res8 --workspace workspaces/fire-res8`.
 
+### Pretrained Models
+
+[howl-models](https://github.com/castorini/howl-models) contains workspaces with pretrained models
+
+to get the latest models, simply run `git submodule update --init --recursive`
+
+* [hey firefox](https://github.com/castorini/howl-models/tree/master/howl/hey-fire-fox)
+```bash
+VOCAB='[" hey","fire","fox"]' INFERENCE_SEQUENCE=[0,1,2] INFERENCE_THRESHOLD=0 NUM_MELS=40 MAX_WINDOW_SIZE_SECONDS=0.5 python -m howl.run.demo --model res8 --workspace howl-models/howl/hey-fire-fox
+```
+
 ## Reproducing Paper Results
 
 First, follow the installation instructions in the quickstart guide.
@@ -108,4 +124,34 @@ DATASET_PATH=data/hey-snips python -m howl.run.attach_alignment --align-type mfa
 howl also provides a script for transforming howl dataset to [mycroft-precise](https://github.com/MycroftAI/mycroft-precise) dataset
 ```bash
 VOCAB='[" hey","fire","fox"]' INFERENCE_SEQUENCE=[0,1,2] python -m howl.run.generate_precise_dataset --dataset-path /path/to/howl_dataset
+```
+
+## Experiments
+
+To verify the correctness of our implementation, we first train and evaluate our models on the Google Speech Commands dataset, for which there exists many known results. Next, we curate a wake word detection datasets and report our resulting model quality.
+
+For both experiments, we generate reports in excel format. [experiments](https://github.com/castorini/howl/tree/master/experiments) folder includes sample outputs from the for each experiment and corresponding workspaces can be found [here](https://github.com/castorini/howl-models/tree/master/howl/experiments)
+
+### commands_recognition
+
+For command recognition, we train the four different models (res8, LSTM, LAS encoder, MobileNetv2) to detect twelve different keywords: “yes”, “no”, “up”, “down”, “left”, “right”, “on”, “off”, “stop”, “go”, unknown, or silence.
+
+```bash
+python -m howl.run.eval_commands_recognition --num_iterations n --dataset_path < path_to_gsc_datasets >
+```
+
+### word_detection
+
+In this experiment, we train our best commands recognition model, res8, for `hey firefox` and `hey snips` and evaluate them with different threashold.
+
+Two different performance reports are generated, one with the clean audio and one with audios with noise
+
+```bash
+python -m howl.run.eval_wake_word_detection --num_models n --hop_size < number between 0 and 1 > --exp_type < hey_firefox | hey_snips > --dataset_path "x" --noiseset_path "y"
+```
+
+We also provide a script for generating ROC curve. `exp_timestamp` can be found from the reports generated from previous command
+```bash
+python -m howl.run.generate_roc --exp_timestamp < experiment timestamp > --exp_type < hey_firefox | hey_snips >
+>>>>>>> 95bb4c98b1e3c4d67016f9f8d1ad30dfa6d42fd1
 ```
