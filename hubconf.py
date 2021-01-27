@@ -17,6 +17,8 @@ import howl.context as context
 import howl.data.transform as transform
 import howl.model as howl_model
 import howl.model.inference as inference
+import howl.settings as settings
+
 from howl.settings import SETTINGS as _SETTINGS
 
 _MODEL_URL = "https://github.com/castorini/howl-models/archive/v1.0.0.zip"
@@ -50,20 +52,17 @@ def hey_fire_fox(pretrained=True, **kwargs) \
     reload_models = kwargs.pop('reload_models', False)
     _download_howl_models(cache_dir, reload_models)
 
-    # Set conf and env variables
+    # Audio inference settings
     conf = _ModelSettings(path="howl/hey-fire-fox",
                           model_name="res8",
                           vocab=["hey", "fire", "fox"],
                           inference_sequence=[0, 1, 2],
-                          num_mels=40,
                           inference_threshold=0,
                           max_window_size_seconds=0.5,
                           token_type="word",
                           use_frame=True)
-
-    os.environ["NUM_MELS"] = str(conf.num_mels)
-    os.environ["INFERENCE_THRESHOLD"] = str(conf.inference_threshold)
-    os.environ["MAX_WINDOW_SIZE_SECONDS"] = str(conf.max_window_size_seconds)
+    ats = transform.augment.AudioTransformSettings(num_mels=40)
+    _SETTINGS._training = settings.TrainingSettings(max_window_size_seconds=0.5)
 
     # Set up context and workspace
     ws_path: pathlib.Path = cache_dir / _MODEL_CACHE_FOLDER / conf.path
@@ -88,13 +87,15 @@ def hey_fire_fox(pretrained=True, **kwargs) \
                                                 model,
                                                 zmuv_transform,
                                                 negative_label=ctx.negative_label,
-                                                coloring=ctx.coloring)
+                                                coloring=ctx.coloring,
+                                                audio_transform_settings=ats)
     else:
         engine = inference.FrameInferenceEngine(_SETTINGS.audio.sample_rate,
                                                 model,
                                                 zmuv_transform,
                                                 negative_label=ctx.negative_label,
-                                                coloring=ctx.coloring)
+                                                coloring=ctx.coloring,
+                                                audio_transform_settings=ats)
     engine.sequence = conf.inference_sequence
     return engine, ctx
 
@@ -110,7 +111,7 @@ def _download_howl_models(base_dir: str, reload_models: bool):
     zip_path = os.path.join(base_dir, _MODEL_CACHE_FOLDER + '.zip')
     _remove_files(cached_folder)
     _remove_files(zip_path)
-    torch.hub.download_url_to_file(_MODEL_URL, zip_path)
+    torch.hub.download_url_to_file(_MODEL_URL, zip_path, progress=False)
 
     # Extract files into folder
     with zipfile.ZipFile(zip_path) as model_zipfile:

@@ -113,6 +113,7 @@ class HowlClient:
                                   frames_per_buffer=self.chunk_size,
                                   stream_callback=self._on_audio)
         self.stream = stream
+        logging.info("Starting Howl inference client...")
         stream.start_stream()
         return self
 

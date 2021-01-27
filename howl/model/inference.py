@@ -1,4 +1,5 @@
 from collections import defaultdict
+from howl.data.transform.augment import AudioTransformSettings
 from typing import List
 import itertools
 import logging
@@ -125,10 +126,11 @@ class InferenceEngine:
                  negative_label: int,
                  settings: InferenceEngineSettings = InferenceEngineSettings(),
                  coloring: LabelColoring = None,
-                 time_provider=time.time):
+                 time_provider=time.time,
+                 audio_transform_settings: AudioTransformSettings = AudioTransformSettings()):
         self.model = model
         self.zmuv = zmuv_transform
-        self.std = StandardAudioTransform().eval()
+        self.std = StandardAudioTransform(audio_transform_settings).eval()
         self.settings = settings
         inference_weights = 1 if settings.inference_weights is None else np.array(settings.inference_weights)
         self.inference_weights = inference_weights
