@@ -110,8 +110,8 @@ def _download_howl_models(base_dir: str, reload_models: bool):
     # Extract files into folder
     with zipfile.ZipFile(zip_path) as model_zipfile:
         # Find name of extracted folder
-        extraced_name = model_zipfile.infolist()[0].filename
-        extracted_path = os.path.join(base_dir, extraced_name)
+        extracted_name = model_zipfile.infolist()[0].filename
+        extracted_path = os.path.join(base_dir, extracted_name)
         _remove_files(extracted_path)
         model_zipfile.extractall(base_dir)
 
