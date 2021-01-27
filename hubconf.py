@@ -30,9 +30,6 @@ class _ModelSettings:
     model_name: str
     vocab: typing.List[str]
     inference_sequence: typing.List[int]
-    num_mels: int
-    inference_threshold: float
-    max_window_size_seconds: int
     token_type: str
     use_frame: bool
 
@@ -42,27 +39,24 @@ def hey_fire_fox(pretrained=True, **kwargs) \
     """
     Pretrained model for Firefox Voice
     """
-
-    # Set cache directory
-    cache_dir = pathlib.Path.home() / '.cache/howl'
-    if not os.path.exists(cache_dir):
-        os.makedirs(cache_dir)
-
-    # Separate flag needed since PyTorch will pop the 'force_reload' flag first
-    reload_models = kwargs.pop('reload_models', False)
-    _download_howl_models(cache_dir, reload_models)
-
     # Audio inference settings
     conf = _ModelSettings(path="howl/hey-fire-fox",
                           model_name="res8",
                           vocab=["hey", "fire", "fox"],
                           inference_sequence=[0, 1, 2],
-                          inference_threshold=0,
-                          max_window_size_seconds=0.5,
                           token_type="word",
                           use_frame=True)
     ats = transform.augment.AudioTransformSettings(num_mels=40)
     _SETTINGS._training = settings.TrainingSettings(max_window_size_seconds=0.5)
+
+    # Set cache directory and download models
+    cache_dir = pathlib.Path.home() / '.cache/howl'
+    if not os.path.exists(cache_dir):
+        os.makedirs(cache_dir)
+
+    # Separate `reload_models` flag since PyTorch will pop the 'force_reload' flag
+    reload_models = kwargs.pop('reload_models', False)
+    _download_howl_models(cache_dir, reload_models)
 
     # Set up context and workspace
     ws_path: pathlib.Path = cache_dir / _MODEL_CACHE_FOLDER / conf.path
@@ -81,7 +75,7 @@ def hey_fire_fox(pretrained=True, **kwargs) \
 
     model.streaming()
     if conf.use_frame:
-        engine = inference.FrameInferenceEngine(int(conf.max_window_size_seconds * 1000),
+        engine = inference.FrameInferenceEngine(int(_SETTINGS.training.max_window_size_seconds * 1000),
                                                 int(_SETTINGS.training.eval_stride_size_seconds * 1000),
                                                 _SETTINGS.audio.sample_rate,
                                                 model,
