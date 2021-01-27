@@ -43,6 +43,8 @@ def hey_fire_fox(pretrained=True, **kwargs) \
 
     # Set cache directory
     cache_dir = pathlib.Path.home() / '.cache/howl'
+    if not os.path.exists(cache_dir):
+        os.makedirs(cache_dir)
 
     # Separate flag needed since PyTorch will pop the 'force_reload' flag first
     reload_models = kwargs.pop('reload_models', False)
@@ -59,15 +61,15 @@ def hey_fire_fox(pretrained=True, **kwargs) \
                           token_type="word",
                           use_frame=True)
 
-    os.environ["NUM_MELS"] = conf.num_mels
-    os.environ["INFERENCE_THRESHOLD"] = conf.inference_sequence
-    os.environ["MAX_WINDOW_SIZE_SECONDS"] = conf.max_window_size_seconds
+    os.environ["NUM_MELS"] = str(conf.num_mels)
+    os.environ["INFERENCE_THRESHOLD"] = str(conf.inference_threshold)
+    os.environ["MAX_WINDOW_SIZE_SECONDS"] = str(conf.max_window_size_seconds)
 
     # Set up context and workspace
-    ws_path = cache_dir + _MODEL_CACHE_FOLDER + conf.path
+    ws_path: pathlib.Path = cache_dir / _MODEL_CACHE_FOLDER / conf.path
     ctx = context.InferenceContext(
         conf.vocab, token_type=conf.token_type, use_blank=not conf.use_frame)
-    ws = howl_model.Workspace(pathlib.Path(ws_path), delete_existing=False)
+    ws = howl_model.Workspace(ws_path, delete_existing=False)
 
     # Load models
     zmuv_transform = transform.ZmuvTransform()
