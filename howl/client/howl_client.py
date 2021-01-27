@@ -9,6 +9,7 @@ import torch
 from howl.context import InferenceContext
 from howl.model.inference import InferenceEngine
 
+
 class HowlClient:
     """
     A client for serving Howl models. Users can provide custom listener callbacks
@@ -75,7 +76,7 @@ class HowlClient:
         if self.engine.infer(inp):
             phrase = ' '.join(self.ctx.vocab[x]
                               for x in self.engine.sequence).title()
-            logging.info(f'{phrase} detected', end='\r')
+            logging.info(f'{phrase} detected')
             # Execute user-provided listener callbacks
             for lis in self.listeners:
                 lis(self.engine.sequence)
@@ -122,14 +123,15 @@ class HowlClient:
 
     def from_pretrained(self, name: str, force_reload: bool = False):
         """Load a pretrained model using the provided name"""
-        engine, ctx = torch.hub.load('castorini/howl:howl-pip', name, force_reload=force_reload)
+        engine, ctx = torch.hub.load(
+            'castorini/howl:howl-pip', name, force_reload=force_reload, reload_models=force_reload)
         self.engine = engine.to(self.device)
         self.ctx = ctx
 
     def add_listener(self, listener: Callable):
         """
         Add a listener callback to be executed when a sequence is detected
-        
+
         Parameters:
             listener (Callable): A function that takes in a list of strings as an argument,
                                  which will contain the detected wake words.

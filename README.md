@@ -28,7 +28,7 @@ Citation:
 pip install howl
 ```
 
-3. To immediately use a pre-trained Howl model for inference, we provide the `client` API. The following example loads the "hey_fire_fox" pretrained model with a simple callback and starts the inference client.
+3. To immediately use a pre-trained Howl model for inference, we provide the `client` API. The following example (also found under `examples/hey_fire_fox.py`) loads the "hey_fire_fox" pretrained model with a simple callback and starts the inference client.
 
 ```
 from howl.client import HowlClient
