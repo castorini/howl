@@ -20,7 +20,7 @@ Citation:
 
 ### Installation
 
-A proper Pip package is coming soon. 
+A proper Pip package is coming soon.
 
 1. `git clone https://github.com/castorini/howl && cd howl`
 
@@ -37,7 +37,7 @@ In the example that follows, we describe how to train a custom detector for the 
 1. Download a supported data source. We recommend [Common Voice](https://commonvoice.mozilla.org/) for its breadth and free license.
 2. To provide alignment for the data, install [Montreal Forced Aligner](https://montreal-forced-aligner.readthedocs.io/en/latest/installation.html) (MFA)
 and download an [English pronunciation dictionary](http://svn.code.sf.net/p/cmusphinx/code/trunk/cmudict/cmudict-0.7b).
-3. Create a positive dataset containing the keyword: 
+3. Create a positive dataset containing the keyword:
 ```bash
 VOCAB='["fire"]' INFERENCE_SEQUENCE=[0] DATASET_PATH=data/fire-positive python -m howl.run.create_raw_dataset --negative-pct 0 -i ~/path/to/common-voice --positive-pct 100
 ```
@@ -88,8 +88,8 @@ First, follow the installation instructions in the quickstart guide.
 
 ### Hey Firefox
 
-1. Download [the Hey Firefox corpus](http://nlp.rocks/firefox), licensed under CC0, and extract it.
-2. Download [our noise dataset](http://nlp.rocks/ffnoise), built from Microsoft SNSD and MUSAN, and extract it.
+1. Download [the Hey Firefox corpus](https://nlp.nyc3.digitaloceanspaces.com/hey-ff-data.zip), licensed under CC0, and extract it.
+2. Download [our noise dataset](https://nlp.nyc3.digitaloceanspaces.com/hey-ff-noise.zip), built from Microsoft SNSD and MUSAN, and extract it.
 3. Source the appropriate environment variables: `source envs/res8.env`
 4. Set the noise dataset path to the root folder: `export NOISE_DATASET_PATH=/path/to/snsd`
 5. Set the firefox dataset path to the root folder: `export DATASET_PATH=/path/to/hey_firefox`
