@@ -17,8 +17,14 @@ from howl.data.transform import compose, ZmuvTransform, StandardAudioTransform, 
 from howl.model.inference import InferenceEngineSettings
 from howl.settings import SETTINGS
 
-def main():
+"""
+This script is used to transform datasets for howl to dataset for Mycroft-precise 
 
+sample command:
+python -m howl.run.generate_precise_dataset.py --i <datasets to convert> --o <location of the output dataset>
+"""
+
+def main():
     def copy_files(dataset, output_dir, deep_copy=False):
         print('copying files to', output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -105,7 +111,6 @@ def main():
     copy_files(ww_dev_neg_ds, output_path / 'dev/not-wake-word', args.deep_copy)
     write_files(ww_dev_neg_ds, output_path / 'noisy-dev/not-wake-word', dev_mixer)
 
-
     ww_test_pos_ds = ww_test_ds.filter(lambda x: ctx.searcher.search(x.transcription), clone=True)
     print_stats(f'test positive dataset', ww_test_pos_ds)
     copy_files(ww_test_pos_ds, output_path / 'test/wake-word', args.deep_copy)
@@ -115,9 +120,6 @@ def main():
     print_stats(f'test negative dataset', ww_test_neg_ds)
     copy_files(ww_test_neg_ds, output_path / 'test/not-wake-word', args.deep_copy)
     write_files(ww_test_neg_ds, output_path / 'noisy-test/not-wake-word', test_mixer)
-
-
-
 
 if __name__ == '__main__':
     main()

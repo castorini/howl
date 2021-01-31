@@ -153,5 +153,4 @@ python -m howl.run.eval_wake_word_detection --num_models n --hop_size < number b
 We also provide a script for generating ROC curve. `exp_timestamp` can be found from the reports generated from previous command
 ```bash
 python -m howl.run.generate_roc --exp_timestamp < experiment timestamp > --exp_type < hey_firefox | hey_snips >
->>>>>>> 95bb4c98b1e3c4d67016f9f8d1ad30dfa6d42fd1
 ```
