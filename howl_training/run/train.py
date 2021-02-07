@@ -101,7 +101,7 @@ def main():
                                              window_size_ms=int(SETTINGS.training.max_window_size_seconds * 1000))
         criterion = nn.CrossEntropyLoss()
     else:
-        tokenizer = WakeWordTokenizer(ctx.vocab)
+        tokenizer = WakeWordTokenizer(ctx.vocab, ignore_oov=False)
         batchifier = AudioSequenceBatchifier(ctx.negative_label, tokenizer)
         criterion = nn.CTCLoss()
 
