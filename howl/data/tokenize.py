@@ -89,6 +89,7 @@ class Vocab:
 
 
 class WakeWordTokenizer(TranscriptTokenizer):
+    # Only used for ctc objective
     def __init__(self,
                  vocab: Vocab,
                  ignore_oov: bool = True):
@@ -109,6 +110,8 @@ class WakeWordTokenizer(TranscriptTokenizer):
                 if not self.ignore_oov:
                     if self.vocab.oov_token_id is None:
                         raise ValueError
-                    encoded_output.append(self.vocab.oov_token_id)
+                    if len(encoded_output) == 0 or encoded_output[-1] != self.vocab.oov_token_id:
+                      # skip duplicated negative labels
+                      encoded_output.append(self.vocab.oov_token_id)
                 transcript = transcript[1:]
         return encoded_output
