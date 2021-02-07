@@ -109,10 +109,12 @@ def pad(data_list, element=0, max_length=None):
 
 class AudioSequenceBatchifier:
     def __init__(self,
+                 negative_label: int,
                  tokenizer: TranscriptTokenizer,
                  sample_rate: int = 16000):
         self.sample_rate = sample_rate
         self.tokenizer = tokenizer
+        self.negative_label = negative_label
 
     def __call__(self, examples: Sequence[WakeWordClipExample]) -> SequenceBatch:
         audio_data_lst = []
@@ -127,7 +129,7 @@ class AudioSequenceBatchifier:
                                                   labels_lst=labels_lst,
                                                   labels_lengths=labels_lengths,
                                                   input_lengths=audio_data_lengths)
-        labels_lst = torch.tensor(pad(data['labels_lst']))
+        labels_lst = torch.tensor(pad(data['labels_lst'], element=self.negative_label))
         labels_lengths = torch.tensor(data['labels_lengths'])
         return SequenceBatch(audio_tensor, labels_lst, torch.tensor(data['input_lengths']), labels_lengths)
 

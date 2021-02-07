@@ -102,7 +102,7 @@ def main():
         criterion = nn.CrossEntropyLoss()
     else:
         tokenizer = WakeWordTokenizer(ctx.vocab)
-        batchifier = AudioSequenceBatchifier(tokenizer)
+        batchifier = AudioSequenceBatchifier(ctx.negative_label, tokenizer)
         criterion = nn.CTCLoss()
 
     ws = Workspace(Path(args.workspace), delete_existing=not args.eval)
