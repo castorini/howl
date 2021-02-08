@@ -79,7 +79,7 @@ def main():
     device = torch.device(SETTINGS.training.device)
     zmuv_transform = ZmuvTransform().to(device)
     model = RegisteredModel.find_registered_class(args.model)(ctx.num_labels).to(device).eval()
-    zmuv_transform.load_state_dict(torch.load(str(ws.path / 'zmuv.pt.bin')))
+    zmuv_transform.load_state_dict(torch.load(str(ws.path / 'zmuv.pt.bin'), map_location=device))
 
     ws.load_model(model, best=True)
     model.streaming()
