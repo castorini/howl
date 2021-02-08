@@ -88,7 +88,7 @@ class PronunciationDictionary:
                     continue
                 try:
                     word, pronunciation = line.split(' ', 1)
+                    data[word.lower()].append(PhonePhrase(list(map(Phone, pronunciation.strip().lower().split()))))
                 except:
                     pass
-                data[word.lower()].append(PhonePhrase(list(map(Phone, pronunciation.strip().lower().split()))))
         return cls(data)

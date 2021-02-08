@@ -18,6 +18,9 @@ def get_metrics(exp_type, wb, thresholds):
     test_frr = []
 
     # total audio length in sec, these number can be found when the datasets are loaded from training
+    total_dev_len = 0.0
+    total_test_len = 0.0
+
     if exp_type == "hey_ff":
         total_dev_len = 10679.505062500015
         total_test_len = 10364.291000000001

@@ -4,7 +4,7 @@ import os
 import librosa
 import numpy as np
 
-from tqdm import trange, tqdm
+from tqdm import tqdm
 from .args import ArgumentParserBuilder, opt
 from .create_raw_dataset import print_stats
 from howl.context import InferenceContext
@@ -62,7 +62,7 @@ def main():
     loader = WakeWordDatasetLoader()
     ds_kwargs = dict(sr=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono, frame_labeler=ctx.labeler)
 
-    inference_settings = InferenceEngineSettings();
+    inference_settings = InferenceEngineSettings()
     wakeword = '_'.join(np.array(SETTINGS.training.vocab)[inference_settings.inference_sequence]).strip()
 
     ww_train_ds, ww_dev_ds, ww_test_ds = WakeWordDataset(metadata_list=[], set_type=DatasetType.TRAINING, **ds_kwargs), \
