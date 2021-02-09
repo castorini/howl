@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from pathlib import Path
 import json
 import shutil
-from typing import Any, Dict, List,
+from typing import Any, Dict, List
 
 from pydantic import BaseSettings
 

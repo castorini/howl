@@ -33,9 +33,21 @@ def hey_fire_fox(pretrained=True, **kwargs):
 
 def _load_model(pretrained: bool, workspace_path: str, **kwargs) \
         -> typing.Tuple[inference.InferenceEngine, context.InferenceContext]:
+    """
+    Loads howl model from a workspace
+
+    Arguments:
+        pretrained (bool): load pretrained model weights
+        workspace_path (str): relative path to workspace from root of howl-models
+
+    Returns the inference engine and context
+    """
+
     # Separate `reload_models` flag since PyTorch will pop the 'force_reload' flag
     reload_models = kwargs.pop('reload_models', False)
-    ws = _load_howl_workspace(reload_models, workspace_path)
+    cached_folder = _download_howl_models(reload_models)
+    workspace_path = pathlib.Path(cached_folder) / workspace_path
+    ws = howl_model.Workspace(workspace_path, delete_existing=False)
 
     # Load model settings
     ws_settings = ws.load_settings()
@@ -81,15 +93,14 @@ def _load_model(pretrained: bool, workspace_path: str, **kwargs) \
     return engine, ctx
 
 
-def _load_howl_workspace(reload_models: bool, workspace_path: str) -> howl_model.Workspace:
+def _download_howl_models(reload_models: bool) -> str:
     """
     Download Howl models from Github release: https://github.com/castorini/howl-models
 
     Arguments:
         reload_models (bool): force reload if models are already cached
-        workspace_path (str): relative path to workspace from root of howl-models
 
-    Returns the specified howl workspace
+    Returns the cached howl models path
     """
 
     # Create base cache directory
@@ -118,8 +129,7 @@ def _load_howl_workspace(reload_models: bool, workspace_path: str) -> howl_model
             # Rename folder
             shutil.move(extracted_path, cached_folder)
 
-    workspace_path = pathlib.Path(cached_folder) / workspace_path
-    return howl_model.Workspace(workspace_path, delete_existing=False)
+    return cached_folder
 
 
 def _remove_files(path):
