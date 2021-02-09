@@ -5,7 +5,7 @@ import argparse
 from textgrids import TextGrid
 from tqdm import tqdm
 
-from howl.align import MfaTextGridConverter, StubAligner
+from howl_training.align import MfaTextGridConverter, StubAligner
 from howl.data.dataset import AudioClipDatasetLoader, AudioDatasetMetadataWriter
 from howl.data.dataset.base import AudioClipMetadata as AlignedAudioClipMetadata
 from howl.settings import SETTINGS

@@ -9,10 +9,10 @@ import torch
 import torch.nn as nn
 
 from .args import ArgumentParserBuilder, opt
-from howl.data.dataset import AudioClassificationDataset, GoogleSpeechCommandsDatasetLoader, ClassificationBatch
+from howl.data.dataset import GoogleSpeechCommandsDatasetLoader
 from howl.data.dataloader import StandardAudioDataLoaderBuilder
-from howl.data.transform import compose, ZmuvTransform, StandardAudioTransform, WakeWordFrameBatchifier,\
-    NoiseTransform, batchify, TimestretchTransform, TimeshiftTransform, truncate_length
+from howl.data.transform import compose, ZmuvTransform, StandardAudioTransform,\
+    NoiseTransform, batchify, TimeshiftTransform, truncate_length
 from howl.settings import SETTINGS
 from howl.model import RegisteredModel, Workspace
 from howl.utils.random import set_seed
@@ -102,7 +102,7 @@ def main():
         return
 
     ws.write_args(args)
-    ws.write_setting(SETTINGS)
+    ws.write_settings(SETTINGS)
     writer.add_scalar('Meta/Parameters', sum(p.numel() for p in params))
     dev_acc = 0
     for epoch_idx in trange(SETTINGS.training.num_epochs, position=0, leave=True):

@@ -1,19 +1,16 @@
 from pathlib import Path
 from shutil import copyfile
 import os
-import logging
 import librosa
 import numpy as np
 
-from tqdm import trange, tqdm
+from tqdm import tqdm
 from .args import ArgumentParserBuilder, opt
 from .create_raw_dataset import print_stats
 from howl.context import InferenceContext
 from howl.data.dataset import WakeWordDatasetLoader, WakeWordDataset, RecursiveNoiseDatasetLoader, Sha256Splitter,\
     DatasetType
-from howl.data.dataloader import StandardAudioDataLoaderBuilder
-from howl.data.transform import compose, ZmuvTransform, StandardAudioTransform, WakeWordFrameBatchifier,\
-    NoiseTransform, batchify, TimestretchTransform, DatasetMixer, AudioSequenceBatchifier
+from howl.data.transform import DatasetMixer
 from howl.model.inference import InferenceEngineSettings
 from howl.settings import SETTINGS
 
@@ -21,7 +18,7 @@ from howl.settings import SETTINGS
 This script is used to transform datasets for howl to dataset for Mycroft-precise 
 
 sample command:
-python -m howl.run.generate_precise_dataset.py --i <datasets to convert> --o <location of the output dataset>
+python -m howl_training.run.generate_precise_dataset.py --i <datasets to convert> --o <location of the output dataset>
 """
 
 def main():
@@ -65,7 +62,7 @@ def main():
     loader = WakeWordDatasetLoader()
     ds_kwargs = dict(sr=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono, frame_labeler=ctx.labeler)
 
-    inference_settings = InferenceEngineSettings();
+    inference_settings = InferenceEngineSettings()
     wakeword = '_'.join(np.array(SETTINGS.training.vocab)[inference_settings.inference_sequence]).strip()
 
     ww_train_ds, ww_dev_ds, ww_test_ds = WakeWordDataset(metadata_list=[], set_type=DatasetType.TRAINING, **ds_kwargs), \

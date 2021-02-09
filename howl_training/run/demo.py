@@ -1,17 +1,18 @@
-from pathlib import Path
-import logging
 import time
+from pathlib import Path
 
-import pyaudio
 import numpy as np
+import pyaudio
 import torch
 
 from howl.context import InferenceContext
-from .args import ArgumentParserBuilder, opt
 from howl.data.transform import ZmuvTransform
-from howl.settings import SETTINGS
 from howl.model import RegisteredModel, Workspace
-from howl.model.inference import FrameInferenceEngine, InferenceEngine, SequenceInferenceEngine
+from howl.model.inference import (FrameInferenceEngine, InferenceEngine,
+                                  SequenceInferenceEngine)
+from howl.settings import SETTINGS
+
+from .args import ArgumentParserBuilder, opt
 
 
 class InferenceClient:

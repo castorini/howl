@@ -83,7 +83,7 @@ def main():
     criterion = nn.CrossEntropyLoss()
 
     ws.write_args(args)
-    ws.write_setting(SETTINGS)
+    ws.write_settings(SETTINGS)
     writer.add_scalar('Meta/Parameters', sum(p.numel() for p in params))
     for epoch_idx in trange(SETTINGS.training.num_epochs, position=0, leave=True):
         model.train()

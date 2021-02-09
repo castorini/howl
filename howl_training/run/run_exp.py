@@ -7,11 +7,9 @@ import numpy as np
 import torch
 import sys
 import time
-import io
 
 from datetime import datetime
-from openpyxl import Workbook, load_workbook
-from tqdm import tqdm
+from openpyxl import Workbook
 
 """
 This script uses every GPU on the machine to train multiple res8 models for hey_firefox and hey_snips,
@@ -20,7 +18,7 @@ evaluates them with different threashold, and generate performance reports
 Two different performance reports are generated, one with the clean audio and one with audios with noise
 
 sample command:
-python -m howl.run.run_exp --num_models 10 --hop_size 0.05 --exp_type hey_ff --dataset_path "x" --noiseset_path "y"
+python -m howl_training.run.run_exp --num_models 10 --hop_size 0.05 --exp_type hey_ff --dataset_path "x" --noiseset_path "y"
 
 train 10 models for hey firefox with random seeds using datasets x and y
 then evaluate them for thresholds ranging from 0 to 1 in increments of 0.05
@@ -31,7 +29,7 @@ def is_job_running(grep_command, count_command):
     num_proc = out.decode('utf-8').count(count_command)
     return num_proc > 0
 
-def run_batch_commands(commands, envs, grep_command = 'howl.run.train', count_command = 'python -m howl.run.train'):
+def run_batch_commands(commands, envs, grep_command = 'howl_training.run.train', count_command = 'python -m howl_training.run.train'):
     """
     run given set of commands with the corresponding environments
     check the status of each process regularly and schedule the next job whenever GPU is availble
@@ -241,7 +239,7 @@ def main():
         env['SEED'] = seed
         workspace_path = get_workspace_path(args.exp_type, seed)
         os.system('mkdir -p ' + workspace_path)
-        command = 'python -m howl.run.train --model res8 --workspace ' + workspace_path + '  -i ' + args.dataset_path
+        command = 'python -m howl_training.run.train --model res8 --workspace ' + workspace_path + '  -i ' + args.dataset_path
         training_commands.append(command)
         training_envs.append(env)
 
@@ -260,7 +258,7 @@ def main():
             env['SEED'] = seed
             env['INFERENCE_THRESHOLD'] = threshold
             workspace_path = get_workspace_path(args.exp_type, seed)
-            command = 'python -m howl.run.train --eval --model res8 --workspace ' + workspace_path + '  -i ' + args.dataset_path
+            command = 'python -m howl_training.run.train --eval --model res8 --workspace ' + workspace_path + '  -i ' + args.dataset_path
             result_path = workspace_path + '/' + threshold + '_results.csv'
 
             # if evaluation is done previously, we skip it
