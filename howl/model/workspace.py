@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from pathlib import Path
 import json
 import shutil
-from typing import List
+from typing import Any, Dict, List,
 
 from pydantic import BaseSettings
 
@@ -13,15 +13,18 @@ import torch.nn as nn
 from howl.utils.dataclass import gather_dict
 
 
-class WorkspaceSettings(BaseSettings):
+class ModelSettings(BaseSettings):
     model_name: str
     vocab: List[str]
     inference_sequence: List[int]
     token_type: str
     use_frame: bool
-    num_mels: int
-    max_window_size_seconds: int
-    eval_stride_size_seconds: int
+
+
+class WorkspaceSettings(BaseSettings):
+    model: ModelSettings
+    audio_transform: Dict[str, Any] = {}
+    training: Dict[str, Any] = {}
 
 
 @dataclass
