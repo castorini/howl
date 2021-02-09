@@ -2,12 +2,26 @@ from dataclasses import dataclass
 from pathlib import Path
 import json
 import shutil
+from typing import List
+
+from pydantic import BaseSettings
 
 from torch.utils.tensorboard import SummaryWriter
 import torch
 import torch.nn as nn
 
 from howl.utils.dataclass import gather_dict
+
+
+class WorkspaceSettings(BaseSettings):
+    model_name: str
+    vocab: List[str]
+    inference_sequence: List[int]
+    token_type: str
+    use_frame: bool
+    num_mels: int
+    max_window_size_seconds: int
+    eval_stride_size_seconds: int
 
 
 @dataclass
@@ -26,10 +40,6 @@ class Workspace(object):
     def model_path(self, best=False):
         return str(self.path / f'model{"-best" if best else ""}.pt.bin')
 
-    def write_setting(self, setting):
-        with (self.path / 'setting.json').open('w') as f:
-            json.dump(gather_dict(setting), f, indent=2)
-
     def write_args(self, args):
         with (self.path / 'cmd-args.json').open('w') as f:
             json.dump(gather_dict(args), f, indent=2)
@@ -44,4 +54,15 @@ class Workspace(object):
         torch.save(model.state_dict(), self.model_path(best=best))
 
     def load_model(self, model: nn.Module, best=True):
-        model.load_state_dict(torch.load(self.model_path(best=best), lambda s, l: s))
+        model.load_state_dict(torch.load(
+            self.model_path(best=best), lambda s, l: s))
+
+    def write_settings(self, settings):
+        with (self.path / 'settings.json').open('w') as f:
+            json.dump(gather_dict(settings), f, indent=2)
+
+    def load_settings(self) -> WorkspaceSettings:
+        with (self.path / 'settings.json').open('r') as f:
+            settings = json.load(f)
+        ws_settings = WorkspaceSettings(**settings)
+        return ws_settings

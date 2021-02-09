@@ -45,19 +45,21 @@ def hey_fire_fox(pretrained=True, **kwargs) \
                           vocab=["hey", "fire", "fox"],
                           inference_sequence=[0, 1, 2],
                           token_type="word",
-                          use_frame=False)
+                          use_frame=True)
     ats = transform.augment.AudioTransformSettings(num_mels=40)
-    _SETTINGS._training = settings.TrainingSettings(max_window_size_seconds=0.5)
+    _SETTINGS._training = settings.TrainingSettings(max_window_size_seconds=0.5, eval_stride_size_seconds=0.15)
 
     # Separate `reload_models` flag since PyTorch will pop the 'force_reload' flag
     reload_models = kwargs.pop('reload_models', False)
     cached_folder =_download_howl_models(reload_models)
 
-    # Set up context and workspace
-    ws_path: pathlib.Path = cached_folder / conf.path
+    # Load workspace from path
+    ws_path: pathlib.Path = pathlib.Path(cached_folder) / conf.path
+    ws = howl_model.Workspace(ws_path, delete_existing=False)
+
+    # Set up context
     ctx = context.InferenceContext(
         conf.vocab, token_type=conf.token_type, use_blank=not conf.use_frame)
-    ws = howl_model.Workspace(ws_path, delete_existing=False)
 
     # Load models
     zmuv_transform = transform.ZmuvTransform()
@@ -105,8 +107,8 @@ def _download_howl_models(reload_models: bool) -> str:
     # Check if existing cache should be used
     use_cache = (not reload_models) and os.path.exists(cached_folder)
     if use_cache:
-        return
-    
+        return cached_folder
+
     # Clear cache
     zip_path = os.path.join(base_dir, _MODEL_CACHE_FOLDER + '.zip')
     _remove_files(cached_folder)
