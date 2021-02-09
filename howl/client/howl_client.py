@@ -46,6 +46,7 @@ class HowlClient:
         self._audio_buf = []
         self._audio_buf_len = 16
         self._audio_float_size = 32767
+        self._last_inference_time = time.time()
         self.last_data = np.zeros(self.chunk_size)
 
     @staticmethod
@@ -74,6 +75,13 @@ class HowlClient:
 
         # Inference from input sequence
         if self.engine.infer(inp):
+            # Check if inference window has passed to prevent callbacks from executing repeatedly
+            cur_time = time.time()
+            time_from_inference_ms = (cur_time - self._last_inference_time) * 1000
+            if time_from_inference_ms < self.engine.max_window_size_ms:
+                return data_ok
+
+            self._last_inference_time = time.time()
             phrase = ' '.join(self.ctx.vocab[x]
                               for x in self.engine.sequence).title()
             logging.info(f'{phrase} detected')
