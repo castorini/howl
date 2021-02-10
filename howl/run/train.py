@@ -57,7 +57,7 @@ def main():
                 ex, = mixer([ex])
             audio_data = ex.audio_data.to(device)
             engine.reset()
-            print('groundturth: ', list(ex.label_data.timestamp_label_map.values()))
+            # print('groundturth: ', list(ex.label_data.timestamp_label_map.values()))
             seq_present = engine.infer(audio_data)
             if seq_present != positive_set and write_errors:
                 with (ws.path / 'errors.tsv').open('a') as f:
