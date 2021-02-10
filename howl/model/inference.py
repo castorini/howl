@@ -204,9 +204,7 @@ class InferenceEngine:
         if curr_time is None:
             curr_time = self.time_provider() * 1000
         self.pred_history.append((curr_time, p))
-        label = self._get_prediction(curr_time)
-        self.label_history.append((curr_time, label))
-        return label
+        return self._get_prediction(curr_time)
 
     def infer(self, audio_data: torch.Tensor) -> bool:
         raise NotImplementedError
@@ -227,15 +225,12 @@ class SequenceInferenceEngine(InferenceEngine):
         sequence_present = False
         delta_ms /= len(scores)
 
-        sequences = []
         for frame in scores:
             p = frame.cpu().numpy()
             p *= self.inference_weights
             p = p / p.sum()
             logging.debug(([f'{x:.3f}' for x in p.tolist()], np.argmax(p)))
             self.curr_time += delta_ms
-            if len(sequences) == 0 or sequences[-1] != np.argmax(p):
-                sequences.append(np.argmax(p))
             if np.argmax(p) == self.blank_idx:
                 continue
             self._append_probability_frame(p, curr_time=self.curr_time)
@@ -243,7 +238,14 @@ class SequenceInferenceEngine(InferenceEngine):
                 sequence_present = True
                 break
 
-        print(sequences)
+        # print(self.label_history)
+        # print(self.tolerance_window_ms) # 500
+        sequences = []
+        for label in self.label_history:
+            if len(sequences) == 0 or sequences[-1] != label:
+                sequences.append(label)
+
+        print(sequence_present, sequences)
         return sequence_present
 
 
