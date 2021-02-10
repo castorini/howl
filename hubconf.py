@@ -17,9 +17,6 @@ import howl.context as context
 import howl.data.transform as transform
 import howl.model as howl_model
 import howl.model.inference as inference
-import howl.settings as settings
-
-from howl.settings import SETTINGS as _SETTINGS
 
 _MODEL_URL = "https://github.com/castorini/howl-models/archive/v1.0.0.zip"
 _MODEL_CACHE_FOLDER = "howl-models"
@@ -27,17 +24,18 @@ _MODEL_CACHE_FOLDER = "howl-models"
 
 def hey_fire_fox(pretrained=True, **kwargs):
     """Pretrained model for Firefox Voice"""
-    engine, ctx = _load_model(pretrained, "howl/hey-fire-fox", **kwargs)
+    engine, ctx = _load_model(pretrained, "res8", "howl/hey-fire-fox", **kwargs)
     return engine, ctx
 
 
-def _load_model(pretrained: bool, workspace_path: str, **kwargs) \
+def _load_model(pretrained: bool, model_name: str, workspace_path: str, **kwargs) \
         -> typing.Tuple[inference.InferenceEngine, context.InferenceContext]:
     """
     Loads howl model from a workspace
 
     Arguments:
         pretrained (bool): load pretrained model weights
+        model_name (str): name of the model to use
         workspace_path (str): relative path to workspace from root of howl-models
 
     Returns the inference engine and context
@@ -50,20 +48,18 @@ def _load_model(pretrained: bool, workspace_path: str, **kwargs) \
     ws = howl_model.Workspace(workspace_path, delete_existing=False)
 
     # Load model settings
-    ws_settings = ws.load_settings()
-    model_settings = ws_settings.model
-    audio_transform_settings = transform.augment.AudioTransformSettings(**ws_settings.audio_transform)
-    _SETTINGS._training = settings.TrainingSettings(**ws_settings.training)
+    settings = ws.load_settings()
 
     # Set up context
-    ctx = context.InferenceContext(model_settings.vocab,
-                                   token_type=model_settings.token_type,
-                                   use_blank=not model_settings.use_frame)
+    use_frame = settings.training.objective == 'frame'
+    ctx = context.InferenceContext(settings.training.vocab,
+                                   token_type=settings.training.token_type,
+                                   use_blank=not use_frame)
 
     # Load models
     zmuv_transform = transform.ZmuvTransform()
     model = howl_model.RegisteredModel.find_registered_class(
-        model_settings.model_name)(ctx.num_labels).eval()
+        model_name)(ctx.num_labels).eval()
 
     # Load pretrained weights
     if pretrained:
@@ -73,23 +69,20 @@ def _load_model(pretrained: bool, workspace_path: str, **kwargs) \
 
     # Load engine
     model.streaming()
-    if model_settings.use_frame:
-        engine = inference.FrameInferenceEngine(int(_SETTINGS.training.max_window_size_seconds * 1000),
-                                                int(_SETTINGS.training.eval_stride_size_seconds * 1000),
-                                                _SETTINGS.audio.sample_rate,
+    if use_frame:
+        engine = inference.FrameInferenceEngine(int(settings.training.max_window_size_seconds * 1000),
+                                                int(settings.training.eval_stride_size_seconds * 1000),
+                                                settings.audio.sample_rate,
                                                 model,
                                                 zmuv_transform,
                                                 negative_label=ctx.negative_label,
-                                                coloring=ctx.coloring,
-                                                audio_transform_settings=audio_transform_settings)
+                                                coloring=ctx.coloring)
     else:
-        engine = inference.FrameInferenceEngine(_SETTINGS.audio.sample_rate,
+        engine = inference.FrameInferenceEngine(settings.audio.sample_rate,
                                                 model,
                                                 zmuv_transform,
                                                 negative_label=ctx.negative_label,
-                                                coloring=ctx.coloring,
-                                                audio_transform_settings=audio_transform_settings)
-    engine.sequence = model_settings.inference_sequence
+                                                coloring=ctx.coloring)
     return engine, ctx
 
 

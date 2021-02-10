@@ -3,13 +3,13 @@ from typing import Sequence
 import math
 import random
 
-from pydantic import BaseSettings
 from torchaudio.transforms import MelSpectrogram, ComputeDeltas
 import librosa
 import torch
 import torch.nn as nn
 
 from howl.data.dataset import EmplacableExample, WakeWordClipExample, AudioClipDataset
+from howl.settings import SETTINGS
 from .meyda import MeydaMelSpectrogram
 
 
@@ -22,14 +22,6 @@ __all__ = ['AugmentationParameter',
            'StandardAudioTransform',
            'SpecAugmentTransform',
            'NegativeSampleTransform']
-
-
-class AudioTransformSettings(BaseSettings):
-    num_fft: int = 512
-    num_mels: int = 80
-    sample_rate: int = 16000
-    hop_length: int = 200
-    use_meyda_spectrogram: bool = False
 
 
 @dataclass
@@ -191,8 +183,9 @@ class DatasetMixer(AugmentModule):
 
 
 class StandardAudioTransform(AugmentModule):
-    def __init__(self, settings: AudioTransformSettings = AudioTransformSettings()):
+    def __init__(self):
         super().__init__()
+        settings = SETTINGS.audio_transform
         if settings.use_meyda_spectrogram:
             self.spec_transform = MeydaMelSpectrogram(n_mels=settings.num_mels,
                                                       sample_rate=settings.sample_rate,
@@ -232,7 +225,7 @@ class StandardAudioTransform(AugmentModule):
 
     @torch.no_grad()
     def compute_lengths(self, length: torch.Tensor):
-        return ((length - self.spec_transform.win_length) / self.spec_transform.hop_length + 1).long()
+        return ((length - self.spec_transform.win_length) // self.spec_transform.hop_length + 1).long()
 
 
 class SpecAugmentTransform(AugmentModule):

@@ -2,30 +2,14 @@ from dataclasses import dataclass
 from pathlib import Path
 import json
 import shutil
-from typing import Any, Dict, List
-
-from pydantic import BaseSettings
+from typing import List
 
 from torch.utils.tensorboard import SummaryWriter
 import torch
 import torch.nn as nn
 
+from howl.settings import HowlSettings, KEY_TO_SETTINGS_CLASS, SETTINGS
 from howl.utils.dataclass import gather_dict
-
-
-class ModelSettings(BaseSettings):
-    model_name: str
-    vocab: List[str]
-    inference_sequence: List[int]
-    token_type: str
-    use_frame: bool
-
-
-class WorkspaceSettings(BaseSettings):
-    model: ModelSettings
-    audio_transform: Dict[str, Any] = {}
-    training: Dict[str, Any] = {}
-
 
 @dataclass
 class Workspace(object):
@@ -60,12 +44,16 @@ class Workspace(object):
         model.load_state_dict(torch.load(
             self.model_path(best=best), lambda s, l: s))
 
-    def write_settings(self, settings):
+    def write_settings(self, settings: HowlSettings = SETTINGS):
+        """Write settings object into JSON file"""
         with (self.path / 'settings.json').open('w') as f:
-            json.dump(gather_dict(settings), f, indent=2)
+            keys_to_ignore = ['_dataset', '_raw_dataset']
+            json.dump(gather_dict(settings, keys_to_ignore), f, indent=2)
 
-    def load_settings(self) -> WorkspaceSettings:
+    def load_settings(self, settings: HowlSettings = SETTINGS) -> HowlSettings:
+        """Load settings from JSON file into provided settings object"""
         with (self.path / 'settings.json').open('r') as f:
-            settings = json.load(f)
-        ws_settings = WorkspaceSettings(**settings)
-        return ws_settings
+            json_settings = json.load(f)
+            for k, v in json_settings.items():
+                setattr(settings, k, KEY_TO_SETTINGS_CLASS[k](**v))
+        return settings

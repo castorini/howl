@@ -134,7 +134,7 @@ class HowlClient:
     def from_pretrained(self, name: str, force_reload: bool = False):
         """Load a pretrained model using the provided name"""
         engine, ctx = torch.hub.load(
-            'castorini/howl:howl-pip', name, force_reload=force_reload, reload_models=force_reload)
+            'castorini/howl', name, force_reload=force_reload, reload_models=force_reload)
         self.engine = engine.to(self.device)
         self.ctx = ctx
 

@@ -9,16 +9,18 @@ JSON_PRIMITIVES = {int, float, complex, list, tuple, range, str, bytes, bytearra
 SERIALIZABLE_TYPES = {PosixPath}
 
 
-def gather_dict(dataclass):
+def gather_dict(dataclass, keys_to_ignore = []):
     items = dataclass.dict().items() if isinstance(dataclass, BaseSettings) else dataclass.__dict__.items()
     data_dict = dict()
     for k, v in items:
-        if type(v) in JSON_PRIMITIVES or v is None:
+        if k in keys_to_ignore:
+            continue
+        elif type(v) in JSON_PRIMITIVES or v is None:
             data_dict[k] = v
         elif type(v) in SERIALIZABLE_TYPES:
             data_dict[k] = str(v)
         else:
-            gather_dict(v)
+            data_dict[k] = gather_dict(v)
     return data_dict
 
 
