@@ -213,7 +213,7 @@ class InferenceEngine:
 
 
 class SequenceInferenceEngine(InferenceEngine):
-    def __init__(self, sample_rate: int, *args, blank_idx: int = -1, **kwargs):
+    def __init__(self, sample_rate: int, *args, blank_idx: int = 0, **kwargs):
         super().__init__(*args, **kwargs)
         self.blank_idx = blank_idx
         self.sample_rate = sample_rate
@@ -222,22 +222,28 @@ class SequenceInferenceEngine(InferenceEngine):
     def infer(self, audio_data: torch.Tensor) -> bool:
         delta_ms = int(audio_data.size(-1) / self.sample_rate * 1000)
         self.std = self.std.to(audio_data.device)
-        scores = self.model(self.zmuv(self.std(audio_data.unsqueeze(0))), None)
-        scores = F.softmax(scores, -1).squeeze(1)
+        scores = self.model(self.zmuv(self.std(audio_data.unsqueeze(0))), None) # [num_frames x 1 (batch size) x num_labels]
+        scores = F.softmax(scores, -1).squeeze(1) # [num_frames x num_labels]
         sequence_present = False
         delta_ms /= len(scores)
+
+        sequences = []
         for frame in scores:
             p = frame.cpu().numpy()
             p *= self.inference_weights
             p = p / p.sum()
             logging.debug(([f'{x:.3f}' for x in p.tolist()], np.argmax(p)))
             self.curr_time += delta_ms
+            if len(sequences) == 0 or sequences[-1] != np.argmax(p):
+                sequences.append(np.argmax(p))
             if np.argmax(p) == self.blank_idx:
                 continue
             self._append_probability_frame(p, curr_time=self.curr_time)
             if self.sequence_present(self.curr_time):
                 sequence_present = True
                 break
+
+        print(sequences)
         return sequence_present
 
 
