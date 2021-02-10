@@ -213,7 +213,7 @@ class InferenceEngine:
 
 
 class SequenceInferenceEngine(InferenceEngine):
-    def __init__(self, sample_rate: int, *args, blank_idx: int = 0, **kwargs):
+    def __init__(self, sample_rate: int, *args, blank_idx: int = -1, **kwargs):
         super().__init__(*args, **kwargs)
         self.blank_idx = blank_idx
         self.sample_rate = sample_rate
