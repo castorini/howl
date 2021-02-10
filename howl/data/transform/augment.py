@@ -225,7 +225,7 @@ class StandardAudioTransform(AugmentModule):
 
     @torch.no_grad()
     def compute_lengths(self, length: torch.Tensor):
-        return ((length - self.spec_transform.win_length) // self.spec_transform.hop_length + 1).long()
+        return ((length - self.spec_transform.win_length) / self.spec_transform.hop_length + 1).long()
 
 
 class SpecAugmentTransform(AugmentModule):
