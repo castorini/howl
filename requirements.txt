@@ -2,7 +2,7 @@ coloredlogs
 dataclasses;python_version<"3.7"
 librosa==0.7.2
 llvmlite==0.32.1
-numba==0.43.0
+numba==0.45.0
 numpy>=1.18.3
 pandas>=1.0.3
 pocketsphinx
