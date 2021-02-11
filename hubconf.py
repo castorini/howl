@@ -18,7 +18,7 @@ import howl.data.transform as transform
 import howl.model as howl_model
 import howl.model.inference as inference
 
-_MODEL_URL = "https://github.com/castorini/howl-models/archive/v1.0.0.zip"
+_MODEL_URL = "https://github.com/castorini/howl-models/archive/v1.1.0.zip"
 _MODEL_CACHE_FOLDER = "howl-models"
 
 
@@ -109,7 +109,9 @@ def _download_howl_models(reload_models: bool) -> str:
         zip_path = os.path.join(base_dir, _MODEL_CACHE_FOLDER + '.zip')
         _remove_files(cached_folder)
         _remove_files(zip_path)
-        torch.hub.download_url_to_file(_MODEL_URL, zip_path, progress=False)
+
+        print("Downloading howl-models...")
+        torch.hub.download_url_to_file(_MODEL_URL, zip_path, progress=True)
 
         # Extract files into folder
         with zipfile.ZipFile(zip_path) as model_zipfile:
