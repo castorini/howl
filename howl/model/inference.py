@@ -225,15 +225,12 @@ class SequenceInferenceEngine(InferenceEngine):
         sequence_present = False
         delta_ms /= len(scores)
 
-        raw_sequence = []
         for frame in scores:
             p = frame.cpu().numpy()
             p *= self.inference_weights
             p = p / p.sum()
             logging.debug(([f'{x:.3f}' for x in p.tolist()], np.argmax(p)))
             self.curr_time += delta_ms
-            if len(raw_sequence) == 0 or raw_sequence[-1] != np.argmax(p):
-                raw_sequence.append(np.argmax(p))
             if np.argmax(p) == self.blank_idx:
                 continue
             self._append_probability_frame(p, curr_time=self.curr_time)
@@ -241,14 +238,6 @@ class SequenceInferenceEngine(InferenceEngine):
                 sequence_present = True
                 break
 
-        # print(self.label_history)
-        # print(self.tolerance_window_ms) # 500
-        sequences = []
-        for label in self.label_history:
-            if len(sequences) == 0 or sequences[-1] != label[1]:
-                sequences.append(label[1])
-
-        print(sequence_present, raw_sequence, sequences)
         return sequence_present
 
 

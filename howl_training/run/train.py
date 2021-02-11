@@ -57,7 +57,6 @@ def main():
                 ex, = mixer([ex])
             audio_data = ex.audio_data.to(device)
             engine.reset()
-            # print('groundturth: ', list(ex.label_data.timestamp_label_map.values()))
             seq_present = engine.infer(audio_data)
             if seq_present != positive_set and write_errors:
                 with (ws.path / 'errors.tsv').open('a') as f:
@@ -201,7 +200,6 @@ def main():
                 lengths = std_transform.compute_lengths(batch.audio_lengths)
                 scores = model(zmuv_transform(std_transform(batch.audio_data)), lengths)
                 scores = F.log_softmax(scores, -1) # [num_frames x batch_size x num_labels]
-                # print('score: ', scores.shape, '(', lengths, ')  -  labels: ', batch.labels.shape, '(', batch.label_lengths, ')')
                 lengths = torch.tensor([model.compute_length(x.item()) for x in lengths]).to(device)
                 loss = criterion(scores, batch.labels, lengths, batch.label_lengths)
             optimizer.zero_grad()
