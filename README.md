@@ -1,5 +1,8 @@
 # Howl
 
+[![PyPI](https://img.shields.io/pypi/v/howl?color=brightgreen)](https://pypi.org/project/howl/)
+[![License: MPL 2.0](https://img.shields.io/badge/License-MPL%202.0-brightgreen.svg)](https://opensource.org/licenses/MPL-2.0)
+
 Wake word detection modeling for Firefox Voice, supporting open datasets like Google Speech Commands and Mozilla Common Voice.
 
 Citation:
@@ -20,7 +23,7 @@ Citation:
 
 ## Quickstart Guide
 
-1. Install PyAudio and and PyTorch through your distribution's package system.
+1. Install PyAudio and [PyTorch 1.5+](https://pytorch.org) through your distribution's package system.
 
 2. Install Howl using `pip`
 
