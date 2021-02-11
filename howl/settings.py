@@ -15,6 +15,23 @@ class AudioSettings(BaseSettings):
     use_mono: bool = True
 
 
+class AudioTransformSettings(BaseSettings):
+    num_fft: int = 512
+    num_mels: int = 80
+    sample_rate: int = 16000
+    hop_length: int = 200
+    use_meyda_spectrogram: bool = False
+
+
+class InferenceEngineSettings(BaseSettings):
+    inference_weights: List[float] = None
+    inference_sequence: List[int] = [0]
+    inference_window_ms: float = 2000  # look at last of these seconds
+    smoothing_window_ms: float = 50  # prediction smoothed
+    tolerance_window_ms: float = 500  # negative label between words
+    inference_threshold: float = 0  # positive label probability must rise above this threshold
+
+
 class TrainingSettings(BaseSettings):
     seed: int = 0
     vocab: List[str] = ['fire']
@@ -46,8 +63,11 @@ class DatasetSettings(BaseSettings):
     dataset_path: str = None
 
 
-class LazySettingsSingleton:
+class HowlSettings:
+    """Lazy-loaded class containing all required settings"""
     _audio: AudioSettings = None
+    _audio_transform: AudioTransformSettings = None
+    _inference_engine: InferenceEngineSettings = None
     _raw_dataset: RawDatasetSettings = None
     _dataset: DatasetSettings = None
     _cache: CacheSettings = None
@@ -58,6 +78,18 @@ class LazySettingsSingleton:
         if self._audio is None:
             self._audio = AudioSettings()
         return self._audio
+
+    @property
+    def audio_transform(self) -> AudioTransformSettings:
+        if self._audio_transform is None:
+            self._audio_transform = AudioTransformSettings()
+        return self._audio_transform
+
+    @property
+    def inference_engine(self) -> InferenceEngineSettings:
+        if self._inference_engine is None:
+            self._inference_engine = InferenceEngineSettings()
+        return self._inference_engine
 
     @property
     def raw_dataset(self) -> RawDatasetSettings:
@@ -84,4 +116,14 @@ class LazySettingsSingleton:
         return self._training
 
 
-SETTINGS = LazySettingsSingleton()
+KEY_TO_SETTINGS_CLASS = {
+    '_audio': AudioSettings,
+    '_audio_transform': AudioTransformSettings,
+    '_inference_engine': InferenceEngineSettings,
+    '_raw_dataset': RawDatasetSettings,
+    '_dataset': DatasetSettings,
+    '_cache': CacheSettings,
+    '_training': TrainingSettings,
+}
+
+SETTINGS = HowlSettings()

@@ -1,27 +1,24 @@
 from collections import defaultdict
-from howl.data.transform.augment import AudioTransformSettings
 from typing import List
 import itertools
 import logging
 import re
 import time
 
-from pydantic import BaseSettings
 import numpy as np
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 
 from howl.data.dataset import PhonePhrase
 from howl.data.transform import ZmuvTransform, StandardAudioTransform
 from howl.model import RegisteredModel
+from howl.settings import SETTINGS
 from howl.utils.audio import stride
 
 
 __all__ = ['FrameInferenceEngine',
            'InferenceEngine',
            'SequenceInferenceEngine',
-           'InferenceEngineSettings',
            'PhoneticTranscriptSearcher',
            'TranscriptSearcher',
            'WordTranscriptSearcher',
@@ -60,18 +57,9 @@ class LabelColoring:
         return coloring
 
 
-class InferenceEngineSettings(BaseSettings):
-    inference_weights: List[float] = None
-    inference_sequence: List[int] = [0]
-    inference_window_ms: float = 2000  # look at last of these seconds
-    smoothing_window_ms: float = 50  # prediction smoothed
-    tolerance_window_ms: float = 500  # negative label between words
-    inference_threshold: float = 0  # positive label probability must rise above this threshold
-
-
 class TranscriptSearcher:
-    def __init__(self, settings: InferenceEngineSettings = InferenceEngineSettings()):
-        self.settings = settings
+    def __init__(self):
+        self.settings = SETTINGS.inference_engine
 
     def search(self, item: str) -> bool:
         raise NotImplementedError
@@ -124,22 +112,21 @@ class InferenceEngine:
                  model: RegisteredModel,
                  zmuv_transform: ZmuvTransform,
                  negative_label: int,
-                 settings: InferenceEngineSettings = InferenceEngineSettings(),
                  coloring: LabelColoring = None,
-                 time_provider=time.time,
-                 audio_transform_settings: AudioTransformSettings = AudioTransformSettings()):
+                 time_provider=time.time):
         self.model = model
         self.zmuv = zmuv_transform
-        self.std = StandardAudioTransform(audio_transform_settings).eval()
-        self.settings = settings
-        inference_weights = 1 if settings.inference_weights is None else np.array(settings.inference_weights)
+        self.std = StandardAudioTransform().eval()
+        self.settings = SETTINGS.inference_engine
+
+        inference_weights = 1 if self.settings.inference_weights is None else np.array(self.settings.inference_weights)
         self.inference_weights = inference_weights
         self.negative_label = negative_label if coloring is None else coloring.color_map[negative_label]
-        self.threshold = settings.inference_threshold
-        self.inference_window_ms = settings.inference_window_ms
-        self.smoothing_window_ms = settings.smoothing_window_ms
-        self.tolerance_window_ms = settings.tolerance_window_ms
-        self.sequence = settings.inference_sequence
+        self.threshold = self.settings.inference_threshold
+        self.inference_window_ms = self.settings.inference_window_ms
+        self.smoothing_window_ms = self.settings.smoothing_window_ms
+        self.tolerance_window_ms = self.settings.tolerance_window_ms
+        self.sequence = self.settings.inference_sequence
         self.coloring = coloring
         self.time_provider = time_provider
         self.reset()

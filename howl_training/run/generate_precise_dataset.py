@@ -11,7 +11,6 @@ from howl.context import InferenceContext
 from howl.data.dataset import WakeWordDatasetLoader, WakeWordDataset, RecursiveNoiseDatasetLoader, Sha256Splitter,\
     DatasetType
 from howl.data.transform import DatasetMixer
-from howl.model.inference import InferenceEngineSettings
 from howl.settings import SETTINGS
 
 """
@@ -62,7 +61,7 @@ def main():
     loader = WakeWordDatasetLoader()
     ds_kwargs = dict(sr=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono, frame_labeler=ctx.labeler)
 
-    inference_settings = InferenceEngineSettings()
+    inference_settings = SETTINGS.inference_engine
     wakeword = '_'.join(np.array(SETTINGS.training.vocab)[inference_settings.inference_sequence]).strip()
 
     ww_train_ds, ww_dev_ds, ww_test_ds = WakeWordDataset(metadata_list=[], set_type=DatasetType.TRAINING, **ds_kwargs), \
