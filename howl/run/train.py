@@ -199,7 +199,7 @@ def main():
             else:
                 lengths = std_transform.compute_lengths(batch.audio_lengths)
                 scores = model(zmuv_transform(std_transform(batch.audio_data)), lengths)
-                scores = F.log_softmax(scores, -1) # [num_frames x batch_size x num_labels]
+                scores = F.log_softmax(scores, -1)  # [num_frames x batch_size x num_labels]
                 lengths = torch.tensor([model.compute_length(x.item()) for x in lengths]).to(device)
                 loss = criterion(scores, batch.labels, lengths, batch.label_lengths)
             optimizer.zero_grad()
@@ -207,7 +207,8 @@ def main():
             loss.backward()
             optimizer.step()
             pbar.set_postfix(dict(loss=f'{loss.item():.3}'))
-            total_loss += loss
+            with torch.no_grad():
+              total_loss += loss
 
         for group in optimizer.param_groups:
             group['lr'] *= SETTINGS.training.lr_decay

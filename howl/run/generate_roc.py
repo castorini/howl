@@ -41,7 +41,7 @@ def load_metrics(exp_type, wb, thresholds):
         dev_tn = float(sheet['J3'].value)
         dev_fp = float(sheet['K3'].value)
 
-        dev_far.append(dev_fp / (total_dev_len / 3600)) # per hour metric
+        dev_far.append(dev_fp / (total_dev_len / 3600))  # per hour metric
         dev_frr.append(dev_fn / (dev_fn + dev_tp))
 
         test_tp = float(sheet['O3'].value)
@@ -49,7 +49,7 @@ def load_metrics(exp_type, wb, thresholds):
         test_tn = float(sheet['V3'].value)
         test_fp = float(sheet['W3'].value)
 
-        test_far.append(test_fp / (total_test_len / 3600)) # per hour metric
+        test_far.append(test_fp / (total_test_len / 3600))  # per hour metric
         test_frr.append(test_fn / (test_fn + test_tp))
 
     return dev_far, dev_frr, test_far, test_frr

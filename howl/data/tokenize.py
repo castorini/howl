@@ -104,7 +104,7 @@ class WakeWordTokenizer(TranscriptTokenizer):
         encoded_output = []
         # append a space at the beginning to catch vocab starting with a space
         # append a space to add the last negative label
-        transcript = " " + transcript + " "
+        transcript = f' {transcript} '
         while transcript:
             word, transcript = self.trie.max_split(transcript)
             if word:

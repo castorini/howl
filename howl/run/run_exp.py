@@ -66,7 +66,7 @@ def run_batch_commands(commands, envs, grep_command = 'howl.run.train', count_co
                                 env=new_env)
 
         print('process {} - '.format(proc.pid), command, new_env, flush=True)
-        time.sleep(60) # add some delay between each job scheduling
+        time.sleep(60)  # add some delay between each job scheduling
         num_running_jobs += 1
 
     sleep_counter = 0
