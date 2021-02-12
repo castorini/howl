@@ -220,8 +220,8 @@ class SequenceInferenceEngine(InferenceEngine):
     def infer(self, audio_data: torch.Tensor) -> bool:
         delta_ms = int(audio_data.size(-1) / self.sample_rate * 1000)
         self.std = self.std.to(audio_data.device)
-        scores = self.model(self.zmuv(self.std(audio_data.unsqueeze(0))), None) # [num_frames x 1 (batch size) x num_labels]
-        scores = F.softmax(scores, -1).squeeze(1) # [num_frames x num_labels]
+        scores = self.model(self.zmuv(self.std(audio_data.unsqueeze(0))), None)  # [num_frames x 1 (batch size) x num_labels]
+        scores = F.softmax(scores, -1).squeeze(1)  # [num_frames x num_labels]
         sequence_present = False
         delta_ms /= len(scores)
 
