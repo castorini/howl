@@ -89,6 +89,7 @@ class Vocab:
 
 
 class WakeWordTokenizer(TranscriptTokenizer):
+    # Only used for ctc objective
     def __init__(self,
                  vocab: Vocab,
                  ignore_oov: bool = True):
@@ -101,14 +102,24 @@ class WakeWordTokenizer(TranscriptTokenizer):
 
     def encode(self, transcript: str) -> List[int]:
         encoded_output = []
+        # append a space at the beginning to catch vocab starting with a space
+        # append a space to add the last negative label
+        transcript = f' {transcript} '
         while transcript:
             word, transcript = self.trie.max_split(transcript)
             if word:
                 encoded_output.append(self.vocab[word])
+                if transcript[0] == " ":
+                    transcript = transcript[1:]
             else:
-                if not self.ignore_oov:
+                # add the negative label per word
+                if transcript[0] == " " and not self.ignore_oov:
                     if self.vocab.oov_token_id is None:
                         raise ValueError
+                    # skip duplicated negative labels
                     encoded_output.append(self.vocab.oov_token_id)
                 transcript = transcript[1:]
+        if encoded_output[0] == self.vocab.oov_token_id:
+            # if the prepended space led to extra negative label, drop it
+            encoded_output = encoded_output[1:]
         return encoded_output

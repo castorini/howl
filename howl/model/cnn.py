@@ -140,6 +140,6 @@ class Res8(RegisteredModel, name='res8'):
                 x = y
             if i > 0:
                 x = getattr(self, f'bn{i}')(x)
-        x = x.view(x.size(0), x.size(1), -1) # shape: (batch, feats, o3)
+        x = x.view(x.size(0), x.size(1), -1)  # shape: (batch, feats, o3)
         x = torch.mean(x, 2)
         return self.output(x)

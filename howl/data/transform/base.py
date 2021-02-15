@@ -109,16 +109,18 @@ def pad(data_list, element=0, max_length=None):
 
 class AudioSequenceBatchifier:
     def __init__(self,
+                 negative_label: int,
                  tokenizer: TranscriptTokenizer,
                  sample_rate: int = 16000):
         self.sample_rate = sample_rate
         self.tokenizer = tokenizer
+        self.negative_label = negative_label
 
     def __call__(self, examples: Sequence[WakeWordClipExample]) -> SequenceBatch:
         audio_data_lst = []
         labels_lst = []
         for ex in examples:
-            labels = self.tokenizer.encode(ex.metadata.transcription)  # TODO: generalize
+            labels = self.tokenizer.encode(ex.metadata.transcription)
             labels_lst.append(labels)
             audio_data_lst.append(ex.audio_data)
         audio_data_lengths = [audio_data.size(-1) for audio_data in audio_data_lst]
@@ -127,7 +129,7 @@ class AudioSequenceBatchifier:
                                                   labels_lst=labels_lst,
                                                   labels_lengths=labels_lengths,
                                                   input_lengths=audio_data_lengths)
-        labels_lst = torch.tensor(pad(data['labels_lst']))
+        labels_lst = torch.tensor(pad(data['labels_lst'], element=self.negative_label))
         labels_lengths = torch.tensor(data['labels_lengths'])
         return SequenceBatch(audio_tensor, labels_lst, torch.tensor(data['input_lengths']), labels_lengths)
 
@@ -152,11 +154,15 @@ class WakeWordFrameBatchifier:
     def __call__(self, examples: Sequence[WakeWordClipExample]) -> ClassificationBatch:
         new_examples = []
         for ex in examples:
+            # if the sample does not contain any positive label
             if not ex.label_data.timestamp_label_map:
                 new_examples.append((self.negative_label,
                                      random_slice([ex], int(self.sample_rate * self.window_size_ms / 1000))[0]))
                 continue
+
             select_negative = random.random() > self.positive_sample_prob
+
+            # pick a random positive word to genrate a positive sample
             if not select_negative:
                 end_ms, label = random.choice(list(ex.label_data.timestamp_label_map.items()))
                 end_ms_rand = end_ms + (random.random() * self.eps_ms)
@@ -172,6 +178,8 @@ class WakeWordFrameBatchifier:
                     select_negative = True
                 else:
                     new_examples.append((label, ex.emplaced_audio_data(ex.audio_data[..., a:b])))
+
+            # use the interval of negative labels to generate a negative sample from audio with positive label
             if select_negative:
                 positive_intervals = [(v - self.positive_delta_ms, v + self.positive_delta_ms)
                                       for v in ex.label_data.timestamp_label_map.values()]

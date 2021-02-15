@@ -47,6 +47,7 @@ class InferenceContext:
             phone_phrases = [PhonePhrase.from_string(x) for x in new_vocab]
             self.labeler = PhoneticFrameLabeler(phone_phrases)
         self.num_labels = len(vocab) + 1 + use_blank
-        self.vocab = Vocab({word: idx for idx, word in enumerate(vocab)})
+        self.blank_label = len(vocab) + 1 if use_blank else -1
         self.negative_label = len(vocab)
+        self.vocab = Vocab({word: idx for idx, word in enumerate(vocab)}, oov_token_id=self.negative_label)
         self.searcher = PhoneticTranscriptSearcher(phone_phrases, self.coloring) if use_phone else WordTranscriptSearcher(vocab)

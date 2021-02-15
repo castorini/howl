@@ -44,7 +44,8 @@ def main():
                                              model,
                                              zmuv_transform,
                                              negative_label=ctx.negative_label,
-                                             coloring=ctx.coloring)
+                                             coloring=ctx.coloring,
+                                             blank_idx=ctx.blank_label)
         model.eval()
         conf_matrix = ConfusionMatrix()
         pbar = tqdm(dataset, desc=prefix)
@@ -101,8 +102,8 @@ def main():
                                              window_size_ms=int(SETTINGS.training.max_window_size_seconds * 1000))
         criterion = nn.CrossEntropyLoss()
     else:
-        tokenizer = WakeWordTokenizer(ctx.vocab)
-        batchifier = AudioSequenceBatchifier(tokenizer)
+        tokenizer = WakeWordTokenizer(ctx.vocab, ignore_oov=False)
+        batchifier = AudioSequenceBatchifier(ctx.negative_label, tokenizer)
         criterion = nn.CTCLoss()
 
     ws = Workspace(Path(args.workspace), delete_existing=not args.eval)
@@ -188,6 +189,7 @@ def main():
                     position=1,
                     desc='Training',
                     leave=True)
+        total_loss = torch.Tensor([0.0])
         for batch in pbar:
             batch.to(device)
             if use_frame:
@@ -197,7 +199,7 @@ def main():
             else:
                 lengths = std_transform.compute_lengths(batch.audio_lengths)
                 scores = model(zmuv_transform(std_transform(batch.audio_data)), lengths)
-                scores = F.log_softmax(scores, -1)
+                scores = F.log_softmax(scores, -1)  # [num_frames x batch_size x num_labels]
                 lengths = torch.tensor([model.compute_length(x.item()) for x in lengths]).to(device)
                 loss = criterion(scores, batch.labels, lengths, batch.label_lengths)
             optimizer.zero_grad()
@@ -205,12 +207,19 @@ def main():
             loss.backward()
             optimizer.step()
             pbar.set_postfix(dict(loss=f'{loss.item():.3}'))
-            writer.add_scalar('Training/Loss', loss.item(), epoch_idx)
+            with torch.no_grad():
+              total_loss += loss
 
         for group in optimizer.param_groups:
             group['lr'] *= SETTINGS.training.lr_decay
+
+        mean = total_loss / len(train_dl)
+        writer.add_scalar('Training/Loss', mean.item(), epoch_idx)
+        writer.add_scalar('Training/LearningRate', group['lr'], epoch_idx)
+
         if args.dev_per_epoch:
             evaluate_engine(ww_dev_pos_ds, 'Dev positive', positive_set=True, save=True, write_errors=False)
+
     do_evaluate()
 
 
