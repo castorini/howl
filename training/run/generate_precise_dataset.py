@@ -17,7 +17,7 @@ from howl.settings import SETTINGS
 This script is used to transform datasets for howl to dataset for Mycroft-precise 
 
 sample command:
-python -m howl_training.run.generate_precise_dataset.py --i <datasets to convert> --o <location of the output dataset>
+python -m training.run.generate_precise_dataset.py --i <datasets to convert> --o <location of the output dataset>
 """
 
 def main():
