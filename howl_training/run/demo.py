@@ -20,7 +20,7 @@ class InferenceClient:
                  engine: InferenceEngine,
                  device: torch.device,
                  words,
-                 chunk_size: int = 500):
+                 chunk_size: int = 160):
         self.engine = engine
         self.chunk_size = chunk_size
         self._audio = pyaudio.PyAudio()
@@ -52,7 +52,7 @@ class InferenceClient:
         data_ok = (in_data, pyaudio.paContinue)
         self.last_data = in_data
         self._audio_buf.append(in_data)
-        if len(self._audio_buf) != 16:
+        if len(self._audio_buf) != (self.engine.sample_rate / self.chunk_size): #  1 sec window
             return data_ok
         audio_data = b''.join(self._audio_buf)
         self._audio_buf = self._audio_buf[2:]
@@ -96,10 +96,10 @@ def main():
                                          model,
                                          zmuv_transform,
                                          negative_label=ctx.negative_label,
-                                         coloring=ctx.coloring)
+                                         coloring=ctx.coloring,
+                                         blank_idx=ctx.blank_label)
     client = InferenceClient(engine, device, SETTINGS.training.vocab)
     client.join()
-
 
 if __name__ == '__main__':
     main()
