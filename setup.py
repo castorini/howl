@@ -6,7 +6,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 with open('requirements.txt') as f:
     requirements = f.read().splitlines()
 
-excluded = ["howl_training*"]
+excluded = ["training*"]
 
 setuptools.setup(
     name="howl",

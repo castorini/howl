@@ -13,7 +13,7 @@ This script uses every GPU on the machine to train every models in this repo for
 target keywords include “yes,” “no,” “up,” “down,” “left,” “right,” “on,” “off,”, “stop,” “go,” unknown, or silence.
 
 sample command:
-python -m howl_training.run.eval_commands_recognition --num_iterations x --dataset_path < path_to_gsc_datasets >
+python -m training.run.eval_commands_recognition --num_iterations x --dataset_path < path_to_gsc_datasets >
 """
 
 def main():
@@ -109,7 +109,7 @@ def main():
             os.system("mkdir -p " + workspace_path)
             log_path =  workspace_path + "/exp.log"
             exp_execution = os.system("touch " + log_path)
-            exp_execution = os.system("python -m howl_training.run.pretrain_gsc --model " + model_type + " --workspace " + workspace_path + " 2>&1 | tee " + log_path)
+            exp_execution = os.system("python -m training.run.pretrain_gsc --model " + model_type + " --workspace " + workspace_path + " 2>&1 | tee " + log_path)
 
             # start training
             raw_log = subprocess.check_output(['cat', log_path]).decode("utf-8") 

@@ -18,7 +18,7 @@ evaluates them with different threashold, and generate performance reports
 Two different performance reports are generated, one with the clean audio and one with audios with noise
 
 sample command:
-python -m howl_training.run.run_exp --num_models 10 --hop_size 0.05 --exp_type hey_ff --dataset_path "x" --noiseset_path "y"
+python -m training.run.eval_wake_word_detection --num_models 10 --hop_size 0.05 --exp_type hey_firefox --dataset_path "x" --noiseset_path "y"
 
 train 10 models for hey firefox with random seeds using datasets x and y
 then evaluate them for thresholds ranging from 0 to 1 in increments of 0.05
@@ -29,7 +29,7 @@ def is_job_running(grep_command, count_command):
     num_proc = out.decode('utf-8').count(count_command)
     return num_proc > 0
 
-def run_batch_commands(commands, envs, grep_command = 'howl_training.run.train', count_command = 'python -m howl_training.run.train'):
+def run_batch_commands(commands, envs, grep_command = 'training.run.train', count_command = 'python -m training.run.train'):
     """
     run given set of commands with the corresponding environments
     check the status of each process regularly and schedule the next job whenever GPU is availble
@@ -201,7 +201,7 @@ def main():
     noisy_wb.save(noisy_file_name)
     print('\treport for noisy setting is generated at ', noisy_file_name)
 
-    # training settings
+    # Training settings
     os.environ['DATASET_PATH'] = args.dataset_path
     os.environ['WEIGHT_DECAY'] = '0.00001'
     os.environ['LEARNING_RATE'] = '0.01'
@@ -224,7 +224,7 @@ def main():
     seeds = []
 
 
-    print('-- training ' + args.num_models + ' models --')
+    print('-- training ', args.num_models, ' models --')
     training_commands = []
     training_envs = []
 
@@ -239,7 +239,7 @@ def main():
         env['SEED'] = seed
         workspace_path = get_workspace_path(args.exp_type, seed)
         os.system('mkdir -p ' + workspace_path)
-        command = 'python -m howl_training.run.train --model res8 --workspace ' + workspace_path + '  -i ' + args.dataset_path
+        command = 'python -m training.run.train --model res8 --workspace ' + workspace_path + '  -i ' + args.dataset_path
         training_commands.append(command)
         training_envs.append(env)
 
@@ -258,7 +258,7 @@ def main():
             env['SEED'] = seed
             env['INFERENCE_THRESHOLD'] = threshold
             workspace_path = get_workspace_path(args.exp_type, seed)
-            command = 'python -m howl_training.run.train --eval --model res8 --workspace ' + workspace_path + '  -i ' + args.dataset_path
+            command = 'python -m training.run.train --eval --model res8 --workspace ' + workspace_path + '  -i ' + args.dataset_path
             result_path = workspace_path + '/' + threshold + '_results.csv'
 
             # if evaluation is done previously, we skip it
@@ -320,7 +320,6 @@ def main():
     print('-- report generation has been completed --')
     print('\treport for clean setting is generated at ', clean_file_name)
     print('\treport for noisy setting is generated at ', noisy_file_name)
-    
     
 if __name__ == '__main__':
     main()

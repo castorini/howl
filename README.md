@@ -66,19 +66,19 @@ In the example that follows, we describe how to train a custom detector for the 
 and download an [English pronunciation dictionary](http://svn.code.sf.net/p/cmusphinx/code/trunk/cmudict/cmudict-0.7b).
 3. Create a positive dataset containing the keyword:
 ```bash
-VOCAB='["fire"]' INFERENCE_SEQUENCE=[0] DATASET_PATH=data/fire-positive python -m howl_training.run.create_raw_dataset --negative-pct 0 -i ~/path/to/common-voice --positive-pct 100
+VOCAB='["fire"]' INFERENCE_SEQUENCE=[0] DATASET_PATH=data/fire-positive python -m training.run.create_raw_dataset --negative-pct 0 -i ~/path/to/common-voice --positive-pct 100
 ```
 
 4. Create a negative dataset without the keyword:
 
 ```bash
-VOCAB='["fire"]' INFERENCE_SEQUENCE=[0] DATASET_PATH=data/fire-negative python -m howl_training.run.create_raw_dataset --negative-pct 5 -i ~/path/to/common-voice --positive-pct 0
+VOCAB='["fire"]' INFERENCE_SEQUENCE=[0] DATASET_PATH=data/fire-negative python -m training.run.create_raw_dataset --negative-pct 5 -i ~/path/to/common-voice --positive-pct 0
 ```
 
 5. Generate some mock alignment for the negative set, where we don't care about alignment:
 
 ```bash
-DATASET_PATH=data/fire-negative python -m howl_training.run.attach_alignment --align-type stub
+DATASET_PATH=data/fire-negative python -m training.run.attach_alignment --align-type stub
 ```
 
 6. Use MFA to generate alignment for the positive set:
@@ -90,14 +90,14 @@ mfa_align data/fire-positive/audio eng.dict pretrained_models/english.zip output
 7. Attach the MFA alignment to the positive dataset:
 
 ```bash
-DATASET_PATH=data/fire-positive python -m howl_training.run.attach_alignment --align-type mfa -i output-folder
+DATASET_PATH=data/fire-positive python -m training.run.attach_alignment --align-type mfa -i output-folder
 ```
 
 ### Training and Running a Model
 
 1. Source the relevant environment variables for training the `res8` model: `source envs/res8.env`.
-2. Train the model: `python -m howl_training.run.train -i data/fire-negative data/fire-positive --model res8 --workspace workspaces/fire-res8`.
-3. For the CLI demo, run `python -m howl_training.run.demo --model res8 --workspace workspaces/fire-res8`.
+2. Train the model: `python -m training.run.train -i data/fire-negative data/fire-positive --model res8 --workspace workspaces/fire-res8`.
+3. For the CLI demo, run `python -m training.run.demo --model res8 --workspace workspaces/fire-res8`.
 
 ### Pretrained Models
 
@@ -108,7 +108,7 @@ To get the latest models, simply run `git submodule update --init --recursive`
 - [hey firefox](https://github.com/castorini/howl-models/tree/master/howl/hey-fire-fox)
 
 ```bash
-VOCAB='[" hey","fire","fox"]' INFERENCE_SEQUENCE=[0,1,2] INFERENCE_THRESHOLD=0 NUM_MELS=40 MAX_WINDOW_SIZE_SECONDS=0.5 python -m howl_training.run.demo --model res8 --workspace howl-models/howl/hey-fire-fox
+VOCAB='[" hey","fire","fox"]' INFERENCE_SEQUENCE=[0,1,2] INFERENCE_THRESHOLD=0 NUM_MELS=40 MAX_WINDOW_SIZE_SECONDS=0.5 python -m training.run.demo --model res8 --workspace howl-models/howl/hey-fire-fox
 ```
 
 ## Reproducing Paper Results
@@ -120,7 +120,7 @@ First, follow the installation instructions in the quickstart guide.
 1. Download [the Google Speech Commands dataset](https://ai.googleblog.com/2017/08/launching-speech-commands-dataset.html) and extract it.
 2. Source the appropriate environment variables: `source envs/res8.env`
 3. Set the dataset path to the root folder of the Speech Commands dataset: `export DATASET_PATH=/path/to/dataset`
-4. Train the `res8` model: `NUM_EPOCHS=20 MAX_WINDOW_SIZE_SECONDS=1 VOCAB='["yes","no","up","down","left","right","on","off","stop","go"]' BATCH_SIZE=64 LR_DECAY=0.8 LEARNING_RATE=0.01 python -m howl_training.run.pretrain_gsc --model res8`
+4. Train the `res8` model: `NUM_EPOCHS=20 MAX_WINDOW_SIZE_SECONDS=1 VOCAB='["yes","no","up","down","left","right","on","off","stop","go"]' BATCH_SIZE=64 LR_DECAY=0.8 LEARNING_RATE=0.01 python -m training.run.pretrain_gsc --model res8`
 
 ### Hey Firefox
 
@@ -129,7 +129,7 @@ First, follow the installation instructions in the quickstart guide.
 3. Source the appropriate environment variables: `source envs/res8.env`
 4. Set the noise dataset path to the root folder: `export NOISE_DATASET_PATH=/path/to/snsd`
 5. Set the firefox dataset path to the root folder: `export DATASET_PATH=/path/to/hey_firefox`
-6. Train the model: `LR_DECAY=0.98 VOCAB='[" hey","fire","fox"]' USE_NOISE_DATASET=True BATCH_SIZE=16 INFERENCE_THRESHOLD=0 NUM_EPOCHS=300 NUM_MELS=40 INFERENCE_SEQUENCE=[0,1,2] MAX_WINDOW_SIZE_SECONDS=0.5 python -m howl_training.run.train --model res8 --workspace workspaces/hey-ff-res8`
+6. Train the model: `LR_DECAY=0.98 VOCAB='[" hey","fire","fox"]' USE_NOISE_DATASET=True BATCH_SIZE=16 INFERENCE_THRESHOLD=0 NUM_EPOCHS=300 NUM_MELS=40 INFERENCE_SEQUENCE=[0,1,2] MAX_WINDOW_SIZE_SECONDS=0.5 python -m training.run.train --model res8 --workspace workspaces/hey-ff-res8`
 
 ### Hey Snips
 
@@ -137,13 +137,13 @@ First, follow the installation instructions in the quickstart guide.
 2. Process the dataset to a format howl can load
 
 ```bash
-VOCAB='["hey","snips"]' INFERENCE_SEQUENCE=[0,1] DATASET_PATH=data/hey-snips python -m howl_training.run.create_raw_dataset --dataset-type 'hey-snips' -i ~/path/to/hey_snips_dataset
+VOCAB='["hey","snips"]' INFERENCE_SEQUENCE=[0,1] DATASET_PATH=data/hey-snips python -m training.run.create_raw_dataset --dataset-type 'hey-snips' -i ~/path/to/hey_snips_dataset
 ```
 
 3. Generate some mock alignment for the dataset, where we don't care about alignment:
 
 ```bash
-DATASET_PATH=data/hey-snips python -m howl_training.run.attach_alignment --align-type stub
+DATASET_PATH=data/hey-snips python -m training.run.attach_alignment --align-type stub
 ```
 
 4. Use MFA to generate alignment for the dataset set:
@@ -155,19 +155,19 @@ mfa_align data/hey-snips/audio eng.dict pretrained_models/english.zip output-fol
 5. Attach the MFA alignment to the dataset:
 
 ```bash
-DATASET_PATH=data/hey-snips python -m howl_training.run.attach_alignment --align-type mfa -i output-folder
+DATASET_PATH=data/hey-snips python -m training.run.attach_alignment --align-type mfa -i output-folder
 ```
 
 6. Source the appropriate environment variables: `source envs/res8.env`
 7. Set the noise dataset path to the root folder: `export NOISE_DATASET_PATH=/path/to/snsd`
 8. Set the noise dataset path to the root folder: `export DATASET_PATH=/path/to/hey-snips`
-9. Train the model: `LR_DECAY=0.98 VOCAB='[" hey","snips"]' USE_NOISE_DATASET=True BATCH_SIZE=16 INFERENCE_THRESHOLD=0 NUM_EPOCHS=300 NUM_MELS=40 INFERENCE_SEQUENCE=[0,1] MAX_WINDOW_SIZE_SECONDS=0.5 python -m howl_training.run.train --model res8 --workspace workspaces/hey-snips-res8`
+9. Train the model: `LR_DECAY=0.98 VOCAB='[" hey","snips"]' USE_NOISE_DATASET=True BATCH_SIZE=16 INFERENCE_THRESHOLD=0 NUM_EPOCHS=300 NUM_MELS=40 INFERENCE_SEQUENCE=[0,1] MAX_WINDOW_SIZE_SECONDS=0.5 python -m training.run.train --model res8 --workspace workspaces/hey-snips-res8`
 
 ### Generating dataset for Mycroft-precise
 
 howl also provides a script for transforming howl dataset to [mycroft-precise](https://github.com/MycroftAI/mycroft-precise) dataset
 ```bash
-VOCAB='[" hey","fire","fox"]' INFERENCE_SEQUENCE=[0,1,2] python -m howl_training.run.generate_precise_dataset --dataset-path /path/to/howl_dataset
+VOCAB='[" hey","fire","fox"]' INFERENCE_SEQUENCE=[0,1,2] python -m training.run.generate_precise_dataset --dataset-path /path/to/howl_dataset
 ```
 
 ## Experiments
@@ -181,7 +181,7 @@ For both experiments, we generate reports in excel format. [experiments](https:/
 For command recognition, we train the four different models (res8, LSTM, LAS encoder, MobileNetv2) to detect twelve different keywords: “yes”, “no”, “up”, “down”, “left”, “right”, “on”, “off”, “stop”, “go”, unknown, or silence.
 
 ```bash
-python -m howl_training.run.eval_commands_recognition --num_iterations n --dataset_path < path_to_gsc_datasets >
+python -m training.run.eval_commands_recognition --num_iterations n --dataset_path < path_to_gsc_datasets >
 ```
 
 ### word_detection
@@ -191,11 +191,11 @@ In this experiment, we train our best commands recognition model, res8, for `hey
 Two different performance reports are generated, one with the clean audio and one with audios with noise
 
 ```bash
-python -m howl_training.run.eval_wake_word_detection --num_models n --hop_size < number between 0 and 1 > --exp_type < hey_firefox | hey_snips > --dataset_path "x" --noiseset_path "y"
+python -m training.run.eval_wake_word_detection --num_models n --hop_size < number between 0 and 1 > --exp_type < hey_firefox | hey_snips > --dataset_path "x" --noiseset_path "y"
 ```
 
 We also provide a script for generating ROC curve. `exp_timestamp` can be found from the reports generated from previous command
 
 ```bash
-python -m howl_training.run.generate_roc --exp_timestamp < experiment timestamp > --exp_type < hey_firefox | hey_snips >
+python -m training.run.generate_roc --exp_timestamp < experiment timestamp > --exp_type < hey_firefox | hey_snips >
 ```
