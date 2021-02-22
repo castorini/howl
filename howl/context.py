@@ -24,30 +24,61 @@ class InferenceContext:
                  token_type: str = 'phone',
                  pronounce_dict: PronunciationDictionary = None,
                  use_blank: bool = False):
-        self.labeler = WordFrameLabeler(vocab)
+
         self.coloring = None
-        use_phone = token_type == 'phone'
-        if pronounce_dict is None and use_phone:
-            pronounce_dict = PronunciationDictionary.from_file(SETTINGS.training.phone_dictionary)
-        if use_phone:
+        self.adjusted_vocab = []
+        self.num_labels = 0
+
+        def add_vocab(vocabs: List[str]):
+            for vocab in vocabs:
+                self.adjusted_vocab.append(vocab)
+            if self.coloring:
+                self.coloring.extend_sequence(len(vocabs))
+            self.num_labels += len(vocabs)
+
+        # break down each vocab into phonemes
+        if token_type == 'phone':
+            if pronounce_dict is None:
+                pronounce_dict = PronunciationDictionary.from_file(
+                    SETTINGS.training.phone_dictionary)
+
             self.coloring = LabelColoring()
-            new_vocab = []
-            if use_blank:
-                new_vocab.append('[BLANK]')
-                self.coloring.label_counter = 1
             for word in vocab:
                 phone_phrases = pronounce_dict.encode(word)
-                logging.info(f'Using phonemes {str(phone_phrases)} for word {word}.')
-                new_vocab.extend(x.text for x in phone_phrases)
-                self.coloring.extend_sequence(len(phone_phrases))
-            self.coloring.extend_sequence(1)  # negative label
-            if use_blank:
-                self.coloring.append_label(0)  # blank
-            vocab = new_vocab
-            phone_phrases = [PhonePhrase.from_string(x) for x in new_vocab]
+                logging.info(
+                    f'Using phonemes {str(phone_phrases)} for word {word}')
+                add_vocab(x.text for x in phone_phrases)
+
+        elif token_type == 'word':
+            add_vocab(vocab)
+
+        # initialize labeler; make sure this is located before adding other labels
+        if token_type == 'phone':
+            phone_phrases = [PhonePhrase.from_string(
+                x) for x in self.adjusted_vocab]
             self.labeler = PhoneticFrameLabeler(phone_phrases)
-        self.num_labels = len(vocab) + 1 + use_blank
-        self.blank_label = len(vocab) + 1 if use_blank else -1
-        self.negative_label = len(vocab)
-        self.vocab = Vocab({word: idx for idx, word in enumerate(vocab)}, oov_token_id=self.negative_label)
-        self.searcher = PhoneticTranscriptSearcher(phone_phrases, self.coloring) if use_phone else WordTranscriptSearcher(vocab)
+        elif token_type == 'word':
+            print('labeler vocab: ', self.adjusted_vocab)
+            self.labeler = WordFrameLabeler(self.adjusted_vocab)
+
+        # initialize vocab set for the system and add negative label
+        self.negative_label = len(self.adjusted_vocab)
+        self.vocab = Vocab({word: idx for idx, word in enumerate(
+            self.adjusted_vocab)}, oov_token_id=self.negative_label)
+        add_vocab(['[OOV]'])
+
+        # initialize TranscriptSearcher with the processed targets
+        if token_type == 'phone':
+            self.searcher = PhoneticTranscriptSearcher(
+                phone_phrases, self.coloring)
+        elif token_type == 'word':
+            self.searcher = WordTranscriptSearcher(self.adjusted_vocab)
+
+        # add extra label for blank if necessary
+        self.blank_label = -1
+        if use_blank:
+            self.blank_label = len(self.adjusted_vocab)
+            add_vocab(['[BLANK]'])
+
+        for idx, word in enumerate(self.adjusted_vocab):
+            logging.info(f'target {word:10} is assigned to label {idx}')

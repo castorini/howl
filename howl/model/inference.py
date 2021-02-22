@@ -85,7 +85,6 @@ class PhoneticTranscriptSearcher(TranscriptSearcher):
     def __init__(self, phrases: List[PhonePhrase], coloring: LabelColoring, **kwargs):
         super().__init__(**kwargs)
         self.phrases = phrases
-        self.coloring = coloring
         label_map = [(phrase.audible_transcript, coloring.color_map[idx]) for idx, phrase in enumerate(phrases)]
         buckets = defaultdict(list)
         for transcript, color in label_map:
