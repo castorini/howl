@@ -29,13 +29,6 @@ class InferenceContext:
         self.adjusted_vocab = []
         self.num_labels = 0
 
-        def add_vocab(vocabs: List[str]):
-            for vocab in vocabs:
-                self.adjusted_vocab.append(vocab)
-            if self.coloring:
-                self.coloring.extend_sequence(len(vocabs))
-            self.num_labels += len(vocabs)
-
         # break down each vocab into phonemes
         if token_type == 'phone':
             if pronounce_dict is None:
@@ -47,10 +40,10 @@ class InferenceContext:
                 phone_phrases = pronounce_dict.encode(word)
                 logging.info(
                     f'Using phonemes {str(phone_phrases)} for word {word}')
-                add_vocab(x.text for x in phone_phrases)
+                self.add_vocab(x.text for x in phone_phrases)
 
         elif token_type == 'word':
-            add_vocab(vocab)
+            self.add_vocab(vocab)
 
         # initialize labeler; make sure this is located before adding other labels
         if token_type == 'phone':
@@ -65,7 +58,7 @@ class InferenceContext:
         self.negative_label = len(self.adjusted_vocab)
         self.vocab = Vocab({word: idx for idx, word in enumerate(
             self.adjusted_vocab)}, oov_token_id=self.negative_label)
-        add_vocab(['[OOV]'])
+        self.add_vocab(['[OOV]'])
 
         # initialize TranscriptSearcher with the processed targets
         if token_type == 'phone':
@@ -78,7 +71,14 @@ class InferenceContext:
         self.blank_label = -1
         if use_blank:
             self.blank_label = len(self.adjusted_vocab)
-            add_vocab(['[BLANK]'])
+            self.add_vocab(['[BLANK]'])
 
         for idx, word in enumerate(self.adjusted_vocab):
             logging.info(f'target {word:10} is assigned to label {idx}')
+
+    def add_vocab(vocabs: List[str]):
+        for vocab in vocabs:
+            self.adjusted_vocab.append(vocab)
+        if self.coloring:
+            self.coloring.extend_sequence(len(vocabs))
+        self.num_labels += len(vocabs)
