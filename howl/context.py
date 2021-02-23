@@ -76,7 +76,7 @@ class InferenceContext:
         for idx, word in enumerate(self.adjusted_vocab):
             logging.info(f'target {word:10} is assigned to label {idx}')
 
-    def add_vocab(vocabs: List[str]):
+    def add_vocab(self, vocabs: List[str]):
         for vocab in vocabs:
             self.adjusted_vocab.append(vocab)
         if self.coloring:
