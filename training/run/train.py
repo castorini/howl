@@ -104,7 +104,7 @@ def main():
     else:
         tokenizer = WakeWordTokenizer(ctx.vocab, ignore_oov=False)
         batchifier = AudioSequenceBatchifier(ctx.negative_label, tokenizer)
-        criterion = nn.CTCLoss()
+        criterion = nn.CTCLoss(ctx.blank_label)
 
     ws = Workspace(Path(args.workspace), delete_existing=not args.eval)
     writer = ws.summary_writer
