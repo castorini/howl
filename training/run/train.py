@@ -189,7 +189,7 @@ def main():
                     position=1,
                     desc='Training',
                     leave=True)
-        total_loss = torch.Tensor([0.0])
+        total_loss = torch.Tensor([0.0]).to(device)
         for batch in pbar:
             batch.to(device)
             if use_frame:
@@ -208,7 +208,7 @@ def main():
             optimizer.step()
             pbar.set_postfix(dict(loss=f'{loss.item():.3}'))
             with torch.no_grad():
-              total_loss += loss
+                total_loss += loss
 
         for group in optimizer.param_groups:
             group['lr'] *= SETTINGS.training.lr_decay
