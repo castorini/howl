@@ -1,5 +1,6 @@
 #bin/bash
-set -e
+# TODO:: enable this flag after fixing segfault issue of create_new_dataset
+# set -e
 
 COMMON_VOICE_DATASET_PATH=${1} # common voice dataset path
 DATASET_NAME=${2} # underscore separated wakeword (e.g. hey_fire_fox)
@@ -24,33 +25,34 @@ VOCAB="${VOCAB::-1}]"
 
 DATASET_FOLDER="data/${DATASET_NAME}"
 echo ">>> generating datasets for ${VOCAB} at ${DATASET_FOLDER}"
-
-mkdir -p ${DATASET_FOLDER}
-export COMMON_VOICE_DATASET_PATH="/data/common-voice/"
+mkdir -p "${DATASET_FOLDER}"
 
 NEG_DATASET_PATH="${DATASET_FOLDER}/negative"
 echo ">>> generating negative dataset: ${NEG_DATASET_PATH}"
-time VOCAB=${VOCAB} INFERENCE_SEQUENCE=${INFERENCE_SEQUENCE} DATASET_PATH=${NEG_DATASET_PATH} python -m training.run.create_raw_dataset --negative-pct 5 -i ${COMMON_VOICE_DATASET_PATH} --positive-pct 0
+mkdir -p "${NEG_DATASET_PATH}"
+time VOCAB=${VOCAB} INFERENCE_SEQUENCE=${INFERENCE_SEQUENCE} DATASET_PATH=${NEG_DATASET_PATH} python -m training.run.create_raw_dataset -i ${COMMON_VOICE_DATASET_PATH} --positive-pct 0 --negative-pct 5
 
 echo ">>> generating mock alignment for the negative set"
-time VOCAB=${VOCAB} INFERENCE_SEQUENCE=${INFERENCE_SEQUENCE} DATASET_PATH=${NEG_DATASET_PATH} python -m training.run.attach_alignment --align-type stub
+time DATASET_PATH=${NEG_DATASET_PATH} python -m training.run.attach_alignment --align-type stub
 
 POS_DATASET_PATH="${DATASET_FOLDER}/positive"
 echo ">>> generating positive dataset: ${POS_DATASET_PATH}"
-time DATASET_PATH=${POS_DATASET_PATH} python -m training.run.create_raw_dataset --negative-pct 0 -i ${COMMON_VOICE_DATASET_PATH} --positive-pct 100
+mkdir -p "${POS_DATASET_PATH}"
+time VOCAB=${VOCAB} INFERENCE_SEQUENCE=${INFERENCE_SEQUENCE} DATASET_PATH=${POS_DATASET_PATH} python -m training.run.create_raw_dataset -i ${COMMON_VOICE_DATASET_PATH} --positive-pct 100 --negative-pct 0
 
 POS_DATASET_ALIGNMENT="${POS_DATASET_PATH}/alignment"
 echo ">>> generating alignment for the positive dataset using MFA: ${POS_DATASET_ALIGNMENT}"
+mkdir -p "${POS_DATASET_ALIGNMENT}"
 MFA_FOLDER="./montreal-forced-aligner"
 pushd ${MFA_FOLDER}
 # yes n for "There were words not found in the dictionary. Would you like to abort to fix them? (Y/N)"
 # if process fails, check ~/Documents/MFA/audio/train/mfcc/log/make_mfcc.0.log
 # it's often due to missing openblas or fortran packages
 # if this is the case, simply install them using apt
-time yes n | ./bin/mfa_align --verbose --clean --num_jobs 12 ../${POS_DATASET_PATH}/audio librispeech-lexicon.txt pretrained_models/english.zip ../${POS_DATASET_ALIGNMENT}
+time yes n | ./bin/mfa_align --verbose --clean --num_jobs 12 "../${POS_DATASET_PATH}/audio" librispeech-lexicon.txt pretrained_models/english.zip "../${POS_DATASET_ALIGNMENT}"
 popd
 
 echo ">>> attaching the MFA alignment to the positive dataset"
-DATASET_PATH=${POS_DATASET_PATH} python -m training.run.attach_alignment --align-type mfa -i ${POS_DATASET_ALIGNMENT}
+DATASET_PATH=${POS_DATASET_PATH} python -m training.run.attach_alignment --align-type mfa -i "${POS_DATASET_ALIGNMENT}"
 
 echo ">>> Dataset is ready for ${VOCAB}"
