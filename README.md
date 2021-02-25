@@ -63,7 +63,7 @@ client.start().join()
 
 Assuming MFA is installed using `download_mfa.sh` and [Common Voice dataset](https://commonvoice.mozilla.org/) is downloaded already, one can easily generate a dataset for custom wakeword using `generate_dataset.sh` script.
 ```bash
-./generate_dataset.sh <underscore separated wakeword (e.g. hey_fire_fox)> <common voice dataset path>
+./generate_dataset.sh <common voice dataset path> <underscore separated wakeword (e.g. hey_fire_fox)> <inference sequence (e.g. [0,1,2])>
 ```
 
 In the example that follows, we describe the process of generating a dataste for the word, "fire."

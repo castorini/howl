@@ -1,13 +1,18 @@
 #bin/bash
 set -e
 
-DATASET_NAME=${1} # _ separated wakeword (hey_fire_fox)
-COMMON_VOICE_DATASET_PATH=${2} # common voice dataset path
+COMMON_VOICE_DATASET_PATH=${1} # common voice dataset path
+DATASET_NAME=${2} # underscore separated wakeword (e.g. hey_fire_fox)
+INFERENCE_SEQUENCE=${3} # inference sequence (e.g. [0,1,2])
 
 if [ $# -lt 2 ]; then
-  echo 1>&2 "invalid arguments: ./generate_dataset.sh <_ separated wakeword> <common voice dataset path>"
+  echo 1>&2 "invalid arguments: ./generate_dataset.sh <common voice dataset path> <underscore separated wakeword> <inference sequence>"
   exit 2
 fi
+
+echo "COMMON_VOICE_DATASET_PATH: ${COMMON_VOICE_DATASET_PATH}"
+echo "DATASET_NAME: ${DATASET_NAME}"
+echo "INFERENCE_SEQUENCE: ${INFERENCE_SEQUENCE}"
 
 VOCAB="["
 IFS='_'
@@ -25,10 +30,10 @@ export COMMON_VOICE_DATASET_PATH="/data/common-voice/"
 
 NEG_DATASET_PATH="${DATASET_FOLDER}/negative"
 echo ">>> generating negative dataset: ${NEG_DATASET_PATH}"
-time DATASET_PATH=${NEG_DATASET_PATH} python -m training.run.create_raw_dataset --negative-pct 5 -i ${COMMON_VOICE_DATASET_PATH} --positive-pct 0
+time VOCAB=${VOCAB} INFERENCE_SEQUENCE=${INFERENCE_SEQUENCE} DATASET_PATH=${NEG_DATASET_PATH} python -m training.run.create_raw_dataset --negative-pct 5 -i ${COMMON_VOICE_DATASET_PATH} --positive-pct 0
 
 echo ">>> generating mock alignment for the negative set"
-time DATASET_PATH=${NEG_DATASET_PATH} python -m training.run.attach_alignment --align-type stub
+time VOCAB=${VOCAB} INFERENCE_SEQUENCE=${INFERENCE_SEQUENCE} DATASET_PATH=${NEG_DATASET_PATH} python -m training.run.attach_alignment --align-type stub
 
 POS_DATASET_PATH="${DATASET_FOLDER}/positive"
 echo ">>> generating positive dataset: ${POS_DATASET_PATH}"
