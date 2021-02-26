@@ -105,8 +105,14 @@ DATASET_PATH=data/fire-positive python -m training.run.attach_alignment --align-
 ### Training and Running a Model
 
 1. Source the relevant environment variables for training the `res8` model: `source envs/res8.env`.
-2. Train the model: `python -m training.run.train -i data/fire-negative data/fire-positive --model res8 --workspace workspaces/fire-res8`.
+2. Train the model: `python -m training.run.train -i data/fire-positive data/fire-negative --model res8 --workspace workspaces/fire-res8`.
 3. For the CLI demo, run `python -m training.run.demo --model res8 --workspace workspaces/fire-res8`.
+
+`train_model.sh` is also available which encaspulates individual command into a single bash script
+
+```bash
+./train_model.sh <env file path (e.g. envs/res8.env)> <model type (e.g. res8)> <workspace path (e.g. workspaces/fire-res8)> <dataset1 (e.g. data/fire-positive)> <dataset2(e.g. data/fire-negative)> ...
+```
 
 ### Pretrained Models
 

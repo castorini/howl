@@ -6,7 +6,7 @@ COMMON_VOICE_DATASET_PATH=${1} # common voice dataset path
 DATASET_NAME=${2} # underscore separated wakeword (e.g. hey_fire_fox)
 INFERENCE_SEQUENCE=${3} # inference sequence (e.g. [0,1,2])
 
-if [ $# -lt 2 ]; then
+if [ $# -lt 3 ]; then
   echo 1>&2 "invalid arguments: ./generate_dataset.sh <common voice dataset path> <underscore separated wakeword> <inference sequence>"
   exit 2
 fi
