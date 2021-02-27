@@ -1,6 +1,7 @@
 data
 workspaces
 exp_results
+montreal-forced-aligner
 
 .vscode/
 

@@ -57,13 +57,22 @@ client.start().join()
 
 4. `pip install -r requirements.txt -r requirements_training.txt` (some apt packages might need to be installed)
 
+5. `./download_mfa.sh` to setup montreal forced alginer (MFA) for dataset generation
+
 ### Preparing a Dataset
 
-In the example that follows, we describe how to train a custom detector for the word, "fire."
+Assuming MFA is installed using `download_mfa.sh` and [Common Voice dataset](https://commonvoice.mozilla.org/) is downloaded already, one can easily generate a dataset for custom wakeword using `generate_dataset.sh` script.
+```bash
+./generate_dataset.sh <common voice dataset path> <underscore separated wakeword (e.g. hey_fire_fox)> <inference sequence (e.g. [0,1,2])>
+```
+
+In the example that follows, we describe the process of generating a dataste for the word, "fire."
 
 1. Download a supported data source. We recommend [Common Voice](https://commonvoice.mozilla.org/) for its breadth and free license.
-2. To provide alignment for the data, install [Montreal Forced Aligner](https://montreal-forced-aligner.readthedocs.io/en/latest/installation.html) (MFA)
+
+2. To provide alignment for the data, install [Montreal Forced Aligner](https://montreal-forced-aligner.readthedocs.io/en/stable/installation.html) (MFA)
 and download an [English pronunciation dictionary](http://svn.code.sf.net/p/cmusphinx/code/trunk/cmudict/cmudict-0.7b).
+
 3. Create a positive dataset containing the keyword:
 ```bash
 VOCAB='["fire"]' INFERENCE_SEQUENCE=[0] DATASET_PATH=data/fire-positive python -m training.run.create_raw_dataset -i ~/path/to/common-voice --positive-pct 100 --negative-pct 0
@@ -96,8 +105,14 @@ DATASET_PATH=data/fire-positive python -m training.run.attach_alignment --align-
 ### Training and Running a Model
 
 1. Source the relevant environment variables for training the `res8` model: `source envs/res8.env`.
-2. Train the model: `python -m training.run.train -i data/fire-negative data/fire-positive --model res8 --workspace workspaces/fire-res8`.
+2. Train the model: `python -m training.run.train -i data/fire-positive data/fire-negative --model res8 --workspace workspaces/fire-res8`.
 3. For the CLI demo, run `python -m training.run.demo --model res8 --workspace workspaces/fire-res8`.
+
+`train_model.sh` is also available which encaspulates individual command into a single bash script
+
+```bash
+./train_model.sh <env file path (e.g. envs/res8.env)> <model type (e.g. res8)> <workspace path (e.g. workspaces/fire-res8)> <dataset1 (e.g. data/fire-positive)> <dataset2(e.g. data/fire-negative)> ...
+```
 
 ### Pretrained Models
 
