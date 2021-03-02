@@ -1,5 +1,4 @@
-from typing import List, Mapping, Union, Tuple
-
+from typing import List, Mapping, Tuple, Union
 
 __all__ = ['WakeWordTokenizer', 'TranscriptTokenizer', 'VocabTrie']
 
@@ -34,7 +33,7 @@ class VocabTrie:
             return node, word
 
     def add_word(self, word: str):
-        node, word_left = self._nearest_node(word, node=self.root)
+        node, word_left = self._nearest_node(word.lower(), node=self.root)
         if not word_left:
             node.terminal = True
             return
@@ -49,7 +48,7 @@ class VocabTrie:
     def max_split(self, tokens: Union[List[str], str]) -> Tuple[Union[List[str], str], Union[List[str], str]]:
         node = self.root
         counter = 0
-        for tok in tokens:
+        for tok in tokens.lower():
             node, word_left = self._nearest_node(tok, node)
             if word_left:
                 break
@@ -64,28 +63,25 @@ class Vocab:
                  word2idx: Mapping[str, int],
                  oov_token_id: int = None,
                  oov_word_repr: str = '[OOV]'):
-        self.word2idx = word2idx
+        self.word2idx = {k.lower(): v for k, v in word2idx.items()}
         self.idx2word = {v: k for k, v in word2idx.items()}
         self.oov_token_id = oov_token_id
         self.oov_word_repr = oov_word_repr
+        self.trie = VocabTrie()
+        for word in self.word2idx:
+            self.trie.add_word(word.lower())
 
     def __len__(self):
         return len(self.word2idx)
 
     def __getitem__(self, item: Union[str, int]) -> Union[str, int]:
         if isinstance(item, str):
-            ret = self.word2idx.get(item, self.oov_token_id)
+            ret = self.word2idx.get(item.lower(), self.oov_token_id)
         else:
             ret = self.idx2word.get(item, self.oov_word_repr)
         if ret is None:
-            raise ValueError('couldn\'t find token')
+            raise ValueError(f'couldn\'t find token for {item}')
         return ret
-
-    def to_trie(self) -> VocabTrie:
-        trie = VocabTrie()
-        for word in self.word2idx:
-            trie.add_word(word)
-        return trie
 
 
 class WakeWordTokenizer(TranscriptTokenizer):
@@ -94,7 +90,6 @@ class WakeWordTokenizer(TranscriptTokenizer):
                  vocab: Vocab,
                  ignore_oov: bool = True):
         self.vocab = vocab
-        self.trie = vocab.to_trie()
         self.ignore_oov = ignore_oov
 
     def decode(self, ids: List[int]) -> str:
@@ -102,24 +97,18 @@ class WakeWordTokenizer(TranscriptTokenizer):
 
     def encode(self, transcript: str) -> List[int]:
         encoded_output = []
-        # append a space at the beginning to catch vocab starting with a space
-        # append a space to add the last negative label
-        transcript = f' {transcript} '
-        while transcript:
-            word, transcript = self.trie.max_split(transcript)
-            if word:
+
+        for word in transcript.lower().split():
+            vocab_found, transcript = self.vocab.trie.max_split(word)
+
+            # append corresponding label
+            if vocab_found and transcript == "":
+                # word exists in the vocab
                 encoded_output.append(self.vocab[word])
-                if transcript[0] == " ":
-                    transcript = transcript[1:]
-            else:
-                # add the negative label per word
-                if transcript[0] == " " and not self.ignore_oov:
-                    if self.vocab.oov_token_id is None:
-                        raise ValueError
-                    # skip duplicated negative labels
-                    encoded_output.append(self.vocab.oov_token_id)
-                transcript = transcript[1:]
-        if encoded_output[0] == self.vocab.oov_token_id:
-            # if the prepended space led to extra negative label, drop it
-            encoded_output = encoded_output[1:]
+            elif not self.ignore_oov:
+                # label oov word
+                if self.vocab.oov_token_id is None:
+                    raise ValueError("label for oov word is not specified")
+                encoded_output.append(self.vocab.oov_token_id)
+
         return encoded_output

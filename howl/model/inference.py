@@ -1,20 +1,19 @@
-from collections import defaultdict
-from typing import List
 import itertools
 import logging
 import re
 import time
+from collections import defaultdict
+from typing import List
 
 import numpy as np
 import torch
 import torch.nn.functional as F
-
 from howl.data.dataset import PhonePhrase
-from howl.data.transform import ZmuvTransform, StandardAudioTransform
+from howl.data.tokenize import Vocab, WakeWordTokenizer
+from howl.data.transform import StandardAudioTransform, ZmuvTransform
 from howl.model import RegisteredModel
 from howl.settings import SETTINGS
 from howl.utils.audio import stride
-
 
 __all__ = ['FrameInferenceEngine',
            'InferenceEngine',
@@ -69,16 +68,57 @@ class TranscriptSearcher:
 
 
 class WordTranscriptSearcher(TranscriptSearcher):
-    def __init__(self, vocab: List[str], **kwargs):
+    # Utilize Vocab class
+    def __init__(self, vocab: Vocab, **kwargs):
         super().__init__(**kwargs)
         self.vocab = vocab
-        self.wakeword = ' '.join(np.array(self.vocab)[self.settings.inference_sequence])
+        self.tokenizer = WakeWordTokenizer(self.vocab, False)
+        self.inference_sequence_str = ''.join(map(str, self.settings.inference_sequence))
+        # self.wakeword = self.vocab.decode(self.settings.inference_sequence)
 
     def search(self, item: str) -> bool:
-        return self.wakeword in f' {item} '
+        """return true if wakeword is in the item
+
+        Args:
+            item (str): string to search from
+
+        Returns:
+            bool: true if wakeword is in the item
+        """
+        encoded_output = self.tokenizer.encode(item)
+        encoded_str = ''.join(map(str, encoded_output))
+        return self.inference_sequence_str in encoded_str
 
     def contains_any(self, item: str) -> bool:
-        return any(word in f' {item.lower()} ' for word in self.vocab)
+        """retrun true if at least one vocab is in the item
+
+        Args:
+            item (str): string to search from
+
+        Returns:
+            bool: true if at least one vocab is in the item
+        """
+        encoded_output = self.tokenizer.encode(item)
+        return any((encoding != self.vocab.oov_token_id) for encoding in encoded_output)
+
+    def count_vocab(self, item: str, ignore_oov: bool = True) -> dict:
+        """generate counter per vocab for the item
+
+        Args:
+            item (str): string to analyze
+            ignore_oov (bool, optional): set to true to ignore oov word. Defaults to True.
+
+        Returns:
+            dict[str, int]: number of occurance in the item for each vocab
+        """
+        encoded_output = self.tokenizer.encode(item)
+        counter = dict((self.vocab[i], 0) for i in range(len(self.vocab)))
+        for encoding in encoded_output:
+            if ignore_oov and encoding == self.vocab.oov_token_id:
+                continue
+            counter[self.vocab[encoding]] += 1
+
+        return counter
 
 
 class PhoneticTranscriptSearcher(TranscriptSearcher):
@@ -187,7 +227,8 @@ class InferenceEngine:
     def _get_prediction(self,
                         curr_time: float) -> int:
         # drop out-dated entries
-        self.pred_history = list(itertools.dropwhile(lambda x: curr_time - x[0] > self.smoothing_window_ms, self.pred_history))
+        self.pred_history = list(itertools.dropwhile(lambda x: curr_time -
+                                                     x[0] > self.smoothing_window_ms, self.pred_history))
         lattice = np.vstack([t for _, t in self.pred_history])
         lattice_max = np.max(lattice, 0)
         max_label = lattice_max.argmax()
@@ -210,9 +251,9 @@ class InferenceEngine:
 
 
 class SequenceInferenceEngine(InferenceEngine):
-    def __init__(self, 
+    def __init__(self,
                  sample_rate: int,
-                 *args, 
+                 *args,
                  blank_idx: int = 0,
                  **kwargs):
         super().__init__(*args, **kwargs)
@@ -223,7 +264,8 @@ class SequenceInferenceEngine(InferenceEngine):
     def infer(self, audio_data: torch.Tensor) -> bool:
         delta_ms = int(audio_data.size(-1) / self.sample_rate * 1000)
         self.std = self.std.to(audio_data.device)
-        scores = self.model(self.zmuv(self.std(audio_data.unsqueeze(0))), None)  # [num_frames x 1 (batch size) x num_labels]
+        scores = self.model(self.zmuv(self.std(audio_data.unsqueeze(0))),
+                            None)  # [num_frames x 1 (batch size) x num_labels]
         scores = F.softmax(scores, -1).squeeze(1)  # [num_frames x num_labels]
         sequence_present = False
         delta_ms /= len(scores)
@@ -240,7 +282,7 @@ class SequenceInferenceEngine(InferenceEngine):
             if self.sequence_present(self.curr_time):
                 sequence_present = True
                 break
-              
+
         return sequence_present
 
 
