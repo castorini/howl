@@ -135,7 +135,7 @@ def main():
             'Test negative': '13943'
         }
 
-    metrics = ['threshold', 'tp', 'tn', 'fp', 'fn', ]
+    metrics = ['threshold', 'tp', 'tn', 'fp', 'fn']
     clean_col_names = ['Dev positive', 'Dev negative', 'Test positive', 'Test negative']
 
     def round_and_convert_to_str(n):
