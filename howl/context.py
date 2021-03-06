@@ -5,9 +5,9 @@ from typing import List
 from howl.data.dataset import (PhonePhrase, PhoneticFrameLabeler,
                                PronunciationDictionary, WakeWordDataset,
                                WordFrameLabeler)
+from howl.data.searcher import (LabelColoring, PhoneticTranscriptSearcher,
+                                WordTranscriptSearcher)
 from howl.data.tokenize import Vocab
-from howl.model.inference import (LabelColoring, PhoneticTranscriptSearcher,
-                                  WordTranscriptSearcher)
 from howl.settings import SETTINGS
 
 
@@ -30,6 +30,7 @@ class InferenceContext:
         self.coloring = None
         self.adjusted_vocab = []
         self.num_labels = 0
+        self.token_type = token_type
 
         # break down each vocab into phonemes
         if token_type == 'phone':

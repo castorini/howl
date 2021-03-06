@@ -1,12 +1,13 @@
-from pathlib import Path
 import logging
+from pathlib import Path
 
-from .args import ArgumentParserBuilder, opt
 from howl.context import InferenceContext
-from howl.data.dataset import AudioDatasetWriter, AudioDataset, RegisteredPathDatasetLoader
+from howl.data.dataset import (AudioDataset, AudioDatasetWriter,
+                               RegisteredPathDatasetLoader)
 from howl.settings import SETTINGS
 from howl.utils.hash import sha256_int
 
+from .args import ArgumentParserBuilder, opt
 
 """
 This scripts processes given audio dataset and creates datasets that howl can take in
@@ -18,10 +19,11 @@ python -m training.run.create_raw_dataset -i ~/path/to/common-voice --positive-p
 """
 
 
-def print_stats(header: str, *datasets: AudioDataset, skip_length=False):
+def print_stats(header: str, context: InferenceContext, * datasets: AudioDataset, compute_length=True):
+    word_searcher = context.searcher if context.token_type == 'word' else None
     for ds in datasets:
         logging.info(
-            f'{header} ({ds.set_type}) statistics: {ds.compute_statistics(skip_length=skip_length)}')
+            f'{header} ({ds.set_type}) statistics: {ds.compute_statistics(word_searcher=word_searcher, compute_length=compute_length)}')
 
 
 def main():
@@ -65,7 +67,7 @@ def main():
         dev_ds = dev_ds.filter(filter_fn)
         test_ds = test_ds.filter(filter_fn)
 
-    print_stats('Dataset', train_ds, dev_ds, test_ds, skip_length=True)
+    print_stats('Dataset', ctx, train_ds, dev_ds, test_ds, skip_length=True)
 
     for ds in train_ds, dev_ds, test_ds:
         try:

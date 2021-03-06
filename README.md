@@ -123,7 +123,7 @@ To get the latest models, simply run `git submodule update --init --recursive`
 - [hey firefox](https://github.com/castorini/howl-models/tree/master/howl/hey-fire-fox)
 
 ```bash
-VOCAB='[" hey","fire","fox"]' INFERENCE_SEQUENCE=[0,1,2] INFERENCE_THRESHOLD=0 NUM_MELS=40 MAX_WINDOW_SIZE_SECONDS=0.5 python -m training.run.demo --model res8 --workspace howl-models/howl/hey-fire-fox
+VOCAB='["hey","fire","fox"]' INFERENCE_SEQUENCE=[0,1,2] INFERENCE_THRESHOLD=0 NUM_MELS=40 MAX_WINDOW_SIZE_SECONDS=0.5 python -m training.run.demo --model res8 --workspace howl-models/howl/hey-fire-fox
 ```
 
 ## Reproducing Paper Results
@@ -144,7 +144,7 @@ First, follow the installation instructions in the quickstart guide.
 3. Source the appropriate environment variables: `source envs/res8.env`
 4. Set the noise dataset path to the root folder: `export NOISE_DATASET_PATH=/path/to/snsd`
 5. Set the firefox dataset path to the root folder: `export DATASET_PATH=/path/to/hey_firefox`
-6. Train the model: `LR_DECAY=0.98 VOCAB='[" hey","fire","fox"]' USE_NOISE_DATASET=True BATCH_SIZE=16 INFERENCE_THRESHOLD=0 NUM_EPOCHS=300 NUM_MELS=40 INFERENCE_SEQUENCE=[0,1,2] MAX_WINDOW_SIZE_SECONDS=0.5 python -m training.run.train --model res8 --workspace workspaces/hey-ff-res8`
+6. Train the model: `LR_DECAY=0.98 VOCAB='["hey","fire","fox"]' USE_NOISE_DATASET=True BATCH_SIZE=16 INFERENCE_THRESHOLD=0 NUM_EPOCHS=300 NUM_MELS=40 INFERENCE_SEQUENCE=[0,1,2] MAX_WINDOW_SIZE_SECONDS=0.5 python -m training.run.train --model res8 --workspace workspaces/hey-ff-res8`
 
 ### Hey Snips
 
@@ -176,13 +176,13 @@ DATASET_PATH=data/hey-snips python -m training.run.attach_alignment --align-type
 6. Source the appropriate environment variables: `source envs/res8.env`
 7. Set the noise dataset path to the root folder: `export NOISE_DATASET_PATH=/path/to/snsd`
 8. Set the noise dataset path to the root folder: `export DATASET_PATH=/path/to/hey-snips`
-9. Train the model: `LR_DECAY=0.98 VOCAB='[" hey","snips"]' USE_NOISE_DATASET=True BATCH_SIZE=16 INFERENCE_THRESHOLD=0 NUM_EPOCHS=300 NUM_MELS=40 INFERENCE_SEQUENCE=[0,1] MAX_WINDOW_SIZE_SECONDS=0.5 python -m training.run.train --model res8 --workspace workspaces/hey-snips-res8`
+9. Train the model: `LR_DECAY=0.98 VOCAB='["hey","snips"]' USE_NOISE_DATASET=True BATCH_SIZE=16 INFERENCE_THRESHOLD=0 NUM_EPOCHS=300 NUM_MELS=40 INFERENCE_SEQUENCE=[0,1] MAX_WINDOW_SIZE_SECONDS=0.5 python -m training.run.train --model res8 --workspace workspaces/hey-snips-res8`
 
 ### Generating dataset for Mycroft-precise
 
 howl also provides a script for transforming howl dataset to [mycroft-precise](https://github.com/MycroftAI/mycroft-precise) dataset
 ```bash
-VOCAB='[" hey","fire","fox"]' INFERENCE_SEQUENCE=[0,1,2] python -m training.run.generate_precise_dataset --dataset-path /path/to/howl_dataset
+VOCAB='["hey","fire","fox"]' INFERENCE_SEQUENCE=[0,1,2] python -m training.run.generate_precise_dataset --dataset-path /path/to/howl_dataset
 ```
 
 ## Experiments

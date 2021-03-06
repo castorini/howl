@@ -1,15 +1,16 @@
-from .args import ArgumentParserBuilder, opt
-import random
 import os
-from os import path
+import random
 import subprocess
-import numpy as np
-import torch
 import sys
 import time
-
 from datetime import datetime
+from os import path
+
+import numpy as np
+import torch
 from openpyxl import Workbook
+
+from .args import ArgumentParserBuilder, opt
 
 """
 This script uses every GPU on the machine to train multiple res8 models for hey_firefox and hey_snips,
@@ -24,12 +25,14 @@ train 10 models for hey firefox with random seeds using datasets x and y
 then evaluate them for thresholds ranging from 0 to 1 in increments of 0.05
 """
 
+
 def is_job_running(grep_command, count_command):
     out = subprocess.check_output('ps aux | grep ' + grep_command, shell=True)
     num_proc = out.decode('utf-8').count(count_command)
     return num_proc > 0
 
-def run_batch_commands(commands, envs, grep_command = 'training.run.train', count_command = 'python -m training.run.train'):
+
+def run_batch_commands(commands, envs, grep_command='training.run.train', count_command='python -m training.run.train'):
     """
     run given set of commands with the corresponding environments
     check the status of each process regularly and schedule the next job whenever GPU is availble
@@ -38,14 +41,13 @@ def run_batch_commands(commands, envs, grep_command = 'training.run.train', coun
     num_gpu = torch.cuda.device_count()
     print('availble number of GPU is', num_gpu)
 
-    check_up_delay = 600 # check every 10 mins
+    check_up_delay = 600  # check every 10 mins
     num_running_jobs = 0
     sleep_counter = 0
 
     for (command, env) in zip(commands, envs):
         for env_key, env_val in env.items():
             os.environ[env_key] = env_val
-
 
         if num_running_jobs == num_gpu:
             sleep_counter = 0
@@ -59,8 +61,8 @@ def run_batch_commands(commands, envs, grep_command = 'training.run.train', coun
 
         new_env = os.environ.copy()
         new_env['CUDA_VISIBLE_DEVICES'] = str(num_running_jobs)
-        proc = subprocess.Popen(command.split(), \
-                                preexec_fn=os.setpgrp, \
+        proc = subprocess.Popen(command.split(),
+                                preexec_fn=os.setpgrp,
                                 env=new_env)
 
         print('process {} - '.format(proc.pid), command, new_env, flush=True)
@@ -72,6 +74,7 @@ def run_batch_commands(commands, envs, grep_command = 'training.run.train', coun
         sleep_counter += 1
         print('some jobs are running; waiting for {} mins'.format(sleep_counter * check_up_delay / 60))
         time.sleep(check_up_delay)
+
 
 def main():
     apb = ArgumentParserBuilder()
@@ -86,9 +89,9 @@ def main():
                     opt('--dataset_path',
                         type=str,
                         default='/data/speaker-id-split-medium'),
-                    opt('--exp_type', 
+                    opt('--exp_type',
                         type=str, choices=['hey_firefox', 'hey_snips'], default='hey_firefox'),
-                    opt('--seed', 
+                    opt('--seed',
                         type=int, default=0),
                     opt('--noiseset_path',
                         type=str,
@@ -132,7 +135,7 @@ def main():
             'Test negative': '13943'
         }
 
-    metrics = ['threshold', 'tp', 'tn', 'fp', 'fn',]
+    metrics = ['threshold', 'tp', 'tn', 'fp', 'fn', ]
     clean_col_names = ['Dev positive', 'Dev negative', 'Test positive', 'Test negative']
 
     def round_and_convert_to_str(n):
@@ -152,7 +155,6 @@ def main():
         sheet[col_idx + '6'] = str(np.percentile(results, 95))
         sheet[col_idx + '7'] = str(np.percentile(results, 99))
         sheet[col_idx + '8'] = str(results.sum())
-    
 
     def get_cell_idx(char, ind):
         return chr(ord(char) + ind)
@@ -192,7 +194,7 @@ def main():
     # reports are generated at exp_results
     os.system('mkdir -p exp_results')
     dt_string = now.strftime('%b-%d-%H-%M')
-    
+
     clean_file_name = 'exp_results/'+args.exp_type+'_clean_' + dt_string + '.xlsx'
     clean_wb.save(clean_file_name)
     print('\treport for clean setting is generated at ', clean_file_name)
@@ -214,26 +216,25 @@ def main():
 
     if args.exp_type == "hey_firefox":
         os.environ['NUM_EPOCHS'] = '300'
-        os.environ['VOCAB'] = '[" hey","fire","fox"]'
+        os.environ['VOCAB'] = '["hey","fire","fox"]'
         os.environ['INFERENCE_SEQUENCE'] = '[0,1,2]'
     elif args.exp_type == "hey_snips":
         os.environ['NUM_EPOCHS'] = '100'
-        os.environ['VOCAB'] = '[" hey","snips"]'
+        os.environ['VOCAB'] = '["hey","snips"]'
         os.environ['INFERENCE_SEQUENCE'] = '[0,1]'
 
     seeds = []
-
 
     print('-- training ' + args.num_models + ' models --')
     training_commands = []
     training_envs = []
 
     def get_workspace_path(exp_type, seed):
-        return os.getcwd() + '/workspaces/exp_'+ exp_type +'_res8/' + str(seed)
+        return os.getcwd() + '/workspaces/exp_' + exp_type + '_res8/' + str(seed)
 
     # generate commands to run along with the environments
     for i in range(args.num_models):
-        seed = str(random.randint(1,1000000))
+        seed = str(random.randint(1, 1000000))
         seeds.append(seed)
         env = {}
         env['SEED'] = seed
@@ -246,7 +247,6 @@ def main():
     print('seeds for each model: ', seeds)
 
     run_batch_commands(training_commands, training_envs)
-
 
     print('-- evaluating each models --')
     eval_commands = []
@@ -268,7 +268,6 @@ def main():
 
     run_batch_commands(eval_commands, eval_envs)
 
-
     print('-- generating reports --')
 
     for seed_idx, seed in enumerate(seeds):
@@ -282,7 +281,7 @@ def main():
 
             workspace_path = get_workspace_path(args.exp_type, seed)
             result_path = workspace_path + '/' + threshold + '_results.csv'
-            raw_result = subprocess.check_output(['tail', '-n', '8', result_path]).decode('utf-8') 
+            raw_result = subprocess.check_output(['tail', '-n', '8', result_path]).decode('utf-8')
             results = raw_result.split('\n')
 
             # parse and update the report
@@ -320,7 +319,7 @@ def main():
     print('-- report generation has been completed --')
     print('\treport for clean setting is generated at ', clean_file_name)
     print('\treport for noisy setting is generated at ', noisy_file_name)
-    
-    
+
+
 if __name__ == '__main__':
     main()

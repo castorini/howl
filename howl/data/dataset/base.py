@@ -1,14 +1,14 @@
+import enum
+from collections import Counter
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Mapping, Optional, List, TypeVar, Generic
 from pathlib import Path
-import enum
+from typing import Generic, List, Mapping, Optional, TypeVar
 
-from pydantic import BaseModel
 import torch
+from pydantic import BaseModel
 
-from .phone import PhonePhrase, Phone
-
+from .phone import Phone, PhonePhrase
 
 __all__ = ['AudioClipExample',
            'AudioClipMetadata',
@@ -35,6 +35,7 @@ NEGATIVE_CLASS = '[NEGATIVE]'
 class AudioDatasetStatistics:
     num_examples: int
     audio_length_seconds: int
+    vocab_counts: Counter
 
 
 class AudioClipMetadata(BaseModel):
