@@ -67,7 +67,7 @@ def main():
         dev_ds = dev_ds.filter(filter_fn)
         test_ds = test_ds.filter(filter_fn)
 
-    print_stats('Dataset', ctx, train_ds, dev_ds, test_ds, skip_length=True)
+    print_stats('Dataset', ctx, train_ds, dev_ds, test_ds, compute_length=True)
 
     for ds in train_ds, dev_ds, test_ds:
         try:
