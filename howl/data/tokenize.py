@@ -45,7 +45,7 @@ class VocabTrie:
             new_node = node
         new_node.terminal = True
 
-    def max_split(self, tokens: Union[List[str], str]) -> Tuple[Union[List[str], str], Union[List[str], str]]:
+    def max_split(self, tokens: str) -> Tuple[str, str]:
         node = self.root
         counter = 0
         for tok in tokens.lower():
@@ -55,7 +55,7 @@ class VocabTrie:
             counter += 1
         if not node.terminal:
             counter = 0
-        return tokens[:counter], tokens[counter:]
+        return tokens[: counter], tokens[counter:]
 
 
 class Vocab:
