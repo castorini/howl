@@ -1,7 +1,8 @@
+import concurrent.futures
 from collections import Counter, defaultdict
 from copy import deepcopy
 from functools import lru_cache
-from typing import Any, Callable, Generic, List, TypeVar
+from typing import Any, Callable, Generic, List, Tuple, TypeVar
 
 import torch
 import torch.utils.data as tud
@@ -73,6 +74,7 @@ class AudioDataset(tud.Dataset, Generic[T]):
 
     def compute_statistics(self, word_searcher: WordTranscriptSearcher = None, compute_length: bool = True, use_trim: bool = True) -> AudioDatasetStatistics:
         from howl.data.transform import trim
+
         seconds = 0
         total_vocab_count = Counter()
         for ex in self:
@@ -82,6 +84,41 @@ class AudioDataset(tud.Dataset, Generic[T]):
             if word_searcher:
                 vocab_count = Counter(word_searcher.count_vocab(ex.metadata.transcription))
                 total_vocab_count += vocab_count
+        return AudioDatasetStatistics(len(self), seconds, total_vocab_count)
+
+    def compute_statistics2(self, word_searcher: WordTranscriptSearcher = None, compute_length: bool = True, use_trim: bool = True) -> AudioDatasetStatistics:
+        from howl.data.transform import trim
+
+        def analyze_sample_wrapper(x): return analyze_sample(*x)
+
+        def analyze_sample(ex: AudioClipExample,
+                           sr: int,
+                           word_searcher: WordTranscriptSearcher = None,
+                           compute_length: bool = True,
+                           use_trim: bool = True) -> Tuple[float, Counter]:
+            # print('ex', ex)
+            # print('sr', sr)
+            # print('word_searcher', word_searcher)
+            # print('compute_length', compute_length)
+            # print('use_trim', use_trim)
+            audio_length = 0.0
+            if compute_length:
+                audio_data = trim([ex])[0].audio_data if use_trim else ex.audio_data
+                audio_length += audio_data.size(-1) / self.sr
+            vocab_count = Counter()
+            if word_searcher:
+                vocab_count = Counter(word_searcher.count_vocab(ex.metadata.transcription))
+            return (audio_length, vocab_count)
+        from pathos.multiprocessing import ProcessingPool
+        p = ProcessingPool(16)
+        jobs = [(ex, self.sr, deepcopy(word_searcher), compute_length, use_trim) for ex in self]
+        statistics = p.map(analyze_sample_wrapper, jobs)
+        seconds = 0
+        total_vocab_count = Counter()
+        for statistic in statistics:
+            # print(statistic)
+            seconds += statistic[0]
+            total_vocab_count += statistic[1]
         return AudioDatasetStatistics(len(self), seconds, total_vocab_count)
 
 

@@ -21,9 +21,24 @@ python -m training.run.create_raw_dataset -i ~/path/to/common-voice --positive-p
 
 def print_stats(header: str, context: InferenceContext, * datasets: AudioDataset, compute_length=True):
     word_searcher = context.searcher if context.token_type == 'word' else None
+
+    import time
     for ds in datasets:
+
+        start = time.perf_counter()
+        logging.info(
+            f'{header} ({ds.set_type}) statistics: {ds.compute_statistics2(word_searcher=word_searcher, compute_length=compute_length)}')
+
+        finish = time.perf_counter()
+
+        print(f'Finished in {round(finish-start, 2)} seconds')
+
+        start = time.perf_counter()
         logging.info(
             f'{header} ({ds.set_type}) statistics: {ds.compute_statistics(word_searcher=word_searcher, compute_length=compute_length)}')
+
+        finish = time.perf_counter()
+        print(f'111 Finished in {round(finish-start, 2)} seconds')
 
 
 def main():
