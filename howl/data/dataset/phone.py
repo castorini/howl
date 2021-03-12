@@ -1,9 +1,8 @@
+import enum
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Mapping, List
-import enum
-
+from typing import List, Mapping
 
 __all__ = ['PhoneEnum',
            'PronunciationDictionary',

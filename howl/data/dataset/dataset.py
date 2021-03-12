@@ -13,7 +13,8 @@ from howl.utils.hash import sha256_int
 
 from .base import (NEGATIVE_CLASS, AudioClipExample, AudioClipMetadata,
                    AudioDatasetStatistics, ClassificationClipExample,
-                   DatasetType, FrameLabeler, WakeWordClipExample)
+                   DatasetType, WakeWordClipExample)
+from .labeller import FrameLabeler
 from .phone import PronunciationDictionary
 
 __all__ = ['AudioDataset',
