@@ -1,12 +1,14 @@
+import logging
 from dataclasses import dataclass
 from typing import List
-import logging
 
-from howl.data.dataset import WordFrameLabeler, PhoneticFrameLabeler, PronunciationDictionary, PhonePhrase
-from howl.model.inference import LabelColoring, PhoneticTranscriptSearcher, WordTranscriptSearcher
-from howl.settings import SETTINGS
-from howl.data.dataset import WakeWordDataset
+from howl.data.dataset import (PhonePhrase, PhoneticFrameLabeler,
+                               PronunciationDictionary, WakeWordDataset,
+                               WordFrameLabeler)
+from howl.data.searcher import (LabelColoring, PhoneticTranscriptSearcher,
+                                WordTranscriptSearcher)
 from howl.data.tokenize import Vocab
+from howl.settings import SETTINGS
 
 
 @dataclass
@@ -28,6 +30,7 @@ class InferenceContext:
         self.coloring = None
         self.adjusted_vocab = []
         self.num_labels = 0
+        self.token_type = token_type
 
         # break down each vocab into phonemes
         if token_type == 'phone':
@@ -65,7 +68,7 @@ class InferenceContext:
             self.searcher = PhoneticTranscriptSearcher(
                 phone_phrases, self.coloring)
         elif token_type == 'word':
-            self.searcher = WordTranscriptSearcher(self.adjusted_vocab)
+            self.searcher = WordTranscriptSearcher(self.vocab)
 
         # add extra label for blank if necessary
         self.blank_label = -1

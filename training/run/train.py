@@ -1,25 +1,29 @@
-from pathlib import Path
 import logging
+from pathlib import Path
 
-from tqdm import trange, tqdm
-from torch.optim.adamw import AdamW
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from howl.context import InferenceContext
+from howl.data.dataloader import StandardAudioDataLoaderBuilder
+from howl.data.dataset import (DatasetType, RecursiveNoiseDatasetLoader,
+                               Sha256Splitter, WakeWordDataset,
+                               WakeWordDatasetLoader)
+from howl.data.tokenize import WakeWordTokenizer
+from howl.data.transform import (AudioSequenceBatchifier, DatasetMixer,
+                                 NoiseTransform, StandardAudioTransform,
+                                 TimestretchTransform, WakeWordFrameBatchifier,
+                                 ZmuvTransform, batchify, compose)
+from howl.model import (ConfusionMatrix, ConvertedStaticModel, RegisteredModel,
+                        Workspace)
+from howl.model.inference import FrameInferenceEngine, SequenceInferenceEngine
+from howl.settings import SETTINGS
+from howl.utils.random import set_seed
+from torch.optim.adamw import AdamW
+from tqdm import tqdm, trange
 
 from .args import ArgumentParserBuilder, opt
 from .create_raw_dataset import print_stats
-from howl.context import InferenceContext
-from howl.data.tokenize import WakeWordTokenizer
-from howl.data.dataset import WakeWordDatasetLoader, WakeWordDataset, RecursiveNoiseDatasetLoader, Sha256Splitter,\
-    DatasetType
-from howl.data.dataloader import StandardAudioDataLoaderBuilder
-from howl.data.transform import compose, ZmuvTransform, StandardAudioTransform, WakeWordFrameBatchifier,\
-    NoiseTransform, batchify, TimestretchTransform, DatasetMixer, AudioSequenceBatchifier
-from howl.settings import SETTINGS
-from howl.model import Workspace, ConfusionMatrix, RegisteredModel, ConvertedStaticModel
-from howl.model.inference import FrameInferenceEngine, SequenceInferenceEngine
-from howl.utils.random import set_seed
 
 
 def main():
@@ -70,7 +74,7 @@ def main():
             ws.increment_model(model, conf_matrix.tp)
         if args.eval:
             threshold = engine.threshold
-            with (ws.path / (str(round(threshold, 2)) + '_results.csv') ).open('a') as f:
+            with (ws.path / (str(round(threshold, 2)) + '_results.csv')).open('a') as f:
                 f.write(f'{prefix},{threshold},{conf_matrix.tp},{conf_matrix.tn},{conf_matrix.fp},{conf_matrix.fn}\n')
 
     def do_evaluate():
@@ -113,23 +117,23 @@ def main():
     ds_kwargs = dict(sr=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono, frame_labeler=ctx.labeler)
 
     ww_train_ds, ww_dev_ds, ww_test_ds = WakeWordDataset(metadata_list=[], set_type=DatasetType.TRAINING, **ds_kwargs), \
-                                         WakeWordDataset(metadata_list=[], set_type=DatasetType.DEV, **ds_kwargs), \
-                                         WakeWordDataset(metadata_list=[], set_type=DatasetType.TEST, **ds_kwargs)
+        WakeWordDataset(metadata_list=[], set_type=DatasetType.DEV, **ds_kwargs), \
+        WakeWordDataset(metadata_list=[], set_type=DatasetType.TEST, **ds_kwargs)
     for ds_path in args.dataset_paths:
         ds_path = Path(ds_path)
         train_ds, dev_ds, test_ds = loader.load_splits(ds_path, **ds_kwargs)
         ww_train_ds.extend(train_ds)
         ww_dev_ds.extend(dev_ds)
         ww_test_ds.extend(test_ds)
-    print_stats(f'Wake word dataset', ww_train_ds, ww_dev_ds, ww_test_ds)
+    print_stats(f'Wake word dataset', ctx, ww_train_ds, ww_dev_ds, ww_test_ds)
 
     ww_dev_pos_ds = ww_dev_ds.filter(lambda x: ctx.searcher.search(x.transcription), clone=True)
     ww_dev_neg_ds = ww_dev_ds.filter(lambda x: not ctx.searcher.search(x.transcription), clone=True)
     ww_test_pos_ds = ww_test_ds.filter(lambda x: ctx.searcher.search(x.transcription), clone=True)
     ww_test_neg_ds = ww_test_ds.filter(lambda x: not ctx.searcher.search(x.transcription), clone=True)
 
-    print_stats(f'Dev dataset', ww_dev_pos_ds, ww_dev_neg_ds)
-    print_stats(f'Test dataset', ww_test_pos_ds, ww_test_neg_ds)
+    print_stats('Dev dataset', ctx, ww_dev_pos_ds, ww_dev_neg_ds)
+    print_stats('Test dataset', ctx, ww_test_pos_ds, ww_test_neg_ds)
     device = torch.device(SETTINGS.training.device)
     std_transform = StandardAudioTransform().to(device).eval()
     zmuv_transform = ZmuvTransform().to(device)

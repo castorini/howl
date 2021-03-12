@@ -1,109 +1,21 @@
-from collections import defaultdict
-from typing import List
 import itertools
 import logging
 import re
 import time
+from typing import List
 
 import numpy as np
 import torch
 import torch.nn.functional as F
-
-from howl.data.dataset import PhonePhrase
-from howl.data.transform import ZmuvTransform, StandardAudioTransform
+from howl.data.searcher import LabelColoring
+from howl.data.transform import StandardAudioTransform, ZmuvTransform
 from howl.model import RegisteredModel
 from howl.settings import SETTINGS
 from howl.utils.audio import stride
 
-
 __all__ = ['FrameInferenceEngine',
            'InferenceEngine',
-           'SequenceInferenceEngine',
-           'PhoneticTranscriptSearcher',
-           'TranscriptSearcher',
-           'WordTranscriptSearcher',
-           'LabelColoring']
-
-
-class LabelColoring:
-    def __init__(self):
-        self.color_map = {}
-        self.color_counter = 0
-        self.label_counter = 0
-
-    def append_label(self, label: int, color: int = None):
-        color = self._inc_color_counter(color)
-        self.color_map[label] = color
-
-    def _inc_color_counter(self, color: int = None):
-        if color is None:
-            color = self.color_counter
-        else:
-            self.color_counter = max(self.color_counter, color + 1)
-        self.color_counter += 1
-        return color
-
-    def extend_sequence(self, size: int, color: int = None):
-        color = self._inc_color_counter(color)
-        for label in range(self.label_counter, self.label_counter + size):
-            self.color_map[label] = color
-        self.label_counter += size
-
-    @classmethod
-    def sequential_coloring(cls, num_labels: int):
-        coloring = cls()
-        for label_idx in range(num_labels):
-            coloring.append_label(label_idx)
-        return coloring
-
-
-class TranscriptSearcher:
-    def __init__(self):
-        self.settings = SETTINGS.inference_engine
-
-    def search(self, item: str) -> bool:
-        raise NotImplementedError
-
-    def contains_any(self, item: str) -> bool:
-        raise NotImplementedError
-
-
-class WordTranscriptSearcher(TranscriptSearcher):
-    def __init__(self, vocab: List[str], **kwargs):
-        super().__init__(**kwargs)
-        self.vocab = vocab
-        self.wakeword = ' '.join(np.array(self.vocab)[self.settings.inference_sequence])
-
-    def search(self, item: str) -> bool:
-        return self.wakeword in f' {item} '
-
-    def contains_any(self, item: str) -> bool:
-        return any(word in f' {item.lower()} ' for word in self.vocab)
-
-
-class PhoneticTranscriptSearcher(TranscriptSearcher):
-    def __init__(self, phrases: List[PhonePhrase], coloring: LabelColoring, **kwargs):
-        super().__init__(**kwargs)
-        self.phrases = phrases
-        label_map = [(phrase.audible_transcript, coloring.color_map[idx]) for idx, phrase in enumerate(phrases)]
-        buckets = defaultdict(list)
-        for transcript, color in label_map:
-            buckets[color].append(transcript)
-        pattern_strings = []
-        for _, transcripts in sorted(buckets.items(), key=lambda x: x[0]):
-            pattern_strings.append('(' + '|'.join(f'({x})' for x in transcripts) + ')')
-        pattern_strings = np.array(pattern_strings)[self.settings.inference_sequence]
-        pattern_str = '^.*' + ' '.join(pattern_strings) + '.*$'
-        logging.info(f'Using search pattern {pattern_str}')
-        self.pattern = re.compile(pattern_str)
-
-    def search(self, item: str) -> bool:
-        transcript = PhonePhrase.from_string(item).audible_transcript
-        return self.pattern.match(transcript) is not None
-
-    def contains_any(self, item: str) -> bool:
-        transcript = PhonePhrase.from_string(item).audible_transcript
-        return any(word.audible_transcript in transcript for word in self.phrases)
+           'SequenceInferenceEngine']
 
 
 class InferenceEngine:
@@ -187,7 +99,8 @@ class InferenceEngine:
     def _get_prediction(self,
                         curr_time: float) -> int:
         # drop out-dated entries
-        self.pred_history = list(itertools.dropwhile(lambda x: curr_time - x[0] > self.smoothing_window_ms, self.pred_history))
+        self.pred_history = list(itertools.dropwhile(lambda x: curr_time -
+                                                     x[0] > self.smoothing_window_ms, self.pred_history))
         lattice = np.vstack([t for _, t in self.pred_history])
         lattice_max = np.max(lattice, 0)
         max_label = lattice_max.argmax()
@@ -210,9 +123,9 @@ class InferenceEngine:
 
 
 class SequenceInferenceEngine(InferenceEngine):
-    def __init__(self, 
+    def __init__(self,
                  sample_rate: int,
-                 *args, 
+                 *args,
                  blank_idx: int = 0,
                  **kwargs):
         super().__init__(*args, **kwargs)
@@ -223,7 +136,8 @@ class SequenceInferenceEngine(InferenceEngine):
     def infer(self, audio_data: torch.Tensor) -> bool:
         delta_ms = int(audio_data.size(-1) / self.sample_rate * 1000)
         self.std = self.std.to(audio_data.device)
-        scores = self.model(self.zmuv(self.std(audio_data.unsqueeze(0))), None)  # [num_frames x 1 (batch size) x num_labels]
+        scores = self.model(self.zmuv(self.std(audio_data.unsqueeze(0))),
+                            None)  # [num_frames x 1 (batch size) x num_labels]
         scores = F.softmax(scores, -1).squeeze(1)  # [num_frames x num_labels]
         sequence_present = False
         delta_ms /= len(scores)
@@ -240,7 +154,7 @@ class SequenceInferenceEngine(InferenceEngine):
             if self.sequence_present(self.curr_time):
                 sequence_present = True
                 break
-              
+
         return sequence_present
 
 
