@@ -54,7 +54,6 @@ class InferenceContext:
                 x) for x in self.adjusted_vocab]
             self.labeler = PhoneticFrameLabeler(phone_phrases)
         elif token_type == 'word':
-            print('labeler vocab: ', self.adjusted_vocab)
             self.labeler = WordFrameLabeler(self.adjusted_vocab)
 
         # initialize vocab set for the system and add negative label
