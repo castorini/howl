@@ -3,7 +3,7 @@ from collections import Counter
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Generic, List, Mapping, Optional, TypeVar
+from typing import Generic, List, Mapping, Optional, Tuple, TypeVar
 
 import torch
 from pydantic import BaseModel
@@ -31,6 +31,7 @@ NEGATIVE_CLASS = '[NEGATIVE]'
 @dataclass
 class FrameLabelData:
     timestamp_label_map: Mapping[float, int]
+    timestamp_list: List[Tuple[int, float, float]]
 
 
 @dataclass

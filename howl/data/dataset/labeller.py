@@ -45,6 +45,7 @@ class WordFrameLabeler(FrameLabeler):
 
     def compute_frame_labels(self, metadata: AudioClipMetadata) -> FrameLabelData:
         frame_labels = dict()
+        timestamp_list = []
         # TODO:: consider iterating over end_timestamps instead of every character
         t = f' {metadata.transcription} '
         char_idx = 0
@@ -56,10 +57,14 @@ class WordFrameLabeler(FrameLabeler):
                     char_idx = t.index(word, char_idx)
                 except ValueError:
                     break
+
+                start_timestamp = metadata.end_timestamps[char_idx-1] if char_idx > 0 else 0.0
                 # capture the full word if ceil_word_boundary is true
                 while self.ceil_word_boundary and char_idx + len(word) < len(t) - 1 and t[char_idx + len(word)] != ' ':
                     char_idx += 1
                 # record the ending timestamp with corresponding label
-                frame_labels[metadata.end_timestamps[char_idx + len(word.rstrip()) - 2]] = label
+                end_timestamp = metadata.end_timestamps[char_idx + len(word.rstrip()) - 2]
+                frame_labels[end_timestamp] = label
+                timestamp_list.append((label, start_timestamp, end_timestamp))
                 char_idx += 1
-        return FrameLabelData(frame_labels)
+        return FrameLabelData(frame_labels, timestamp_list)
