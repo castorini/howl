@@ -99,10 +99,10 @@ class WakeWordTokenizer(TranscriptTokenizer):
         encoded_output = []
 
         for word in transcript.lower().split():
-            vocab_found, transcript = self.vocab.trie.max_split(word)
+            vocab_found, remaining_transcript = self.vocab.trie.max_split(word)
 
             # append corresponding label
-            if vocab_found and transcript == "":
+            if vocab_found and remaining_transcript == "":
                 # word exists in the vocab
                 encoded_output.append(self.vocab[word])
             elif not self.ignore_oov:

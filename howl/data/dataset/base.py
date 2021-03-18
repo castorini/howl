@@ -31,7 +31,8 @@ NEGATIVE_CLASS = '[NEGATIVE]'
 @dataclass
 class FrameLabelData:
     timestamp_label_map: Mapping[float, int]
-    timestamp_list: List[Tuple[int, float, float]]
+    start_timestamp: List[Tuple[int, float]]
+    char_indices: List[Tuple[int, List[int]]]
 
 
 @dataclass

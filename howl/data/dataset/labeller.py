@@ -45,26 +45,22 @@ class WordFrameLabeler(FrameLabeler):
 
     def compute_frame_labels(self, metadata: AudioClipMetadata) -> FrameLabelData:
         frame_labels = dict()
-        timestamp_list = []
-        # TODO:: consider iterating over end_timestamps instead of every character
-        t = f' {metadata.transcription} '
-        char_idx = 0
-        for label in range(len(self.vocab)):
-            word = self.vocab[label]
-            while True:
-                try:
-                    # check if transcript contains the current word
-                    char_idx = t.index(word, char_idx)
-                except ValueError:
-                    break
+        char_indices = []
+        start_timestamp = []
 
-                start_timestamp = metadata.end_timestamps[char_idx-1] if char_idx > 0 else 0.0
-                # capture the full word if ceil_word_boundary is true
-                while self.ceil_word_boundary and char_idx + len(word) < len(t) - 1 and t[char_idx + len(word)] != ' ':
-                    char_idx += 1
-                # record the ending timestamp with corresponding label
-                end_timestamp = metadata.end_timestamps[char_idx + len(word.rstrip()) - 2]
+        char_idx = 0
+        for word in metadata.transcription.split():
+            vocab_found, remaining_transcript = self.vocab.trie.max_split(word)
+            word_size = len(word.rstrip())
+
+            # if the current word is in vocab, store necessary informations
+            if vocab_found and remaining_transcript == "":
+                label = self.vocab[word]
+                end_timestamp = metadata.end_timestamps[char_idx + word_size - 1]
                 frame_labels[end_timestamp] = label
-                timestamp_list.append((label, start_timestamp, end_timestamp))
-                char_idx += 1
-        return FrameLabelData(frame_labels, timestamp_list)
+                char_indices.append((label, list(range(char_idx, char_idx + word_size))))
+                start_timestamp.append((label, metadata.end_timestamps[char_idx-1] if char_idx > 0 else 0.0))
+
+            char_idx += word_size + 1  # space
+
+        return FrameLabelData(frame_labels, start_timestamp, char_indices)
