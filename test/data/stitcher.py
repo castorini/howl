@@ -63,11 +63,6 @@ class TestStitcher(unittest.TestCase):
         print(reloated_stitched_dev_ds[0].metadata.path)
         print(reloated_stitched_test_ds[0].metadata.path)
 
-        # TODO:: portion is incorrect
-        print(len(reloated_stitched_train_ds))
-        print(len(reloated_stitched_dev_ds))
-        print(len(reloated_stitched_test_ds))
-
 
 if __name__ == '__main__':
     unittest.main()

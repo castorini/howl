@@ -114,18 +114,27 @@ class WordStitcher(Stitcher):
                     train_pct: float,
                     dev_pct: float,
                     test_pct: float) -> Tuple[List[AudioClipExample]]:
-        random.shuffle(self.stitched_samples)
 
-        splits = [[] for _ in range(3)]
         buckets = [train_pct, train_pct + dev_pct, train_pct + dev_pct + test_pct]
+        num_samples = len(self.stitched_samples)
+        train_bucket = int(train_pct * num_samples)
+        dev_bucket = int((train_pct + dev_pct) * num_samples)
+        test_bucket = int((train_pct + dev_pct + test_pct) * num_samples)
 
-        for sample in self.stitched_samples:
-            rand = random.random()
-            for idx, bucket in enumerate(buckets):
-                if rand < bucket:
-                    splits[idx].append(sample.metadata)
+        random.shuffle(self.stitched_samples)
+        train_split = []
+        dev_split = []
+        test_split = []
+
+        for idx, sample in enumerate(self.stitched_samples):
+            if idx <= train_bucket:
+                train_split.append(sample.metadata)
+            elif idx <= dev_bucket:
+                dev_split.append(sample.metadata)
+            elif idx <= test_bucket:
+                test_split.append(sample.metadata)
 
         ds_kwargs = dict(sr=self.sr, mono=SETTINGS.audio.use_mono)
-        return (AudioClipDataset(metadata_list=splits[0], set_type=DatasetType.TRAINING, **ds_kwargs),
-                AudioClipDataset(metadata_list=splits[1], set_type=DatasetType.DEV, **ds_kwargs),
-                AudioClipDataset(metadata_list=splits[2], set_type=DatasetType.TEST, **ds_kwargs))
+        return (AudioClipDataset(metadata_list=train_split, set_type=DatasetType.TRAINING, **ds_kwargs),
+                AudioClipDataset(metadata_list=dev_split, set_type=DatasetType.DEV, **ds_kwargs),
+                AudioClipDataset(metadata_list=test_split, set_type=DatasetType.TEST, **ds_kwargs))
