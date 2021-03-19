@@ -1,24 +1,23 @@
+import json
+import logging
 from collections import defaultdict
 from copy import deepcopy
 from functools import partial
-from typing import Tuple, TypeVar, List
-from pathlib import Path
 from multiprocessing import Pool
-import json
-import logging
+from pathlib import Path
+from typing import List, Tuple, TypeVar
 
-from tqdm import tqdm
 import pandas as pd
 import soundfile
-
-from .base import DatasetType, AudioClipMetadata, UNKNOWN_TRANSCRIPTION
-from .dataset import AudioClipDataset, WakeWordDataset, AudioClassificationDataset, AudioDataset, \
-    HonkSpeechCommandsDataset
 from howl.registered import RegisteredObjectBase
 from howl.utils.audio import silent_load
 from howl.utils.hash import sha256_int
 from howl.utils.transcribe import SpeechToText
+from tqdm import tqdm
 
+from .base import UNKNOWN_TRANSCRIPTION, AudioClipMetadata, DatasetType
+from .dataset import (AudioClassificationDataset, AudioClipDataset,
+                      AudioDataset, HonkSpeechCommandsDataset, WakeWordDataset)
 
 __all__ = ['AudioDatasetWriter',
            'AudioClipDatasetLoader',
@@ -58,10 +57,11 @@ T = TypeVar('T', bound=AudioClipDataset)
 
 
 class AudioDatasetWriter:
-    def __init__(self, dataset: AudioClipDataset, mode: str = 'w', print_progress: bool = True):
+    def __init__(self, dataset: AudioClipDataset, prefix: str = '', mode: str = 'w', print_progress: bool = True):
         self.dataset = dataset
         self.print_progress = print_progress
         self.mode = mode
+        self.prefix = prefix
 
     def write(self, folder: Path):
         def process(metadata: AudioClipMetadata):
@@ -75,7 +75,7 @@ class AudioDatasetWriter:
         folder.mkdir(exist_ok=True)
         audio_folder = folder / 'audio'
         audio_folder.mkdir(exist_ok=True)
-        with AudioDatasetMetadataWriter(folder, self.dataset.set_type, mode=self.mode) as writer:
+        with AudioDatasetMetadataWriter(folder, self.dataset.set_type, prefix=self.prefix, mode=self.mode) as writer:
             for metadata in tqdm(self.dataset.metadata_list, disable=not self.print_progress, desc='Writing files'):
                 try:
                     process(metadata)
@@ -133,14 +133,16 @@ class WakeWordDatasetLoader(MetadataLoaderMixin, PathDatasetLoader):
     dataset_class = WakeWordDataset
     metadata_class = AudioClipMetadata
 
+
 def transcribe_hey_snips_audio(path, metadata):
     stt = SpeechToText()
     path = (path / metadata['audio_file_path']).absolute()
     transcription = 'hey snips'
-    if metadata['is_hotword'] == 0: # negative sample
+    if metadata['is_hotword'] == 0:  # negative sample
         transcription = stt.transcribe(path)
 
     return path, transcription
+
 
 class HeySnipsWakeWordLoader(RegisteredPathDatasetLoader, name='hey-snips'):
     def __init__(self, num_processes=8):
@@ -192,7 +194,7 @@ class HeySnipsWakeWordLoader(RegisteredPathDatasetLoader, name='hey-snips'):
         return (load('train.json', DatasetType.TRAINING),
                 load('dev.json', DatasetType.DEV),
                 load('test.json', DatasetType.TEST))
-        
+
 
 class GoogleSpeechCommandsDatasetLoader(RegisteredPathDatasetLoader, name='gsc'):
     def __init__(self, vocab: List[str] = None, use_bg_noise: bool = False):
@@ -237,7 +239,8 @@ class MozillaCommonVoiceLoader(RegisteredPathDatasetLoader, name='mozilla-cv'):
             df = pd.read_csv(str(path / filename), sep='\t', quoting=3, na_filter=False)
             metadata_list = []
             for tup in df.itertuples():
-                metadata_list.append(AudioClipMetadata(path=(path / 'clips' / tup.path).absolute(), transcription=tup.sentence))
+                metadata_list.append(AudioClipMetadata(
+                    path=(path / 'clips' / tup.path).absolute(), transcription=tup.sentence))
             return AudioClipDataset(metadata_list=metadata_list, set_type=set_type, **dataset_kwargs)
 
         assert path.exists(), 'dataset path doesn\'t exist'

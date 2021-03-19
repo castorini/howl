@@ -1,13 +1,14 @@
 
 import itertools
+import random
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import soundfile
 import torch
 from howl.data.dataset import (AudioClipDataset, AudioClipExample,
-                               AudioClipMetadata, AudioDataset,
+                               AudioClipMetadata, AudioDataset, DatasetType,
                                WakeWordDataset)
 from howl.data.searcher import WordTranscriptSearcher
 from howl.data.tokenize import Vocab
@@ -109,6 +110,22 @@ class WordStitcher(Stitcher):
 
             self.stitched_samples.append(stitched_sample)
 
+    def load_splits(self,
+                    train_pct: float,
+                    dev_pct: float,
+                    test_pct: float) -> Tuple[List[AudioClipExample]]:
+        random.shuffle(self.stitched_samples)
+
+        splits = [[] for _ in range(3)]
+        buckets = [train_pct, train_pct + dev_pct, train_pct + dev_pct + test_pct]
+
         for sample in self.stitched_samples:
-            print(f"wake wordsample generated at {stitched_sample.metadata.path}")
-            soundfile.write(stitched_sample.metadata.path, stitched_sample.audio_data.numpy(), self.sr)
+            rand = random.random()
+            for idx, bucket in enumerate(buckets):
+                if rand < bucket:
+                    splits[idx].append(sample.metadata)
+
+        ds_kwargs = dict(sr=self.sr, mono=SETTINGS.audio.use_mono)
+        return (AudioClipDataset(metadata_list=splits[0], set_type=DatasetType.TRAINING, **ds_kwargs),
+                AudioClipDataset(metadata_list=splits[1], set_type=DatasetType.DEV, **ds_kwargs),
+                AudioClipDataset(metadata_list=splits[2], set_type=DatasetType.TEST, **ds_kwargs))
