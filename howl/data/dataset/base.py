@@ -160,7 +160,10 @@ class WakeWordClipExample(AudioClipExample[AudioClipMetadata]):
                             new: bool = False) -> 'WakeWordClipExample':
         ex = super().emplaced_audio_data(audio_data, scale, bias, new)
         label_data = {} if new else {scale * k + bias: v for k, v in self.label_data.timestamp_label_map.items()}
-        return WakeWordClipExample(FrameLabelData(label_data), ex.metadata, audio_data, self.sample_rate)
+        return WakeWordClipExample(FrameLabelData(label_data, self.label_data.start_timestamp, self.label_data.char_indices),
+                                   ex.metadata,
+                                   audio_data,
+                                   self.sample_rate)
 
 
 @dataclass
