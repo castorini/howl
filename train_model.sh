@@ -15,9 +15,9 @@ echo "MODEL_TYPE: ${MODEL_TYPE}"
 echo "WORKSPACE_PATH: ${WORKSPACE_PATH}"
 echo "DATASET_PATHS: ${@:4}"
 
-DATASET_ARGUMENT=""
+DATASET_ARGUMENT="--dataset-paths"
 for DATASET_PATH in ${@:4}; do
-    DATASET_ARGUMENT+=" --dataset-paths ${DATASET_PATH}"
+    DATASET_ARGUMENT+=" ${DATASET_PATH}"
 done
 
 source ${ENV_FILE_PATH}

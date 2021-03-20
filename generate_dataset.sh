@@ -1,6 +1,5 @@
 #bin/bash
-# TODO:: enable this flag after fixing segfault issue of create_new_dataset
-# set -e
+set -e
 
 COMMON_VOICE_DATASET_PATH=${1} # common voice dataset path
 DATASET_NAME=${2} # underscore separated wakeword (e.g. hey_fire_fox)
@@ -53,6 +52,10 @@ time yes n | ./bin/mfa_align --verbose --clean --num_jobs 12 "../${POS_DATASET_P
 popd
 
 echo ">>> attaching the MFA alignment to the positive dataset"
-DATASET_PATH=${POS_DATASET_PATH} python -m training.run.attach_alignment --align-type mfa -i "${POS_DATASET_ALIGNMENT}"
+time DATASET_PATH=${POS_DATASET_PATH} python -m training.run.attach_alignment --align-type mfa -i "${POS_DATASET_ALIGNMENT}"
+
+STITCHED_DATASET="${DATASET_FOLDER}/stitched"
+echo ">>> stitching vocab samples to generate a datset made up of stitched wakeword samples: ${STITCHED_DATASET}"
+time VOCAB=${VOCAB} INFERENCE_SEQUENCE=${INFERENCE_SEQUENCE} python -m training.run.stitch_vocab_samples --aligned-dataset "${POS_DATASET_PATH}" --stitched-dataset "${STITCHED_DATASET}"
 
 echo ">>> Dataset is ready for ${VOCAB}"
