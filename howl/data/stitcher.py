@@ -10,9 +10,9 @@ import torch
 from howl.data.dataset import (AudioClipDataset, AudioClipExample,
                                AudioClipMetadata, AudioDataset, DatasetType,
                                WakeWordDataset)
-from howl.data.searcher import WordTranscriptSearcher
 from howl.data.tokenize import Vocab
 from howl.settings import SETTINGS
+from tqdm import tqdm
 
 __all__ = ['WordStitcher']
 
@@ -37,12 +37,18 @@ class Stitcher:
 
 class WordStitcher(Stitcher):
     def __init__(self,
-                 word_searcher: WordTranscriptSearcher,
                  **kwargs):
         super().__init__(**kwargs)
-        self.word_searcher = word_searcher
 
-    def concatenate_end_timestamps(self, end_timestamps_list: List[List[float]]):
+    def concatenate_end_timestamps(self, end_timestamps_list: List[List[float]]) -> List[float]:
+        """concatenate given list of end timestamps for single audio sample
+
+        Args:
+            end_timestamps_list (List[List[float]]): list of timestamps to concatenate
+
+        Returns:
+            List[float]: concatenated end timestamps
+        """
         concatnated_timestamps = []
         last_timestamp = 0
         for end_timestamps in end_timestamps_list:
@@ -56,32 +62,25 @@ class WordStitcher(Stitcher):
 
         return concatnated_timestamps[:-1]  # discard last space timestamp
 
-    def stitch(self, * datasets: AudioDataset):
-        dir_path = Path("test/test_data/generated_data")
-        dir_path.mkdir(exist_ok=True)
+    def stitch(self, stitched_dataset_dir: Path, * datasets: AudioDataset):
+        """collect vocab samples from datasets and generate stitched wakeword samples
 
+        Args:
+            stitched_dataset_dir (Path): folder for the stitched dataset where the audio samples will be saved
+            datasets (Path): list of datasets to collect vocab samples from
+        """
         sample_set = [[] for _ in range(len(self.vocab))]
 
         for dataset in datasets:
+            # for each audio sample, collect vocab audio sample based on alignment
             for sample in dataset:
-                for idx, (label, char_indices) in enumerate(sample.label_data.char_indices):
-
+                for (label, char_indices) in sample.label_data.char_indices:
                     vocab_start_idx = char_indices[0] - 1 if char_indices[0] > 0 else 0
                     start_timestamp = sample.metadata.end_timestamps[vocab_start_idx]
                     end_timestamp = sample.metadata.end_timestamps[char_indices[-1]]
 
-                    print(label, self.vocab[label])
                     audio_start_idx = int(start_timestamp * self.sr / 1000)
-                    # print(f"\tstart: {start_timestamp} ({audio_start_idx})")
                     audio_end_idx = int(end_timestamp * self.sr / 1000)
-                    # print(f"\tend: {end_timestamp} ({audio_end_idx})")
-                    # print(f"\taudio_length: {1000*len(sample.audio_data[audio_start_idx:audio_end_idx])/self.sr} ms")
-
-                    # output_path = dir_path / \
-                    #     f"{self.vocab[label]}_{sample.metadata.audio_id}_{audio_start_idx}_{audio_end_idx}.wav"
-                    # soundfile.write(output_path, sample.audio_data[audio_start_idx:audio_end_idx].numpy(), self.sr)
-
-                    # print(f"\tfile generated at {output_path}")
 
                     adjusted_end_timestamps = []
                     for char_idx in char_indices:
@@ -90,25 +89,36 @@ class WordStitcher(Stitcher):
                     sample_set[label].append(FrameLabelledSample(
                         sample.audio_data[audio_start_idx:audio_end_idx], end_timestamp-start_timestamp, adjusted_end_timestamps, label))
 
-        # TODO:: make sure enough samples there are for each
+        audio_dir = stitched_dataset_dir / "audio"
+        audio_dir.mkdir(exist_ok=True)
+
+        # reorganize and make sure there are enough samples for each vocab
         sample_list = []
         for element in self.sequence:
-            assert len(sample_set[element]) > 0
+            print(f"number of samples for vocab {self.vocab[element]}: {len(sample_set[element])}")
+            assert len(sample_set[element]) > 0, "There must be at least one sample for each vocab"
             sample_list.append(sample_set[element])
 
+        # generate AudioClipExample for each vocab sample
         self.stitched_samples = []
-        for sample_idx, sample_set in enumerate(itertools.product(*sample_list)):
+        combinations = list(itertools.product(*sample_list))
+        for sample_idx, sample_set in enumerate(tqdm(combinations, total=len(combinations), desc="Generating stitched samples")):
 
             metatdata = AudioClipMetadata(
-                path=(dir_path / str(sample_idx)).with_suffix(".wav"),
+                path=Path(audio_dir / f"{sample_idx}").with_suffix(".wav"),
                 transcription=self.wakeword,
                 end_timestamps=self.concatenate_end_timestamps(
                     [labelled_data.end_timestamps for labelled_data in sample_set])
             )
 
+            # TODO:: dataset writer load the samples upon write and does not use data in memory
+            #        writer classes need to be refactored to use audio data if exist
+            audio_data = torch.cat([labelled_data.audio_data for labelled_data in sample_set])
+            soundfile.write(metatdata.path, audio_data.numpy(), self.sr)
+
             stitched_sample = AudioClipExample(
                 metadata=metatdata,
-                audio_data=torch.cat([labelled_data.audio_data for labelled_data in sample_set]),
+                audio_data=audio_data,
                 sample_rate=self.sr)
 
             self.stitched_samples.append(stitched_sample)
@@ -116,7 +126,20 @@ class WordStitcher(Stitcher):
     def load_splits(self,
                     train_pct: float,
                     dev_pct: float,
-                    test_pct: float) -> Tuple[List[AudioClipExample]]:
+                    test_pct: float) -> Tuple[AudioClipDataset, AudioClipDataset, AudioClipDataset]:
+        """split the generated stitched samples based on the given pct
+        first train_pct samples are used to generate train set
+        next dev_pct samples are used to generate dev set
+        next test_pct samples are used to generate test set
+
+        Args:
+            train_pct (float): train set perceptage (0, 1)
+            dev_pct (float): dev set perceptage (0, 1)
+            test_pct (float): test set perceptage (0, 1)
+
+        Returns:
+            Tuple[AudioClipDataset, AudioClipDataset, AudioClipDataset]: train/dev/test datasets
+        """
 
         num_samples = len(self.stitched_samples)
         train_bucket = int(train_pct * num_samples)

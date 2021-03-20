@@ -60,9 +60,11 @@ class VocabTrie:
 
 class Vocab:
     def __init__(self,
-                 word2idx: Mapping[str, int],
+                 word2idx: Union[Mapping[str, int], List[str]],
                  oov_token_id: int = None,
                  oov_word_repr: str = '[OOV]'):
+        if isinstance(word2idx, List):
+            word2idx = {word: idx for idx, word in enumerate(word2idx)}
         self.word2idx = {k.lower(): v for k, v in word2idx.items()}
         self.idx2word = {v: k for k, v in word2idx.items()}
         self.oov_token_id = oov_token_id
