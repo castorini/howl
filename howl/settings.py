@@ -2,7 +2,6 @@ from typing import List
 
 from pydantic import BaseSettings
 
-
 __all__ = ['AudioSettings', 'RawDatasetSettings', 'DatasetSettings', 'SETTINGS']
 
 
@@ -34,6 +33,7 @@ class InferenceEngineSettings(BaseSettings):
 
 class TrainingSettings(BaseSettings):
     seed: int = 0
+    # TODO:: vocab should not belong to training
     vocab: List[str] = ['fire']
     num_epochs: int = 10
     num_labels: int = 2

@@ -65,7 +65,7 @@ class AudioDatasetWriter:
 
     def write(self, folder: Path):
         def process(metadata: AudioClipMetadata):
-            new_path = audio_folder / metadata.path.with_suffix('.wav').name
+            new_path = (audio_folder / metadata.audio_id).with_suffix('.wav')
             if not new_path.exists():
                 audio_data = silent_load(str(metadata.path), self.dataset.sr, self.dataset.mono)
                 soundfile.write(str(new_path), audio_data, self.dataset.sr)

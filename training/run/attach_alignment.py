@@ -1,14 +1,18 @@
+import argparse
 from itertools import chain
 from pathlib import Path
-import argparse
 
+from howl.data.dataset import (AudioClipDatasetLoader,
+                               AudioDatasetMetadataWriter, AudioDatasetWriter)
+from howl.data.dataset.base import \
+    AudioClipMetadata as AlignedAudioClipMetadata
+from howl.data.searcher import WordTranscriptSearcher
+from howl.data.stitcher import WordStitcher
+from howl.data.tokenize import Vocab
+from howl.settings import SETTINGS
 from textgrids import TextGrid
 from tqdm import tqdm
-
 from training.align import MfaTextGridConverter, StubAligner
-from howl.data.dataset import AudioClipDatasetLoader, AudioDatasetMetadataWriter
-from howl.data.dataset.base import AudioClipMetadata as AlignedAudioClipMetadata
-from howl.settings import SETTINGS
 
 
 def main():
@@ -31,6 +35,10 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--mfa-folder', '-i', dest='align_folder', type=Path)
     parser.add_argument('--align-type', type=str, default='mfa', choices=('mfa', 'stub'))
+    parser.add_argument('--stitched_dataset_path', type=str, default='',
+                        help='if provided, stitched wakeword samples are saved to the given path')
+    parser.add_argument('--stitched_dataset_pct', type=int, nargs=3, default=[0.5, 0.25, 0.25],
+                        help='train/dev/test pct for stitched dataset (default: [0.5, 0.25, 0.25])')
     args = parser.parse_args()
 
     ds_kwargs = dict(sr=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono)
@@ -54,6 +62,23 @@ def main():
                                                           end_timestamps=transcription.end_timestamps))
                 except KeyError:
                     pass
+
+    stitched_dataset_path = args.stitched_dataset_path
+    if stitched_dataset_path:
+        vocab = Vocab(SETTINGS.training.vocab)
+        searcher = WordTranscriptSearcher(vocab)
+        stitcher = WordStitcher(searcher, vocab=vocab)
+        stitcher.stitch(train_ds, dev_ds, test_ds)
+
+        stitched_train_ds, stitched_dev_ds, stitched_test_ds = stitcher.load_splits(*args.stitched_dataset_pct)
+        stitched_dataset_path.mkdir(exist_ok=True)
+
+        for ds in stitched_train_ds, stitched_dev_ds, stitched_test_ds:
+            try:
+                AudioDatasetWriter(ds, prefix='aligned-').write(stitched_dataset_path)
+            except KeyboardInterrupt:
+                print('Skipping...')
+                pass
 
 
 if __name__ == '__main__':

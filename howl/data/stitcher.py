@@ -77,11 +77,11 @@ class WordStitcher(Stitcher):
                     # print(f"\tend: {end_timestamp} ({audio_end_idx})")
                     # print(f"\taudio_length: {1000*len(sample.audio_data[audio_start_idx:audio_end_idx])/self.sr} ms")
 
-                    output_path = dir_path / \
-                        f"{self.vocab[label]}_{sample.metadata.audio_id}_{audio_start_idx}_{audio_end_idx}.wav"
-                    soundfile.write(output_path, sample.audio_data[audio_start_idx:audio_end_idx].numpy(), self.sr)
+                    # output_path = dir_path / \
+                    #     f"{self.vocab[label]}_{sample.metadata.audio_id}_{audio_start_idx}_{audio_end_idx}.wav"
+                    # soundfile.write(output_path, sample.audio_data[audio_start_idx:audio_end_idx].numpy(), self.sr)
 
-                    print(f"\tfile generated at {output_path}")
+                    # print(f"\tfile generated at {output_path}")
 
                     adjusted_end_timestamps = []
                     for char_idx in char_indices:
@@ -91,13 +91,16 @@ class WordStitcher(Stitcher):
                         sample.audio_data[audio_start_idx:audio_end_idx], end_timestamp-start_timestamp, adjusted_end_timestamps, label))
 
         # TODO:: make sure enough samples there are for each
-        sample_list = [sample_set[element] for element in self.sequence]
+        sample_list = []
+        for element in self.sequence:
+            assert len(sample_set[element]) > 0
+            sample_list.append(sample_set[element])
 
         self.stitched_samples = []
         for sample_idx, sample_set in enumerate(itertools.product(*sample_list)):
 
             metatdata = AudioClipMetadata(
-                path=dir_path / f"{sample_idx}.wav",
+                path=(dir_path / str(sample_idx)).with_suffix(".wav"),
                 transcription=self.wakeword,
                 end_timestamps=self.concatenate_end_timestamps(
                     [labelled_data.end_timestamps for labelled_data in sample_set])
@@ -115,7 +118,6 @@ class WordStitcher(Stitcher):
                     dev_pct: float,
                     test_pct: float) -> Tuple[List[AudioClipExample]]:
 
-        buckets = [train_pct, train_pct + dev_pct, train_pct + dev_pct + test_pct]
         num_samples = len(self.stitched_samples)
         train_bucket = int(train_pct * num_samples)
         dev_bucket = int((train_pct + dev_pct) * num_samples)
