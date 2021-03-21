@@ -62,10 +62,11 @@ class WordStitcher(Stitcher):
 
         return concatnated_timestamps[:-1]  # discard last space timestamp
 
-    def stitch(self, stitched_dataset_dir: Path, * datasets: AudioDataset):
+    def stitch(self, num_stitched_samples: int, stitched_dataset_dir: Path, * datasets: AudioDataset):
         """collect vocab samples from datasets and generate stitched wakeword samples
 
         Args:
+            num_stitched_samples (int): number of stitched wakeword samples to geneate
             stitched_dataset_dir (Path): folder for the stitched dataset where the audio samples will be saved
             datasets (Path): list of datasets to collect vocab samples from
         """
@@ -93,16 +94,18 @@ class WordStitcher(Stitcher):
         audio_dir.mkdir(exist_ok=True)
 
         # reorganize and make sure there are enough samples for each vocab
-        sample_list = []
+        sample_lists = []
         for element in self.sequence:
             print(f"number of samples for vocab {self.vocab[element]}: {len(sample_set[element])}")
             assert len(sample_set[element]) > 0, "There must be at least one sample for each vocab"
-            sample_list.append(sample_set[element])
+            sample_lists.append(sample_set[element])
 
         # generate AudioClipExample for each vocab sample
         self.stitched_samples = []
-        combinations = list(itertools.product(*sample_list))
-        for sample_idx, sample_set in enumerate(tqdm(combinations, total=len(combinations), desc="Generating stitched samples")):
+        for sample_idx in tqdm(range(num_stitched_samples), desc="Generating stitched samples"):
+            sample_set = []
+            for sample_list in sample_lists:
+                sample_set.append(random.choice(sample_list))
 
             metatdata = AudioClipMetadata(
                 path=Path(audio_dir / f"{sample_idx}").with_suffix(".wav"),

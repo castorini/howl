@@ -21,6 +21,8 @@ def main():
                         help='if provided, stitched wakeword samples are saved to the given path. (default: dataset-path/stitched)')
     parser.add_argument('--aligned-dataset', type=str,
                         help='dataset with frame labelled samples which stitched wakeword samples are generated from')
+    parser.add_argument('--num-stitched-samples', type=int, default=10000,
+                        help='number of stitched wakeword samples to geneate (default: 10000)')
     parser.add_argument('--stitched-dataset-pct', type=int, nargs=3, default=[0.5, 0.25, 0.25],
                         help='train/dev/test pct for stitched dataset (default: [0.5, 0.25, 0.25])')
 
@@ -38,7 +40,7 @@ def main():
 
     # stitch vocab samples
     stitcher = WordStitcher(vocab=vocab)
-    stitcher.stitch(stitched_ds_path, train_ds, dev_ds, test_ds)
+    stitcher.stitch(args.num_stitched_samples, stitched_ds_path, train_ds, dev_ds, test_ds)
 
     # split the stitched samples
     stitched_train_ds, stitched_dev_ds, stitched_test_ds = stitcher.load_splits(*args.stitched_dataset_pct)
