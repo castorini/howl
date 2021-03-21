@@ -1,4 +1,3 @@
-
 import itertools
 import random
 from dataclasses import dataclass
@@ -8,8 +7,7 @@ from typing import List, Optional, Tuple
 import soundfile
 import torch
 from howl.data.dataset import (AudioClipDataset, AudioClipExample,
-                               AudioClipMetadata, AudioDataset, DatasetType,
-                               WakeWordDataset)
+                               AudioClipMetadata, AudioDataset, DatasetType)
 from howl.data.tokenize import Vocab
 from howl.settings import SETTINGS
 from tqdm import tqdm
@@ -155,11 +153,11 @@ class WordStitcher(Stitcher):
         test_split = []
 
         for idx, sample in enumerate(self.stitched_samples):
-            if idx <= train_bucket:
+            if idx < train_bucket:
                 train_split.append(sample.metadata)
-            elif idx <= dev_bucket:
+            elif idx < dev_bucket:
                 dev_split.append(sample.metadata)
-            elif idx <= test_bucket:
+            elif idx < test_bucket:
                 test_split.append(sample.metadata)
 
         ds_kwargs = dict(sr=self.sr, mono=SETTINGS.audio.use_mono)

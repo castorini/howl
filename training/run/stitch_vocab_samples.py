@@ -14,6 +14,16 @@ from textgrids import TextGrid
 from tqdm import tqdm
 from training.align import MfaTextGridConverter, StubAligner
 
+"""Using aligned dataset, generate wakeword samples by stitching vocab samples
+
+VOCAB="[vocab1,vocab2,vocab3]" INFERENCE_SEQUENCE=[1,2,3] \
+    python -m training.run.stitch_vocab_samples \
+    --aligned-dataset "aligned-dataset" \
+    --stitched-dataset "stitched-dataset" \
+    --num-stitched-samples 500 \
+    --stitched-dataset-pct [0.5, 0.25, 0.25]
+"""
+
 
 def main():
     parser = argparse.ArgumentParser()
