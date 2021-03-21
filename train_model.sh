@@ -24,6 +24,3 @@ source ${ENV_FILE_PATH}
 
 echo ">>> training a model for ${VOCAB}; model will be stored at ${WORKSPACE_PATH}"
 time python -m training.run.train --model ${MODEL_TYPE} --workspace "${WORKSPACE_PATH}" ${DATASET_ARGUMENT}
-
-echo ">>> evaluating the trained model"
-time python -m training.run.train --eval --model ${MODEL_TYPE} --workspace "${WORKSPACE_PATH}" ${DATASET_ARGUMENT}
