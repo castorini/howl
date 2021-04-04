@@ -1,7 +1,7 @@
 import unittest
 
 from howl.data.tokenize import Vocab
-from howl.model.searcher import WordTranscriptSearcher
+from howl.data.searcher import WordTranscriptSearcher
 from howl.settings import SETTINGS
 
 

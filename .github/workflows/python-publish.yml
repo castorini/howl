@@ -20,7 +20,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install setuptools wheel
-        sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0
+        sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 libpulse-dev
         pip install pyaudio
         pip install -r requirements.txt
     - name: Lint with flake8
@@ -31,8 +31,5 @@ jobs:
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with pytest
-      env:
-        TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
       run: |
-        pytest
+        python -m pytest
