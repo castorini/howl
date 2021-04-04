@@ -6,7 +6,7 @@ name: Python Package
 on: [push]
 
 jobs:
-  build:
+  test:
 
     runs-on: ubuntu-latest
 
