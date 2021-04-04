@@ -6,6 +6,7 @@ pandas>=1.0.3
 pocketsphinx
 pyaudio
 pydantic>=1.7.3
+pytest
 soundfile==0.10.3.post1
 tensorboard
 tqdm
