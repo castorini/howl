@@ -4,6 +4,7 @@ librosa>=0.8.0
 numpy>=1.18.3
 pandas>=1.0.3
 pocketsphinx
+pre-commit
 pyaudio
 pydantic>=1.7.3
 pytest
