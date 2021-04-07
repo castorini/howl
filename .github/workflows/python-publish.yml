@@ -22,6 +22,7 @@ jobs:
         pip install setuptools wheel
         sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 libpulse-dev
         pip install -r requirements.txt
+        pip install -r requirements_training.txt
     - name: Lint with flake8
       run: |
         pip install flake8
