@@ -14,10 +14,11 @@ repos:
     -   id: trailing-whitespace
     -   id: check-json
     -   id: name-tests-test
--   repo: https://github.com/timothycrosley/isort
-    rev: 5.2.0
+-   repo: https://github.com/pycqa/isort
+    rev: 5.5.4
     hooks:
     -   id: isort
+        args: ["--profile", "black"]
 -   repo: https://github.com/psf/black
     rev: 19.10b0
     hooks:
@@ -27,6 +28,7 @@ repos:
     rev: 3.8.3
     hooks:
     -   id: flake8
+        args: [--max-line-length=120]
 -   repo: https://github.com/pre-commit/mirrors-pylint
     rev: v2.6.0
     hooks:

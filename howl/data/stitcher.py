@@ -1,4 +1,3 @@
-import itertools
 import random
 from dataclasses import dataclass
 from pathlib import Path
@@ -6,13 +5,20 @@ from typing import List, Optional, Tuple
 
 import soundfile
 import torch
-from howl.data.dataset import (AudioClipDataset, AudioClipExample,
-                               AudioClipMetadata, AudioDataset, DatasetType)
-from howl.data.tokenize import Vocab
-from howl.settings import SETTINGS
 from tqdm import tqdm
 
-__all__ = ['WordStitcher']
+from howl.data.dataset import (
+    AudioClipDataset,
+    AudioClipExample,
+    AudioClipMetadata,
+    AudioDataset,
+    DatasetType,
+)
+from howl.data.tokenize import Vocab
+from howl.settings import SETTINGS
+from howl.utils.sphinx_keyword_detector import SphinxKeywordDetector
+
+__all__ = ["WordStitcher"]
 
 
 @dataclass
@@ -24,18 +30,27 @@ class FrameLabelledSample:
 
 
 class Stitcher:
-    def __init__(self,
-                 vocab: Vocab):
+    def __init__(self, vocab: Vocab, detect_keyword: bool = True):
+        """Base Stitcher class
+
+        Args:
+            vocab (Vocab): vocab containing wakeword
+            detect_keyword (bool, optional): drop invalid stitched samples through secondary keyword detection step
+        """
         self.sequence = SETTINGS.inference_engine.inference_sequence
         self.sr = SETTINGS.audio.sample_rate
         self.vocab = vocab
-        self.wakeword = ' '.join(self.vocab[x]
-                                 for x in self.sequence)
+        self.wakeword = " ".join(self.vocab[x] for x in self.sequence)
+
+        self.detect_keyword = detect_keyword
+        self.keyword_detector = []
+        if self.detect_keyword:
+            for x in self.sequence:
+                self.keyword_detector.append(SphinxKeywordDetector(self.vocab[x]))
 
 
 class WordStitcher(Stitcher):
-    def __init__(self,
-                 **kwargs):
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
     def concatenate_end_timestamps(self, end_timestamps_list: List[List[float]]) -> List[float]:
@@ -60,7 +75,7 @@ class WordStitcher(Stitcher):
 
         return concatnated_timestamps[:-1]  # discard last space timestamp
 
-    def stitch(self, num_stitched_samples: int, stitched_dataset_dir: Path, * datasets: AudioDataset):
+    def stitch(self, num_stitched_samples: int, stitched_dataset_dir: Path, *datasets: AudioDataset):
         """collect vocab samples from datasets and generate stitched wakeword samples
 
         Args:
@@ -85,8 +100,14 @@ class WordStitcher(Stitcher):
                     for char_idx in char_indices:
                         adjusted_end_timestamps.append(sample.metadata.end_timestamps[char_idx] - start_timestamp)
 
-                    sample_set[label].append(FrameLabelledSample(
-                        sample.audio_data[audio_start_idx:audio_end_idx], end_timestamp-start_timestamp, adjusted_end_timestamps, label))
+                    sample_set[label].append(
+                        FrameLabelledSample(
+                            sample.audio_data[audio_start_idx:audio_end_idx],
+                            end_timestamp - start_timestamp,
+                            adjusted_end_timestamps,
+                            label,
+                        )
+                    )
 
         audio_dir = stitched_dataset_dir / "audio"
         audio_dir.mkdir(exist_ok=True)
@@ -100,34 +121,63 @@ class WordStitcher(Stitcher):
 
         # generate AudioClipExample for each vocab sample
         self.stitched_samples = []
-        for sample_idx in tqdm(range(num_stitched_samples), desc="Generating stitched samples"):
+
+        pbar = tqdm(total=num_stitched_samples, desc="Generating stitched samples")
+        sample_idx = 0
+        num_skipped_samples = 0
+        while True:
+            if sample_idx == num_stitched_samples:
+                break
+
             sample_set = []
             for sample_list in sample_lists:
                 sample_set.append(random.choice(sample_list))
+
+            audio_data = torch.cat([labelled_data.audio_data for labelled_data in sample_set])
+
+            if self.detect_keyword:
+                temp_audio_file_path = "/tmp/temp.wav"
+                soundfile.write(temp_audio_file_path, audio_data.numpy(), self.sr)
+
+                keyword_exists = True
+                for detector in self.keyword_detector:
+                    # sphinx keyword detection may not be sufficient for audio with repeated words
+                    if len(detector.detect(temp_audio_file_path)) == 0:
+                        keyword_exists = False
+                        break
+
+                if keyword_exists:
+                    num_skipped_samples += 1
+                    continue
 
             metatdata = AudioClipMetadata(
                 path=Path(audio_dir / f"{sample_idx}").with_suffix(".wav"),
                 transcription=self.wakeword,
                 end_timestamps=self.concatenate_end_timestamps(
-                    [labelled_data.end_timestamps for labelled_data in sample_set])
+                    [labelled_data.end_timestamps for labelled_data in sample_set]
+                ),
             )
 
             # TODO:: dataset writer load the samples upon write and does not use data in memory
             #        writer classes need to be refactored to use audio data if exist
-            audio_data = torch.cat([labelled_data.audio_data for labelled_data in sample_set])
             soundfile.write(metatdata.path, audio_data.numpy(), self.sr)
 
-            stitched_sample = AudioClipExample(
-                metadata=metatdata,
-                audio_data=audio_data,
-                sample_rate=self.sr)
+            stitched_sample = AudioClipExample(metadata=metatdata, audio_data=audio_data, sample_rate=self.sr)
 
             self.stitched_samples.append(stitched_sample)
 
-    def load_splits(self,
-                    train_pct: float,
-                    dev_pct: float,
-                    test_pct: float) -> Tuple[AudioClipDataset, AudioClipDataset, AudioClipDataset]:
+            sample_idx += 1
+            pbar.update()
+
+        if self.detect_keyword:
+            print(
+                f"While generating {num_stitched_samples} stithced samples, "
+                f"{num_skipped_samples} are filtered by keyword detection"
+            )
+
+    def load_splits(
+        self, train_pct: float, dev_pct: float, test_pct: float
+    ) -> Tuple[AudioClipDataset, AudioClipDataset, AudioClipDataset]:
         """split the generated stitched samples based on the given pct
         first train_pct samples are used to generate train set
         next dev_pct samples are used to generate dev set
@@ -161,6 +211,8 @@ class WordStitcher(Stitcher):
                 test_split.append(sample.metadata)
 
         ds_kwargs = dict(sr=self.sr, mono=SETTINGS.audio.use_mono)
-        return (AudioClipDataset(metadata_list=train_split, set_type=DatasetType.TRAINING, **ds_kwargs),
-                AudioClipDataset(metadata_list=dev_split, set_type=DatasetType.DEV, **ds_kwargs),
-                AudioClipDataset(metadata_list=test_split, set_type=DatasetType.TEST, **ds_kwargs))
+        return (
+            AudioClipDataset(metadata_list=train_split, set_type=DatasetType.TRAINING, **ds_kwargs),
+            AudioClipDataset(metadata_list=dev_split, set_type=DatasetType.DEV, **ds_kwargs),
+            AudioClipDataset(metadata_list=test_split, set_type=DatasetType.TEST, **ds_kwargs),
+        )
