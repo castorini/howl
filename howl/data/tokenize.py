@@ -60,9 +60,11 @@ class VocabTrie:
 
 class Vocab:
     def __init__(self,
-                 word2idx: Mapping[str, int],
+                 word2idx: Union[Mapping[str, int], List[str]],
                  oov_token_id: int = None,
                  oov_word_repr: str = '[OOV]'):
+        if isinstance(word2idx, List):
+            word2idx = {word: idx for idx, word in enumerate(word2idx)}
         self.word2idx = {k.lower(): v for k, v in word2idx.items()}
         self.idx2word = {v: k for k, v in word2idx.items()}
         self.oov_token_id = oov_token_id
@@ -99,10 +101,10 @@ class WakeWordTokenizer(TranscriptTokenizer):
         encoded_output = []
 
         for word in transcript.lower().split():
-            vocab_found, transcript = self.vocab.trie.max_split(word)
+            vocab_found, remaining_transcript = self.vocab.trie.max_split(word)
 
             # append corresponding label
-            if vocab_found and transcript == "":
+            if vocab_found and remaining_transcript == "":
                 # word exists in the vocab
                 encoded_output.append(self.vocab[word])
             elif not self.ignore_oov:

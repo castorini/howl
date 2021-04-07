@@ -1,14 +1,13 @@
-from typing import Sequence, Iterable, List
 import random
+from typing import Iterable, List, Sequence
 
 import librosa.effects as effects
 import numpy as np
 import torch
 import torch.nn as nn
-
-from howl.data.dataset import WakeWordClipExample, ClassificationBatch, EmplacableExample, SequenceBatch
+from howl.data.dataset import (ClassificationBatch, EmplacableExample,
+                               SequenceBatch, WakeWordClipExample)
 from howl.data.tokenize import TranscriptTokenizer
-
 
 __all__ = ['Composition',
            'compose',
@@ -92,10 +91,13 @@ def tensorize_audio_data(audio_data_lst: List[torch.Tensor],
         max_length = max(audio_data.size(-1) for audio_data in audio_data_lst)
     audio_tensor = []
     for audio_data in audio_data_lst:
+        squeezed_data = audio_data.squeeze()
+        if squeezed_data.dim() == 0:
+            squeezed_data = squeezed_data.unsqueeze(0)
         if rand_append and random.random() < 0.5:
-            x = (torch.zeros(max_length - audio_data.size(-1)), audio_data.squeeze())
+            x = (torch.zeros(max_length - audio_data.size(-1)), squeezed_data)
         else:
-            x = (audio_data.squeeze(), torch.zeros(max_length - audio_data.size(-1)))
+            x = (squeezed_data, torch.zeros(max_length - audio_data.size(-1)))
         audio_tensor.append(torch.cat(x, -1))
     return torch.stack(audio_tensor), extra_data_lists
 

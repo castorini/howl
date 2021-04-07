@@ -48,19 +48,20 @@ class InferenceContext:
         elif token_type == 'word':
             self.add_vocab(vocab)
 
+        # initialize vocab set for the system
+        self.negative_label = len(self.adjusted_vocab)
+        self.vocab = Vocab({word: idx for idx, word in enumerate(
+            self.adjusted_vocab)}, oov_token_id=self.negative_label)
+
         # initialize labeler; make sure this is located before adding other labels
         if token_type == 'phone':
             phone_phrases = [PhonePhrase.from_string(
                 x) for x in self.adjusted_vocab]
             self.labeler = PhoneticFrameLabeler(phone_phrases)
         elif token_type == 'word':
-            print('labeler vocab: ', self.adjusted_vocab)
-            self.labeler = WordFrameLabeler(self.adjusted_vocab)
+            self.labeler = WordFrameLabeler(self.vocab)
 
-        # initialize vocab set for the system and add negative label
-        self.negative_label = len(self.adjusted_vocab)
-        self.vocab = Vocab({word: idx for idx, word in enumerate(
-            self.adjusted_vocab)}, oov_token_id=self.negative_label)
+        # add negative label
         self.add_vocab(['[OOV]'])
 
         # initialize TranscriptSearcher with the processed targets
