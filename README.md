@@ -63,7 +63,7 @@ client.start().join()
 
 Assuming MFA is installed using `download_mfa.sh` and [Common Voice dataset](https://commonvoice.mozilla.org/) is downloaded already, one can easily generate a dataset for custom wakeword using `generate_dataset.sh` script.
 ```bash
-./generate_dataset.sh <common voice dataset path> <underscore separated wakeword (e.g. hey_fire_fox)> <inference sequence (e.g. [0,1,2])>
+./generate_dataset.sh <common voice dataset path> <underscore separated wakeword (e.g. hey_fire_fox)> <inference sequence (e.g. [0,1,2])> <(Optional) "true" to skip negative dataset generation>
 ```
 
 In the example that follows, we describe the process of generating a dataste for the word, "fire."
@@ -102,10 +102,16 @@ mfa_align data/fire-positive/audio eng.dict pretrained_models/english.zip output
 DATASET_PATH=data/fire-positive python -m training.run.attach_alignment --align-type mfa -i output-folder
 ```
 
+8. (Optional) Stitch vocab samples of aligned dataset to generate wakeword samples
+
+```bash
+VOCAB='["fire"]' INFERENCE_SEQUENCE=[0] python -m training.run.stitch_vocab_samples --aligned-dataset "data/fire-positive" --stitched-dataset "data/fire-stitched"
+```
+
 ### Training and Running a Model
 
 1. Source the relevant environment variables for training the `res8` model: `source envs/res8.env`.
-2. Train the model: `python -m training.run.train -i data/fire-positive data/fire-negative --model res8 --workspace workspaces/fire-res8`.
+2. Train the model: `python -m training.run.train -i data/fire-positive data/fire-negative data/fire-stitched --model res8 --workspace workspaces/fire-res8`.
 3. For the CLI demo, run `python -m training.run.demo --model res8 --workspace workspaces/fire-res8`.
 
 `train_model.sh` is also available which encaspulates individual command into a single bash script

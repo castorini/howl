@@ -46,7 +46,6 @@ class TestAudioDataset(unittest.TestCase):
         SETTINGS.training.vocab = ["hello", "world"]
         SETTINGS.training.token_type = "word"
         SETTINGS.inference_engine.inference_sequence = [0, 1]
-        SETTINGS.inference_engine.inference_sequence = [0, 1]
 
         vocab = Vocab({"Hello": 0, "World": 1}, oov_token_id=2, oov_word_repr='<OOV>')
 

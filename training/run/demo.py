@@ -4,7 +4,6 @@ from pathlib import Path
 import numpy as np
 import pyaudio
 import torch
-
 from howl.context import InferenceContext
 from howl.data.transform import ZmuvTransform
 from howl.model import RegisteredModel, Workspace
@@ -42,6 +41,7 @@ class InferenceClient:
         self._audio_buf = []
         self.device = device
         self.stream = stream
+        print(f"ready to detect {' '.join(self.words[x] for x in self.engine.sequence)}")
         stream.start_stream()
 
     def join(self):
@@ -52,7 +52,7 @@ class InferenceClient:
         data_ok = (in_data, pyaudio.paContinue)
         self.last_data = in_data
         self._audio_buf.append(in_data)
-        if len(self._audio_buf) != (self.engine.sample_rate / self.chunk_size): #  1 sec window
+        if len(self._audio_buf) != (self.engine.sample_rate / self.chunk_size):  # 1 sec window
             return data_ok
         audio_data = b''.join(self._audio_buf)
         self._audio_buf = self._audio_buf[2:]
@@ -100,6 +100,7 @@ def main():
                                          blank_idx=ctx.blank_label)
     client = InferenceClient(engine, device, SETTINGS.training.vocab)
     client.join()
+
 
 if __name__ == '__main__':
     main()

@@ -128,12 +128,14 @@ def main():
     print_stats(f'Wake word dataset', ctx, ww_train_ds, ww_dev_ds, ww_test_ds)
 
     ww_dev_pos_ds = ww_dev_ds.filter(lambda x: ctx.searcher.search(x.transcription), clone=True)
+    print_stats('Dev pos dataset', ctx, ww_dev_pos_ds)
     ww_dev_neg_ds = ww_dev_ds.filter(lambda x: not ctx.searcher.search(x.transcription), clone=True)
+    print_stats('Dev neg dataset', ctx, ww_dev_neg_ds)
     ww_test_pos_ds = ww_test_ds.filter(lambda x: ctx.searcher.search(x.transcription), clone=True)
+    print_stats('Test pos dataset', ctx, ww_test_pos_ds)
     ww_test_neg_ds = ww_test_ds.filter(lambda x: not ctx.searcher.search(x.transcription), clone=True)
+    print_stats('Test neg dataset', ctx, ww_test_neg_ds)
 
-    print_stats('Dev dataset', ctx, ww_dev_pos_ds, ww_dev_neg_ds)
-    print_stats('Test dataset', ctx, ww_test_pos_ds, ww_test_neg_ds)
     device = torch.device(SETTINGS.training.device)
     std_transform = StandardAudioTransform().to(device).eval()
     zmuv_transform = ZmuvTransform().to(device)

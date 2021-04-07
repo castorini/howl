@@ -3,7 +3,7 @@ from collections import Counter
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Generic, List, Mapping, Optional, TypeVar
+from typing import Generic, List, Mapping, Optional, Tuple, TypeVar
 
 import torch
 from pydantic import BaseModel
@@ -31,6 +31,8 @@ NEGATIVE_CLASS = '[NEGATIVE]'
 @dataclass
 class FrameLabelData:
     timestamp_label_map: Mapping[float, int]
+    start_timestamp: List[Tuple[int, float]]
+    char_indices: List[Tuple[int, List[int]]]
 
 
 @dataclass
@@ -158,7 +160,10 @@ class WakeWordClipExample(AudioClipExample[AudioClipMetadata]):
                             new: bool = False) -> 'WakeWordClipExample':
         ex = super().emplaced_audio_data(audio_data, scale, bias, new)
         label_data = {} if new else {scale * k + bias: v for k, v in self.label_data.timestamp_label_map.items()}
-        return WakeWordClipExample(FrameLabelData(label_data), ex.metadata, audio_data, self.sample_rate)
+        return WakeWordClipExample(FrameLabelData(label_data, self.label_data.start_timestamp, self.label_data.char_indices),
+                                   ex.metadata,
+                                   audio_data,
+                                   self.sample_rate)
 
 
 @dataclass
