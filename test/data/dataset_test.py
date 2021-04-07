@@ -10,6 +10,7 @@ from howl.settings import SETTINGS
 
 class TestDataset(AudioDataset[AudioClipMetadata]):
     """Sample dataset for testing"""
+    __test__ = False
 
     def __init__(self,
                  **kwargs):

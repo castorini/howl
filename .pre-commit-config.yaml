@@ -1,0 +1,34 @@
+exclude: |
+    (?x)(
+        ^data/ |
+        ^howl-models
+    )
+
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v3.3.0
+    hooks:
+    -   id: check-yaml
+    -   id: requirements-txt-fixer
+    -   id: end-of-file-fixer
+    -   id: trailing-whitespace
+    -   id: check-json
+    -   id: name-tests-test
+-   repo: https://github.com/timothycrosley/isort
+    rev: 5.2.0
+    hooks:
+    -   id: isort
+-   repo: https://github.com/psf/black
+    rev: 19.10b0
+    hooks:
+    -   id: black
+        args: [--line-length=120]
+-   repo: https://gitlab.com/pycqa/flake8
+    rev: 3.8.3
+    hooks:
+    -   id: flake8
+-   repo: https://github.com/pre-commit/mirrors-pylint
+    rev: v2.6.0
+    hooks:
+    -   id: pylint
+        files: src
