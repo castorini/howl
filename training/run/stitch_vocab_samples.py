@@ -64,7 +64,7 @@ def main():
     train_ds, dev_ds, test_ds = WakeWordDatasetLoader().load_splits(aligned_ds_path, **ds_kwargs)
 
     # stitch vocab samples
-    stitcher = WordStitcher(vocab=vocab, detect_keyword=args.disable_keyword_detection)
+    stitcher = WordStitcher(vocab=vocab, detect_keyword=args.disable_detect_keyword)
     stitcher.stitch(args.num_stitched_samples, stitched_ds_path, train_ds, dev_ds, test_ds)
 
     # split the stitched samples
