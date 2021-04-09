@@ -1,44 +1,49 @@
 import itertools
 import logging
-import re
 import time
-from typing import List
 
 import numpy as np
 import torch
 import torch.nn.functional as F
-from howl.data.searcher import LabelColoring
+
+from howl.context import InferenceContext
 from howl.data.transform import StandardAudioTransform, ZmuvTransform
 from howl.model import RegisteredModel
 from howl.settings import SETTINGS
 from howl.utils.audio import stride
 
-__all__ = ['FrameInferenceEngine',
-           'InferenceEngine',
-           'SequenceInferenceEngine']
+__all__ = ["FrameInferenceEngine", "InferenceEngine", "SequenceInferenceEngine"]
 
 
 class InferenceEngine:
-    def __init__(self,
-                 model: RegisteredModel,
-                 zmuv_transform: ZmuvTransform,
-                 negative_label: int,
-                 coloring: LabelColoring = None,
-                 time_provider=time.time):
+    def __init__(
+        self, model: RegisteredModel, zmuv_transform: ZmuvTransform, context: InferenceContext, time_provider=time.time
+    ):
+
         self.model = model
         self.zmuv = zmuv_transform
         self.std = StandardAudioTransform().eval()
         self.settings = SETTINGS.inference_engine
+        self.context = context
 
-        inference_weights = 1 if self.settings.inference_weights is None else np.array(self.settings.inference_weights)
-        self.inference_weights = inference_weights
-        self.negative_label = negative_label if coloring is None else coloring.color_map[negative_label]
+        self.inference_weights = 1
+        if self.settings.inference_weights:
+            pad_size = context.num_labels - len(self.settings.inference_weights)
+            self.inference_weights = np.pad(
+                self.settings.inference_weights, (0, pad_size), "constant", constant_values=1
+            )
+
+        self.coloring = context.coloring
+        self.negative_label = context.negative_label
+        if self.coloring:
+            self.negative_label = self.coloring.color_map[self.negative_label]
+
+        self.sample_rate = SETTINGS.audio.sample_rate
         self.threshold = self.settings.inference_threshold
         self.inference_window_ms = self.settings.inference_window_ms
         self.smoothing_window_ms = self.settings.smoothing_window_ms
         self.tolerance_window_ms = self.settings.tolerance_window_ms
         self.sequence = self.settings.inference_sequence
-        self.coloring = coloring
         self.time_provider = time_provider
         self.reset()
 
@@ -67,8 +72,9 @@ class InferenceEngine:
         if curr_time is None:
             curr_time = self.time_provider() * 1000
 
-        self.label_history = list(itertools.dropwhile(lambda x: curr_time - x[0] > self.inference_window_ms,
-                                                      self.label_history))  # drop entries that are old
+        self.label_history = list(
+            itertools.dropwhile(lambda x: curr_time - x[0] > self.inference_window_ms, self.label_history)
+        )  # drop entries that are old
 
         # finite state machine for detecting the sequence
         curr_label = None
@@ -96,11 +102,11 @@ class InferenceEngine:
                 last_valid_timestamp = 0
         return False
 
-    def _get_prediction(self,
-                        curr_time: float) -> int:
+    def _get_prediction(self, curr_time: float) -> int:
         # drop out-dated entries
-        self.pred_history = list(itertools.dropwhile(lambda x: curr_time -
-                                                     x[0] > self.smoothing_window_ms, self.pred_history))
+        self.pred_history = list(
+            itertools.dropwhile(lambda x: curr_time - x[0] > self.smoothing_window_ms, self.pred_history)
+        )
         lattice = np.vstack([t for _, t in self.pred_history])
         lattice_max = np.max(lattice, 0)
         max_label = lattice_max.argmax()
@@ -123,21 +129,17 @@ class InferenceEngine:
 
 
 class SequenceInferenceEngine(InferenceEngine):
-    def __init__(self,
-                 sample_rate: int,
-                 *args,
-                 blank_idx: int = 0,
-                 **kwargs):
-        super().__init__(*args, **kwargs)
-        self.blank_idx = blank_idx
-        self.sample_rate = sample_rate
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.blank_idx = self.context.blank_label
 
     @torch.no_grad()
     def infer(self, audio_data: torch.Tensor) -> bool:
         delta_ms = int(audio_data.size(-1) / self.sample_rate * 1000)
         self.std = self.std.to(audio_data.device)
-        scores = self.model(self.zmuv(self.std(audio_data.unsqueeze(0))),
-                            None)  # [num_frames x 1 (batch size) x num_labels]
+        scores = self.model(
+            self.zmuv(self.std(audio_data.unsqueeze(0))), None
+        )  # [num_frames x 1 (batch size) x num_labels]
         scores = F.softmax(scores, -1).squeeze(1)  # [num_frames x num_labels]
         sequence_present = False
         delta_ms /= len(scores)
@@ -146,7 +148,7 @@ class SequenceInferenceEngine(InferenceEngine):
             p = frame.cpu().numpy()
             p *= self.inference_weights
             p = p / p.sum()
-            logging.debug(([f'{x:.3f}' for x in p.tolist()], np.argmax(p)))
+            logging.debug(([f"{x:.3f}" for x in p.tolist()], np.argmax(p)))
             self.curr_time += delta_ms
             if np.argmax(p) == self.blank_idx:
                 continue
@@ -159,23 +161,14 @@ class SequenceInferenceEngine(InferenceEngine):
 
 
 class FrameInferenceEngine(InferenceEngine):
-    def __init__(self,
-                 max_window_size_ms,
-                 eval_stride_size_ms,
-                 sample_rate,
-                 *args,
-                 **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, max_window_size_ms: int, eval_stride_size_ms: int, *args):
+        super().__init__(*args)
         self.max_window_size_ms, self.eval_stride_size_ms = max_window_size_ms, eval_stride_size_ms
-        self.sample_rate = sample_rate
 
     @torch.no_grad()
     def infer(self, audio_data: torch.Tensor) -> bool:
         sequence_present = False
-        for window in stride(audio_data,
-                             self.max_window_size_ms,
-                             self.eval_stride_size_ms,
-                             self.sample_rate):
+        for window in stride(audio_data, self.max_window_size_ms, self.eval_stride_size_ms, self.sample_rate):
             if window.size(-1) < 1000:
                 break
             self.ingest_frame(window.squeeze(0), curr_time=self.curr_time)
@@ -186,10 +179,7 @@ class FrameInferenceEngine(InferenceEngine):
         return sequence_present
 
     @torch.no_grad()
-    def ingest_frame(self,
-                     x: torch.Tensor,
-                     lengths: torch.Tensor = None,
-                     curr_time: float = None) -> int:
+    def ingest_frame(self, x: torch.Tensor, lengths: torch.Tensor = None, curr_time: float = None) -> int:
         self.std = self.std.to(x.device)
         if lengths is None:
             lengths = torch.tensor([x.size(-1)]).to(x.device)
