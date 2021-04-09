@@ -3,8 +3,6 @@ Configuration file for loading pretrained models using PyTorch hub
 
 Usage example: torch.hub.load("castorini/howl", "hey_fire_fox")
 """
-dependencies = ['howl', 'torch']
-
 import os
 import pathlib
 import shutil
@@ -13,10 +11,17 @@ import zipfile
 
 import torch
 
-import howl.context as context
 import howl.data.transform as transform
 import howl.model as howl_model
-import howl.model.inference as inference
+from howl.context import InferenceContext
+from howl.model.inference import (
+    FrameInferenceEngine,
+    InferenceEngine,
+    SequenceInferenceEngine,
+)
+
+dependencies = ["howl", "torch"]
+
 
 _MODEL_URL = "https://github.com/castorini/howl-models/archive/v1.1.0.zip"
 _MODEL_CACHE_FOLDER = "howl-models"
@@ -28,8 +33,9 @@ def hey_fire_fox(pretrained=True, **kwargs):
     return engine, ctx
 
 
-def _load_model(pretrained: bool, model_name: str, workspace_path: str, **kwargs) \
-        -> typing.Tuple[inference.InferenceEngine, context.InferenceContext]:
+def _load_model(
+    pretrained: bool, model_name: str, workspace_path: str, **kwargs
+) -> typing.Tuple[InferenceEngine, InferenceContext]:
     """
     Loads howl model from a workspace
 
@@ -42,7 +48,7 @@ def _load_model(pretrained: bool, model_name: str, workspace_path: str, **kwargs
     """
 
     # Separate `reload_models` flag since PyTorch will pop the 'force_reload' flag
-    reload_models = kwargs.pop('reload_models', False)
+    reload_models = kwargs.pop("reload_models", False)
     cached_folder = _download_howl_models(reload_models)
     workspace_path = pathlib.Path(cached_folder) / workspace_path
     ws = howl_model.Workspace(workspace_path, delete_existing=False)
@@ -51,38 +57,31 @@ def _load_model(pretrained: bool, model_name: str, workspace_path: str, **kwargs
     settings = ws.load_settings()
 
     # Set up context
-    use_frame = settings.training.objective == 'frame'
-    ctx = context.InferenceContext(settings.training.vocab,
-                                   token_type=settings.training.token_type,
-                                   use_blank=not use_frame)
+    use_frame = settings.training.objective == "frame"
+    ctx = InferenceContext(settings.training.vocab, token_type=settings.training.token_type, use_blank=not use_frame)
 
     # Load models
     zmuv_transform = transform.ZmuvTransform()
-    model = howl_model.RegisteredModel.find_registered_class(
-        model_name)(ctx.num_labels).eval()
+    model = howl_model.RegisteredModel.find_registered_class(model_name)(ctx.num_labels).eval()
 
     # Load pretrained weights
     if pretrained:
-        zmuv_transform.load_state_dict(
-            torch.load(str(ws.path / 'zmuv.pt.bin')))
+        zmuv_transform.load_state_dict(torch.load(str(ws.path / "zmuv.pt.bin")))
         ws.load_model(model, best=True)
 
     # Load engine
     model.streaming()
     if use_frame:
-        engine = inference.FrameInferenceEngine(int(settings.training.max_window_size_seconds * 1000),
-                                                int(settings.training.eval_stride_size_seconds * 1000),
-                                                settings.audio.sample_rate,
-                                                model,
-                                                zmuv_transform,
-                                                negative_label=ctx.negative_label,
-                                                coloring=ctx.coloring)
+        engine = FrameInferenceEngine(
+            int(settings.training.max_window_size_seconds * 1000),
+            int(settings.training.eval_stride_size_seconds * 1000),
+            model,
+            zmuv_transform,
+            ctx,
+        )
     else:
-        engine = inference.FrameInferenceEngine(settings.audio.sample_rate,
-                                                model,
-                                                zmuv_transform,
-                                                negative_label=ctx.negative_label,
-                                                coloring=ctx.coloring)
+        engine = SequenceInferenceEngine(model, zmuv_transform, ctx)
+
     return engine, ctx
 
 
@@ -97,7 +96,7 @@ def _download_howl_models(reload_models: bool) -> str:
     """
 
     # Create base cache directory
-    base_dir = pathlib.Path.home() / '.cache/howl'
+    base_dir = pathlib.Path.home() / ".cache/howl"
     if not os.path.exists(base_dir):
         os.makedirs(base_dir)
     cached_folder = os.path.join(base_dir, _MODEL_CACHE_FOLDER)
@@ -106,7 +105,7 @@ def _download_howl_models(reload_models: bool) -> str:
     use_cache = (not reload_models) and os.path.exists(cached_folder)
     if not use_cache:
         # Clear cache
-        zip_path = os.path.join(base_dir, _MODEL_CACHE_FOLDER + '.zip')
+        zip_path = os.path.join(base_dir, _MODEL_CACHE_FOLDER + ".zip")
         _remove_files(cached_folder)
         _remove_files(zip_path)
 
