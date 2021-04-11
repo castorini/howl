@@ -127,7 +127,7 @@ class PhonePhrase:
             raise ValueError(f"query phrase has empty audible_phones: {query.audible_transcript}")
         self_len = len(self.audible_phones)
         for idx in range(start, self_len - query_len + 1):
-            if all(x == y for x, y in zip(query.audible_phones, self.audible_phones[idx : idx + query_len])):
+            if all(x == y for x, y in zip(query.audible_phones, self.audible_phones[idx: idx + query_len])):
                 return idx
         raise ValueError(f"query phrase is not found: {query.audible_transcript}")
 
