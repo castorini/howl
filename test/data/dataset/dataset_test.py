@@ -1,8 +1,13 @@
 import unittest
 
 import torch
-from howl.data.dataset import (AudioClipExample, AudioClipMetadata,
-                               AudioDataset, DatasetType)
+
+from howl.data.dataset import (
+    AudioClipExample,
+    AudioClipMetadata,
+    AudioDataset,
+    DatasetType,
+)
 from howl.data.searcher import WordTranscriptSearcher
 from howl.data.tokenize import Vocab
 from howl.settings import SETTINGS
@@ -10,23 +15,23 @@ from howl.settings import SETTINGS
 
 class TestDataset(AudioDataset[AudioClipMetadata]):
     """Sample dataset for testing"""
+
     __test__ = False
 
-    def __init__(self,
-                 **kwargs):
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
         self.sample_rate = SETTINGS.audio.sample_rate
 
         audio_data = torch.zeros(self.sample_rate)
 
-        metadata1 = AudioClipMetadata(transcription='hello world')
+        metadata1 = AudioClipMetadata(transcription="hello world")
         sample1 = AudioClipExample(metadata=metadata1, audio_data=audio_data, sample_rate=self.sample_rate)
 
-        metadata2 = AudioClipMetadata(transcription='happy new year')
+        metadata2 = AudioClipMetadata(transcription="happy new year")
         sample2 = AudioClipExample(metadata=metadata2, audio_data=audio_data, sample_rate=self.sample_rate)
 
-        metadata3 = AudioClipMetadata(transcription='what a beautiful world')
+        metadata3 = AudioClipMetadata(transcription="what a beautiful world")
         sample3 = AudioClipExample(metadata=metadata3, audio_data=audio_data, sample_rate=self.sample_rate)
 
         self.samples = [sample1, sample2, sample3]
@@ -39,7 +44,6 @@ class TestDataset(AudioDataset[AudioClipMetadata]):
 
 
 class TestAudioDataset(unittest.TestCase):
-
     def test_compute_statistics(self):
         """test compute statistics
         """
@@ -47,7 +51,7 @@ class TestAudioDataset(unittest.TestCase):
         SETTINGS.training.token_type = "word"
         SETTINGS.inference_engine.inference_sequence = [0, 1]
 
-        vocab = Vocab({"Hello": 0, "World": 1}, oov_token_id=2, oov_word_repr='<OOV>')
+        vocab = Vocab({"Hello": 0, "World": 1}, oov_token_id=2, oov_word_repr="<OOV>")
 
         searcher = WordTranscriptSearcher(vocab)
 
@@ -70,5 +74,5 @@ class TestAudioDataset(unittest.TestCase):
         self.assertEqual(stat.vocab_counts["World"], 2)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
