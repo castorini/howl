@@ -15,7 +15,7 @@ class TestPhonePhrase(unittest.TestCase):
     def test_idx_operations(self):
         """test idx conversions
         """
-        phone_phrase_str = " abc sil sp spn def sil "
+        phone_phrase_str = " abc sil sp spn def ghi sil "
         pp = PhonePhrase.from_string(phone_phrase_str)
 
         self.assertEqual(pp.all_idx_to_transcript_idx(0), 3)
@@ -24,21 +24,25 @@ class TestPhonePhrase(unittest.TestCase):
         self.assertEqual(pp.all_idx_to_transcript_idx(3), 14)
         self.assertEqual(pp.all_idx_to_transcript_idx(4), 18)
         self.assertEqual(pp.all_idx_to_transcript_idx(5), 22)
-        self.assertRaises(ValueError, pp.all_idx_to_transcript_idx, 6)
+        self.assertEqual(pp.all_idx_to_transcript_idx(6), 26)
+        self.assertRaises(ValueError, pp.all_idx_to_transcript_idx, 7)
 
         abc_pp = PhonePhrase.from_string("abc")
         def_pp = PhonePhrase.from_string("def")
-        ghi_pp = PhonePhrase.from_string("ghi")
+        def_ghi_pp = PhonePhrase.from_string("def ghi")
+        jki_pp = PhonePhrase.from_string("jki")
         sil_pp = PhonePhrase.from_string("sil")
 
         self.assertEqual(pp.audible_index(abc_pp), 0)
         self.assertEqual(pp.audible_index(def_pp), 1)
-        self.assertRaises(ValueError, pp.audible_index, ghi_pp)
+        self.assertEqual(pp.audible_index(def_ghi_pp), 1)
+        self.assertRaises(ValueError, pp.audible_index, jki_pp)
         self.assertRaises(ValueError, pp.audible_index, sil_pp)
 
         self.assertEqual(pp.audible_idx_to_all_idx(0), 0)
         self.assertEqual(pp.audible_idx_to_all_idx(1), 4)
-        self.assertRaises(ValueError, pp.audible_idx_to_all_idx, 2)
+        self.assertEqual(pp.audible_idx_to_all_idx(2), 5)
+        self.assertRaises(ValueError, pp.audible_idx_to_all_idx, 3)
 
 
 class TestPronounciationDictionary(unittest.TestCase):

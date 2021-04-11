@@ -56,12 +56,43 @@ class PhonePhrase:
         return " ".join(x.text for x in self.phones)
 
     def all_idx_to_transcript_idx(self, phone_idx: int) -> int:
+        """get index based on transcription for the given phone_idx
+
+        pp = PhonePhrase.from_string("abc def ghi")
+        pp.all_idx_to_transcript_idx(0) # 3 - where the first phone (abc) finishes
+        pp.all_idx_to_transcript_idx(1) # 7 - where the second phone (def) finishes
+        pp.all_idx_to_transcript_idx(2) # 11 - where the third phone (ghi) finishes
+
+        Args:
+            phone_idx (int): target phone idx
+
+        Raises:
+            ValueError: if phone idx is out of bound
+
+        Returns:
+            int: transcription idx where the phone at the given phone_idx finishes
+        """
         if phone_idx >= len(self.phones):
             raise ValueError(f"Given phone idx ({phone_idx}) is greater than the number of phones ({len(self.phones)})")
         all_idx_without_space = sum(map(len, [phone.text for phone in self.phones[: phone_idx + 1]]))
         return all_idx_without_space + phone_idx  # add phone_idx for spaces between phones
 
     def audible_idx_to_all_idx(self, audible_idx: int) -> int:
+        """convert given audible index to phone index including all non speech phones
+
+        pp = PhonePhrase.from_string("abc sil ghi")
+        pp.audible_idx_to_all_idx(0) # 0 - where the first audible phone (abc) is located in the whole phrase
+        pp.audible_idx_to_all_idx(1) # 2 - where the second audible phone (abc) is located in the whole phrase
+
+        Args:
+            audible_idx (int): audible phone index to convert
+
+        Raises:
+            ValueError: if audible phone index is out of bound
+
+        Returns:
+            int: the index of the audible phone in the whole phrase
+        """
         if audible_idx >= len(self.audible_phones):
             raise ValueError(
                 f"Given audible phone idx ({audible_idx}) is greater than"
@@ -73,15 +104,32 @@ class PhonePhrase:
                 offset += 1
         return offset + audible_idx
 
-    def audible_index(self, item: "PhonePhrase", start: int = 0):
-        item_len = len(item.audible_phones)
-        if item_len == 0:
-            raise ValueError(f"query phrase has empty audible_phones: {item.audible_transcript}")
+    def audible_index(self, query: "PhonePhrase", start: int = 0) -> int:
+        """find the starting audible index of the given phrase in the current phrase
+
+        pp = PhonePhrase.from_string("abc sil ghi")
+        ghi_pp = PhonePhrase.from_string("ghi")
+        pp.audible_index(ghi_pp, 0) # 1 - audible index of the query phone (ghi)
+
+        Args:
+            query (PhonePhrase): phone phrase to be searched
+            start (int, optional): starting index in the whole phrase. Defaults to 0.
+
+        Raises:
+            ValueError: when the query phone phrase does not contain any phone
+            ValueError: when the query phone phrase is not found
+
+        Returns:
+            int: audible index of the query phone phase
+        """
+        query_len = len(query.audible_phones)
+        if query_len == 0:
+            raise ValueError(f"query phrase has empty audible_phones: {query.audible_transcript}")
         self_len = len(self.audible_phones)
-        for idx in range(start, self_len - item_len + 1):
-            if all(x == y for x, y in zip(item.audible_phones, self.audible_phones[idx : idx + item_len])):
+        for idx in range(start, self_len - query_len + 1):
+            if all(x == y for x, y in zip(query.audible_phones, self.audible_phones[idx : idx + query_len])):
                 return idx
-        raise ValueError(f"query phrase is not found: {item.audible_transcript}")
+        raise ValueError(f"query phrase is not found: {query.audible_transcript}")
 
 
 class PronunciationDictionary:
