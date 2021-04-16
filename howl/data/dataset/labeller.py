@@ -1,15 +1,11 @@
-
-from dataclasses import dataclass
 from typing import List
 
-from howl.data.dataset.phone import PhonePhrase
+from howl.data.dataset.phone import PhonePhrase, PronunciationDictionary
 from howl.data.tokenize import Vocab
 
 from .base import AudioClipMetadata, FrameLabelData
 
-__all__ = ['FrameLabeler',
-           'WordFrameLabeler',
-           'PhoneticFrameLabeler']
+__all__ = ["FrameLabeler", "WordFrameLabeler", "PhoneticFrameLabeler"]
 
 
 class FrameLabeler:
@@ -18,12 +14,17 @@ class FrameLabeler:
 
 
 class PhoneticFrameLabeler(FrameLabeler):
-    def __init__(self, phrases: List[PhonePhrase]):
+    def __init__(self, pronounce_dict: PronunciationDictionary, phrases: List[PhonePhrase]):
+        self.pronounce_dict = pronounce_dict
         self.phrases = phrases
 
     def compute_frame_labels(self, metadata: AudioClipMetadata) -> FrameLabelData:
         frame_labels = dict()
+        start_timestamp = []
+        char_indices = []
+
         start = 0
+        # TODO:: must be pronounciation instead of the transcription
         pp = PhonePhrase.from_string(metadata.transcription)
         for idx, phrase in enumerate(self.phrases):
             while True:
@@ -35,7 +36,8 @@ class PhoneticFrameLabeler(FrameLabeler):
                 start = pp.all_idx_to_transcript_idx(pp.audible_idx_to_all_idx(start))
                 frame_labels[metadata.end_timestamps[start + len(str(phrase)) - 1]] = idx
                 start += 1
-        return FrameLabelData(frame_labels)
+
+        return FrameLabelData(frame_labels, start_timestamp, char_indices)
 
 
 class WordFrameLabeler(FrameLabeler):
@@ -45,8 +47,8 @@ class WordFrameLabeler(FrameLabeler):
 
     def compute_frame_labels(self, metadata: AudioClipMetadata) -> FrameLabelData:
         frame_labels = dict()
-        char_indices = []
         start_timestamp = []
+        char_indices = []
 
         char_idx = 0
         for word in metadata.transcription.split():
@@ -59,7 +61,7 @@ class WordFrameLabeler(FrameLabeler):
                 end_timestamp = metadata.end_timestamps[char_idx + word_size - 1]
                 frame_labels[end_timestamp] = label
                 char_indices.append((label, list(range(char_idx, char_idx + word_size))))
-                start_timestamp.append((label, metadata.end_timestamps[char_idx-1] if char_idx > 0 else 0.0))
+                start_timestamp.append((label, metadata.end_timestamps[char_idx - 1] if char_idx > 0 else 0.0))
 
             char_idx += word_size + 1  # space
 

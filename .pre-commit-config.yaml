@@ -28,7 +28,9 @@ repos:
     rev: 3.8.3
     hooks:
     -   id: flake8
-        args: [--max-line-length=120]
+        args:
+        - --max-line-length=120
+        - --ignore=E203
 -   repo: https://github.com/pre-commit/mirrors-pylint
     rev: v2.6.0
     hooks:
