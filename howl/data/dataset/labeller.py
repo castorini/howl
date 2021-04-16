@@ -39,6 +39,27 @@ class PhoneticFrameLabeler(FrameLabeler):
 
         return FrameLabelData(frame_labels, start_timestamp, char_indices)
 
+    # def compute_frame_labels(self, metadata: AudioClipMetadata) -> FrameLabelData:
+    #     frame_labels = dict()
+    #     char_indices = []
+    #     start_timestamp = []
+
+    #     for original_word in metadata.transcription.split():
+    #         print(f'word {original_word}')
+    #         word = original_word
+    #         prev_word_len = -1
+    #         current_word_len = len(word)
+    #         while prev_word_len != current_word_len and current_word_len > 0:
+    #             idx = 1
+    #             while word[:idx] in self.pronounce_dict:
+    #                 idx += 1
+    #             print(f"word {word[:idx]} - {self.pronounce_dict.encode(word[:idx])}")
+    #             word = word[idx:]
+    #             prev_word_len = current_word_len
+    #             current_word_len = len(word)
+
+    #     return FrameLabelData(frame_labels, start_timestamp, char_indices)
+
 
 class WordFrameLabeler(FrameLabeler):
     def __init__(self, vocab: Vocab, ceil_word_boundary: bool = False):
