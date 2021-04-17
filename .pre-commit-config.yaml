@@ -1,7 +1,8 @@
 exclude: |
     (?x)(
         ^data/ |
-        ^howl-models
+        ^howl-models |
+        ^.github/
     )
 
 repos:
