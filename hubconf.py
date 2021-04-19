@@ -34,7 +34,7 @@ def hey_fire_fox(pretrained=True, **kwargs):
 
 
 def _load_model(
-    pretrained: bool, model_name: str, workspace_path: str, **kwargs
+    pretrained: bool, model_name: str, workspace_path: str, device: str, **kwargs
 ) -> typing.Tuple[InferenceEngine, InferenceContext]:
     """
     Loads howl model from a workspace
@@ -66,7 +66,7 @@ def _load_model(
 
     # Load pretrained weights
     if pretrained:
-        zmuv_transform.load_state_dict(torch.load(str(ws.path / "zmuv.pt.bin")))
+        zmuv_transform.load_state_dict(torch.load(str(ws.path / "zmuv.pt.bin"), map_location=torch.device(device)))
         ws.load_model(model, best=True)
 
     # Load engine
