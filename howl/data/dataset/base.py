@@ -10,22 +10,24 @@ from pydantic import BaseModel
 
 from .phone import Phone, PhonePhrase
 
-__all__ = ['AudioClipExample',
-           'AudioClipMetadata',
-           'AudioDatasetStatistics',
-           'ClassificationBatch',
-           'ClassificationClipExample',
-           'DatasetType',
-           'EmplacableExample',
-           'WakeWordClipExample',
-           'SequenceBatch',
-           'FrameLabelData',
-           'UNKNOWN_TRANSCRIPTION',
-           'NEGATIVE_CLASS']
+__all__ = [
+    "AudioClipExample",
+    "AudioClipMetadata",
+    "AudioDatasetStatistics",
+    "ClassificationBatch",
+    "ClassificationClipExample",
+    "DatasetType",
+    "EmplacableExample",
+    "WakeWordClipExample",
+    "SequenceBatch",
+    "FrameLabelData",
+    "UNKNOWN_TRANSCRIPTION",
+    "NEGATIVE_CLASS",
+]
 
 
-UNKNOWN_TRANSCRIPTION = '[UNKNOWN]'
-NEGATIVE_CLASS = '[NEGATIVE]'
+UNKNOWN_TRANSCRIPTION = "[UNKNOWN]"
+NEGATIVE_CLASS = "[NEGATIVE]"
 
 
 @dataclass
@@ -43,17 +45,18 @@ class AudioDatasetStatistics:
 
 
 class AudioClipMetadata(BaseModel):
-    path: Optional[Path] = Path('.')
+    path: Optional[Path] = Path(".")
     phone_strings: Optional[List[str]]
     words: Optional[List[str]]
     phone_end_timestamps: Optional[List[float]]
     word_end_timestamps: Optional[List[float]]
     end_timestamps: Optional[List[float]]  # TODO: remove, backwards compat right now
-    transcription: Optional[str] = ''
+    transcription: Optional[str] = ""
 
+    # TODO:: id should be an explicit varible in order to support datasets creation with the audio data in memory
     @property
     def audio_id(self) -> str:
-        return self.path.name.split('.', 1)[0]
+        return self.path.name.split(".", 1)[0]
 
     @property
     def phone_phrase(self) -> Optional[PhonePhrase]:
@@ -63,15 +66,13 @@ class AudioClipMetadata(BaseModel):
 class EmplacableExample:
     audio_data: torch.Tensor
 
-    def emplaced_audio_data(self,
-                            audio_data: torch.Tensor,
-                            scale: float = 1,
-                            bias: float = 0,
-                            new: bool = False) -> 'EmplacableExample':
+    def emplaced_audio_data(
+        self, audio_data: torch.Tensor, scale: float = 1, bias: float = 0, new: bool = False
+    ) -> "EmplacableExample":
         raise NotImplementedError
 
 
-T = TypeVar('T', bound=AudioClipMetadata)
+T = TypeVar("T", bound=AudioClipMetadata)
 
 
 class AudioClipExample(EmplacableExample, Generic[T]):
@@ -83,15 +84,13 @@ class AudioClipExample(EmplacableExample, Generic[T]):
     def pin_memory(self):
         self.audio_data.pin_memory()
 
-    def emplaced_audio_data(self,
-                            audio_data: torch.Tensor,
-                            scale: float = 1,
-                            bias: float = 0,
-                            new: bool = False) -> 'AudioClipExample':
+    def emplaced_audio_data(
+        self, audio_data: torch.Tensor, scale: float = 1, bias: float = 0, new: bool = False
+    ) -> "AudioClipExample":
         metadata = self.metadata
         if new:
             metadata = deepcopy(metadata)
-            metadata.transcription = ''
+            metadata.transcription = ""
         return AudioClipExample(metadata, audio_data, self.sample_rate)
 
 
@@ -102,7 +101,7 @@ class ClassificationBatch:
     lengths: torch.Tensor
 
     @classmethod
-    def from_single(cls, audio_clip: torch.Tensor, label: int) -> 'ClassificationBatch':
+    def from_single(cls, audio_clip: torch.Tensor, label: int) -> "ClassificationBatch":
         return cls(audio_clip.unsqueeze(0), torch.tensor([label]), torch.tensor([audio_clip.size(-1)]))
 
     def pin_memory(self):
@@ -110,7 +109,7 @@ class ClassificationBatch:
         self.labels.pin_memory()
         self.lengths.pin_memory()
 
-    def to(self, device: torch.device) -> 'ClassificationBatch':
+    def to(self, device: torch.device) -> "ClassificationBatch":
         self.audio_data = self.audio_data.to(device)
         if self.labels is not None:
             self.labels = self.labels.to(device)
@@ -139,7 +138,7 @@ class SequenceBatch:
         self.audio_lengths.pin_memory()
         self.label_lengths.pin_memory()
 
-    def to(self, device: torch.device) -> 'SequenceBatch':
+    def to(self, device: torch.device) -> "SequenceBatch":
         self.audio_data = self.audio_data.to(device)
         self.labels = self.labels.to(device)
         self.audio_lengths = self.audio_lengths.to(device)
@@ -153,17 +152,17 @@ class WakeWordClipExample(AudioClipExample[AudioClipMetadata]):
         super().__init__(*args, **kwargs)
         self.label_data = label_data
 
-    def emplaced_audio_data(self,
-                            audio_data: torch.Tensor,
-                            scale: float = 1,
-                            bias: float = 0,
-                            new: bool = False) -> 'WakeWordClipExample':
+    def emplaced_audio_data(
+        self, audio_data: torch.Tensor, scale: float = 1, bias: float = 0, new: bool = False
+    ) -> "WakeWordClipExample":
         ex = super().emplaced_audio_data(audio_data, scale, bias, new)
         label_data = {} if new else {scale * k + bias: v for k, v in self.label_data.timestamp_label_map.items()}
-        return WakeWordClipExample(FrameLabelData(label_data, self.label_data.start_timestamp, self.label_data.char_indices),
-                                   ex.metadata,
-                                   audio_data,
-                                   self.sample_rate)
+        return WakeWordClipExample(
+            FrameLabelData(label_data, self.label_data.start_timestamp, self.label_data.char_indices),
+            ex.metadata,
+            audio_data,
+            self.sample_rate,
+        )
 
 
 @dataclass
@@ -172,7 +171,7 @@ class ClassificationClipExample(AudioClipExample[AudioClipMetadata]):
         super().__init__(*args, **kwargs)
         self.label = label
 
-    def emplaced_audio_data(self, audio_data: torch.Tensor, **kwargs) -> 'ClassificationClipExample':
+    def emplaced_audio_data(self, audio_data: torch.Tensor, **kwargs) -> "ClassificationClipExample":
         return ClassificationClipExample(self.label, self.metadata, audio_data, self.sample_rate)
 
 
