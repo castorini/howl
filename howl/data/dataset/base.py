@@ -53,7 +53,7 @@ class AudioClipMetadata(BaseModel):
     end_timestamps: Optional[List[float]]  # TODO: remove, backwards compat right now
     transcription: Optional[str] = ""
 
-    # TODO:: id should be an explicit varible in order to support datasets creation with the audio data in memory
+    # TODO:: id should be an explicit variable in order to support datasets creation with the audio data in memory
     @property
     def audio_id(self) -> str:
         return self.path.name.split(".", 1)[0]
