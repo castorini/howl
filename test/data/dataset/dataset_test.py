@@ -21,18 +21,16 @@ class TestDataset(AudioDataset[AudioClipMetadata]):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self.sample_rate = SETTINGS.audio.sample_rate
-
-        audio_data = torch.zeros(self.sample_rate)
+        audio_data = torch.zeros(self.sr)
 
         metadata1 = AudioClipMetadata(transcription="hello world")
-        sample1 = AudioClipExample(metadata=metadata1, audio_data=audio_data, sample_rate=self.sample_rate)
+        sample1 = AudioClipExample(metadata=metadata1, audio_data=audio_data, sample_rate=self.sr)
 
         metadata2 = AudioClipMetadata(transcription="happy new year")
-        sample2 = AudioClipExample(metadata=metadata2, audio_data=audio_data, sample_rate=self.sample_rate)
+        sample2 = AudioClipExample(metadata=metadata2, audio_data=audio_data, sample_rate=self.sr)
 
         metadata3 = AudioClipMetadata(transcription="what a beautiful world")
-        sample3 = AudioClipExample(metadata=metadata3, audio_data=audio_data, sample_rate=self.sample_rate)
+        sample3 = AudioClipExample(metadata=metadata3, audio_data=audio_data, sample_rate=self.sr)
 
         self.samples = [sample1, sample2, sample3]
 
