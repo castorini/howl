@@ -1,6 +1,7 @@
+import string
 from typing import List
 
-from howl.data.dataset.phone import PhonePhrase, PronunciationDictionary
+from howl.data.dataset.phone import PhoneEnum, PhonePhrase, PronunciationDictionary
 from howl.data.tokenize import Vocab
 
 from .base import AudioClipMetadata, FrameLabelData
@@ -17,48 +18,108 @@ class PhoneticFrameLabeler(FrameLabeler):
     def __init__(self, pronounce_dict: PronunciationDictionary, phrases: List[PhonePhrase]):
         self.pronounce_dict = pronounce_dict
         self.phrases = phrases
-
-    def compute_frame_labels(self, metadata: AudioClipMetadata) -> FrameLabelData:
-        frame_labels = dict()
-        start_timestamp = []
-        char_indices = []
-
-        start = 0
-        # TODO:: must be pronounciation instead of the transcription
-        pp = PhonePhrase.from_string(metadata.transcription)
-        for idx, phrase in enumerate(self.phrases):
-            while True:
-                try:
-                    start = pp.audible_index(phrase, start)
-                except ValueError:
-                    break
-                # TODO: make alignment to token instead of character
-                start = pp.all_idx_to_transcript_idx(pp.audible_idx_to_all_idx(start))
-                frame_labels[metadata.end_timestamps[start + len(str(phrase)) - 1]] = idx
-                start += 1
-
-        return FrameLabelData(frame_labels, start_timestamp, char_indices)
+        punctuation_to_replace = str.maketrans(
+            {"‘": "'", "’": "'", "”": '"', "“": '"', "—": "-", "ä": "a", "ö": "o", "ō": "o", "é": "e", "à": "a"}
+        )
+        punctuation_to_remove = str.maketrans({key: None for key in string.punctuation})
+        # First transformation is None because we want to process the original word first
+        self.punctuation_transforms = [None, punctuation_to_replace, punctuation_to_remove]
 
     # def compute_frame_labels(self, metadata: AudioClipMetadata) -> FrameLabelData:
     #     frame_labels = dict()
-    #     char_indices = []
     #     start_timestamp = []
+    #     char_indices = []
 
-    #     for original_word in metadata.transcription.split():
-    #         print(f'word {original_word}')
-    #         word = original_word
-    #         prev_word_len = -1
-    #         current_word_len = len(word)
-    #         while prev_word_len != current_word_len and current_word_len > 0:
-    #             idx = 1
-    #             while word[:idx] in self.pronounce_dict:
-    #                 idx += 1
-    #             print(f"word {word[:idx]} - {self.pronounce_dict.encode(word[:idx])}")
-    #             word = word[idx:]
-    #             prev_word_len = current_word_len
-    #             current_word_len = len(word)
+    #     start = 0
+    #     # TODO:: must be pronounciation instead of the transcription
+    #     pp = PhonePhrase.from_string(metadata.transcription)
+    #     for idx, phrase in enumerate(self.phrases):
+    #         while True:
+    #             try:
+    #                 start = pp.audible_index(phrase, start)
+    #             except ValueError:
+    #                 break
+    #             # TODO: make alignment to token instead of character
+    #             start = pp.all_idx_to_transcript_idx(pp.audible_idx_to_all_idx(start))
+    #             frame_labels[metadata.end_timestamps[start + len(str(phrase)) - 1]] = idx
+    #             start += 1
 
     #     return FrameLabelData(frame_labels, start_timestamp, char_indices)
+
+    def transform(self, original_word: str) -> List[PhonePhrase]:
+        """Transform the word into list of PhonePhrase
+
+        TODO:
+        the function attempts to find list of the longest phone phrase sequences
+        However, this is not ideal for some edge cases.
+        for example, let's say helloworld might be broken into [hellow, or, ld]
+        while [hello, world] would be the most appropriate breakdown
+
+        Args:
+            original_word (str): word to transform
+
+        Raises:
+            ValueError: if the word cannot be broken down to phonemes
+
+        Returns:
+            List[PhonePhrase]: list of phone phrases for the given word
+        """
+        phrases = []
+        word = original_word
+        idx = len(word)
+        while idx > 0:
+            while word[:idx] not in self.pronounce_dict and idx > 0:
+                idx -= 1
+            phrase = None
+            try:
+                phrase = self.pronounce_dict.encode(word[:idx])
+                phrases.append(phrase)
+            except ValueError:
+                if word == "<unk>":
+                    phrase = PhonePhrase.from_string(PhoneEnum.SPEECH_UNKNOWN.value)
+                    idx = -1
+                    phrases.append(phrase)
+                    continue
+                else:
+                    raise ValueError(
+                        f"word {word} ({original_word}) does not have corresponding phoneme representation"
+                    )
+
+            word = word[idx:]
+            idx = len(word)
+
+        return phrases
+
+    def compute_frame_labels(self, metadata: AudioClipMetadata) -> FrameLabelData:
+        frame_labels = dict()
+        char_indices = []
+        start_timestamp = []
+
+        phonetic_transcription = []
+
+        # breaking down each word into PhonePhrase
+        for original_word in metadata.transcription.split():
+            # if transformation fails, it might be due to some invalid characters
+            # in this case, we change the character to the other appropriate character
+            phrases = None
+            for punctuation_transform in self.punctuation_transforms:
+                if punctuation_transform is not None:
+                    original_word = original_word.translate(punctuation_transform)
+                    if len(original_word) == 0:
+                        break
+                try:
+                    phrases = self.transform(original_word)
+                    break
+                except ValueError:
+                    pass
+
+            if phrases:
+                phonetic_transcription.extend(phrases)
+            elif len(original_word) > 0:
+                print(f"Failed to find phonemes for {original_word} {[ord(c) for c in original_word]}")
+
+        # TODO: process phonetic_transcription to compute valid FrameLabelData
+        return FrameLabelData(frame_labels, start_timestamp, char_indices)
 
 
 class WordFrameLabeler(FrameLabeler):

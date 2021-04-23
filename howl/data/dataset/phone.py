@@ -154,7 +154,7 @@ class PronunciationDictionary:
             for line in f:
                 if line.startswith(";"):
                     continue
-                word, pronunciation = line.split(" ", 1)
+                word, pronunciation = line.split(maxsplit=1)
                 if len(word) == 0 or len(pronunciation) == 0:
                     continue
                 data[word.lower()].append(PhonePhrase.from_string(pronunciation.strip().lower()))
