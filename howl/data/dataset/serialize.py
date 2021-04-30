@@ -11,18 +11,18 @@ import pandas as pd
 import soundfile
 from tqdm import tqdm
 
-from howl.registered import RegisteredObjectBase
-from howl.utils.audio import silent_load
-from howl.utils.hash import sha256_int
-from howl.utils.transcribe import SpeechToText
-
-from .base import UNKNOWN_TRANSCRIPTION, AudioClipMetadata, DatasetType
-from .dataset import (
+from howl.core.metadata import UNKNOWN_TRANSCRIPTION, AudioClipMetadata
+from howl.data.dataset.dataset import (
     AudioClassificationDataset,
     AudioClipDataset,
     AudioDataset,
+    DatasetType,
     WakeWordDataset,
 )
+from howl.utils.audio import silent_load
+from howl.utils.class_registry import ClassRegistry
+from howl.utils.hash import sha256_int
+from howl.utils.transcribe import SpeechToText
 
 __all__ = [
     "AudioDatasetWriter",
@@ -99,7 +99,7 @@ class PathDatasetLoader:
         raise NotImplementedError
 
 
-class RegisteredPathDatasetLoader(PathDatasetLoader, RegisteredObjectBase):
+class RegisteredPathDatasetLoader(PathDatasetLoader, ClassRegistry):
     registered_map = {}
 
 

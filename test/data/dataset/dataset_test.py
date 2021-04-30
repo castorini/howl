@@ -2,14 +2,11 @@ import unittest
 
 import torch
 
-from howl.data.dataset import (
-    AudioClipExample,
-    AudioClipMetadata,
-    AudioDataset,
-    DatasetType,
-)
+from howl.core.metadata import AudioClipMetadata
+from howl.core.vocab import Vocab
+from howl.data.dataset.dataset import AudioDataset, DatasetType
+from howl.data.dataset.example import AudioClipExample
 from howl.data.searcher import WordTranscriptSearcher
-from howl.data.tokenize import Vocab
 from howl.settings import SETTINGS
 
 

@@ -1,13 +1,10 @@
 import argparse
 from pathlib import Path
 
-from howl.data.dataset import (
-    AudioDatasetWriter,
-    WakeWordDatasetLoader,
-    WordFrameLabeler,
-)
+from howl.core.vocab import Vocab
+from howl.data.dataset import AudioDatasetWriter, WakeWordDatasetLoader
+from howl.data.labeler import WordFrameLabeler
 from howl.data.stitcher import WordStitcher
-from howl.data.tokenize import Vocab
 from howl.settings import SETTINGS
 
 """Using aligned dataset, generate wakeword samples by stitching vocab samples

@@ -16,7 +16,7 @@ from howl.data.dataset import (
     WakeWordDataset,
     WakeWordDatasetLoader,
 )
-from howl.data.tokenize import WakeWordTokenizer
+from howl.data.tokenizer import WakeWordTokenizer
 from howl.data.transform import (
     AudioSequenceBatchifier,
     DatasetMixer,

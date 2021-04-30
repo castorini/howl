@@ -4,14 +4,13 @@ from collections import defaultdict
 from typing import List
 
 import numpy as np
-from howl.data.dataset.phone import PhonePhrase
-from howl.data.tokenize import Vocab, WakeWordTokenizer
+
+from howl.core.phone import PhonePhrase
+from howl.core.vocab import Vocab
+from howl.data.tokenizer import WakeWordTokenizer
 from howl.settings import SETTINGS
 
-__all__ = ['LabelColoring',
-           'PhoneticTranscriptSearcher',
-           'TranscriptSearcher',
-           'WordTranscriptSearcher']
+__all__ = ["LabelColoring", "PhoneticTranscriptSearcher", "TranscriptSearcher", "WordTranscriptSearcher"]
 
 
 class LabelColoring:
@@ -63,7 +62,7 @@ class WordTranscriptSearcher(TranscriptSearcher):
         super().__init__(**kwargs)
         self.vocab = vocab
         self.tokenizer = WakeWordTokenizer(self.vocab, False)
-        self.inference_sequence_str = ''.join(map(str, self.settings.inference_sequence))
+        self.inference_sequence_str = "".join(map(str, self.settings.inference_sequence))
         # self.wakeword = self.vocab.decode(self.settings.inference_sequence)
 
     def search(self, item: str) -> bool:
@@ -74,7 +73,7 @@ class WordTranscriptSearcher(TranscriptSearcher):
             bool: true if wakeword is in the item
         """
         encoded_output = self.tokenizer.encode(item)
-        encoded_str = ''.join(map(str, encoded_output))
+        encoded_str = "".join(map(str, encoded_output))
         return self.inference_sequence_str in encoded_str
 
     def contains_any(self, item: str) -> bool:
@@ -115,10 +114,10 @@ class PhoneticTranscriptSearcher(TranscriptSearcher):
             buckets[color].append(transcript)
         pattern_strings = []
         for _, transcripts in sorted(buckets.items(), key=lambda x: x[0]):
-            pattern_strings.append('(' + '|'.join(f'({x})' for x in transcripts) + ')')
+            pattern_strings.append("(" + "|".join(f"({x})" for x in transcripts) + ")")
         pattern_strings = np.array(pattern_strings)[self.settings.inference_sequence]
-        pattern_str = '^.*' + ' '.join(pattern_strings) + '.*$'
-        logging.info(f'Using search pattern {pattern_str}')
+        pattern_str = "^.*" + " ".join(pattern_strings) + ".*$"
+        logging.info(f"Using search pattern {pattern_str}")
         self.pattern = re.compile(pattern_str)
 
     def search(self, item: str) -> bool:

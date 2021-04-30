@@ -1,17 +1,16 @@
 import unittest
 
-from howl.data.tokenize import Vocab
+from howl.core.vocab import Vocab
 from howl.data.searcher import WordTranscriptSearcher
 from howl.settings import SETTINGS
 
 
 class TestWordTranscriptSearcher(unittest.TestCase):
-
     def test_search(self):
         """test search
         """
         SETTINGS.inference_engine.inference_sequence = [0, 1]
-        vocab = Vocab({"hello": 0, "world": 1}, oov_token_id=2, oov_word_repr='<OOV>')
+        vocab = Vocab({"hello": 0, "world": 1}, oov_token_id=2, oov_word_repr="<OOV>")
         tokenizer = WordTranscriptSearcher(vocab)
 
         self.assertTrue(tokenizer.search("hello world"))
@@ -23,7 +22,7 @@ class TestWordTranscriptSearcher(unittest.TestCase):
         """test contains_any
         """
         SETTINGS.inference_engine.inference_sequence = [0, 1]
-        vocab = Vocab({"hello": 0, "world": 1}, oov_token_id=2, oov_word_repr='<OOV>')
+        vocab = Vocab({"hello": 0, "world": 1}, oov_token_id=2, oov_word_repr="<OOV>")
         tokenizer = WordTranscriptSearcher(vocab)
 
         self.assertTrue(tokenizer.contains_any("hello world"))
@@ -35,7 +34,7 @@ class TestWordTranscriptSearcher(unittest.TestCase):
         """test count_vocab
         """
         SETTINGS.inference_engine.inference_sequence = [0, 1]
-        vocab = Vocab({"Hello": 0, "World": 1}, oov_token_id=2, oov_word_repr='<OOV>')
+        vocab = Vocab({"Hello": 0, "World": 1}, oov_token_id=2, oov_word_repr="<OOV>")
         tokenizer = WordTranscriptSearcher(vocab)
 
         # test string with valid vocabs
@@ -57,5 +56,5 @@ class TestWordTranscriptSearcher(unittest.TestCase):
         self.assertEqual(counter["World"], 0)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

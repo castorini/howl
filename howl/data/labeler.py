@@ -1,10 +1,10 @@
 import string
 from typing import List
 
-from howl.data.dataset.phone import PhoneEnum, PhonePhrase, PronunciationDictionary
-from howl.data.tokenize import Vocab
-
-from .base import AudioClipMetadata, FrameLabelData
+from howl.core.frame import FrameLabelData
+from howl.core.metadata import AudioClipMetadata
+from howl.core.phone import PhoneEnum, PhonePhrase, PronunciationDictionary
+from howl.core.vocab import Vocab
 
 __all__ = ["FrameLabeler", "WordFrameLabeler", "PhoneticFrameLabeler"]
 

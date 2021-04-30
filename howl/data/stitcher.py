@@ -7,14 +7,10 @@ import soundfile
 import torch
 from tqdm import tqdm
 
-from howl.data.dataset import (
-    AudioClipDataset,
-    AudioClipExample,
-    AudioClipMetadata,
-    AudioDataset,
-    DatasetType,
-)
-from howl.data.tokenize import Vocab
+from howl.core.metadata import AudioClipMetadata
+from howl.core.vocab import Vocab
+from howl.data.dataset.dataset import AudioClipDataset, AudioDataset, DatasetType
+from howl.data.dataset.example import AudioClipExample
 from howl.settings import SETTINGS
 from howl.utils.sphinx_keyword_detector import SphinxKeywordDetector
 

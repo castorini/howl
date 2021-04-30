@@ -5,13 +5,10 @@ from pathlib import Path
 import pytest
 import torch
 
-from howl.data.dataset import (
-    AudioClipDataset,
-    AudioClipExample,
-    AudioClipMetadata,
-    AudioDatasetWriter,
-    DatasetType,
-)
+from howl.core.metadata import AudioClipMetadata
+from howl.data.dataset.dataset import AudioClipDataset, DatasetType
+from howl.data.dataset.example import AudioClipExample
+from howl.data.dataset.serialize import AudioDatasetWriter
 from howl.settings import SETTINGS
 
 
