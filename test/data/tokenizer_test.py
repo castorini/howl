@@ -1,7 +1,7 @@
 import unittest
 
+from howl.data.common.tokenizer import WakeWordTokenizer
 from howl.data.common.vocab import Vocab
-from howl.data.tokenizer import WakeWordTokenizer
 
 
 class TestWakeWordTokenizer(unittest.TestCase):

@@ -13,9 +13,9 @@ from howl.data.common.example import (
     ClassificationClipExample,
     WakeWordClipExample,
 )
+from howl.data.common.labeler import FrameLabeler
 from howl.data.common.metadata import NEGATIVE_CLASS, AudioClipMetadata
-from howl.data.labeler import FrameLabeler
-from howl.data.searcher import WordTranscriptSearcher
+from howl.data.common.searcher import WordTranscriptSearcher
 from howl.settings import SETTINGS
 from howl.utils.audio import silent_load
 

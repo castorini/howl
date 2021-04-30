@@ -8,7 +8,7 @@ import torch.nn as nn
 
 from howl.data.common.batch import ClassificationBatch, SequenceBatch
 from howl.data.common.example import EmplacableExample, WakeWordClipExample
-from howl.data.tokenizer import TranscriptTokenizer
+from howl.data.common.tokenizer import TranscriptTokenizer
 
 __all__ = [
     "Composition",

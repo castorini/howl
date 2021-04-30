@@ -8,6 +8,7 @@ from torch.optim.adamw import AdamW
 from tqdm import tqdm, trange
 
 from howl.context import InferenceContext
+from howl.data.common.tokenizer import WakeWordTokenizer
 from howl.data.dataloader import StandardAudioDataLoaderBuilder
 from howl.data.dataset import (
     DatasetType,
@@ -16,7 +17,6 @@ from howl.data.dataset import (
     WakeWordDataset,
     WakeWordDatasetLoader,
 )
-from howl.data.tokenizer import WakeWordTokenizer
 from howl.data.transform import (
     AudioSequenceBatchifier,
     DatasetMixer,
