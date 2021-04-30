@@ -2,8 +2,8 @@ import unittest
 
 import torch
 
-from howl.core.metadata import AudioClipMetadata
-from howl.core.vocab import Vocab
+from howl.data.common.metadata import AudioClipMetadata
+from howl.data.common.vocab import Vocab
 from howl.data.dataset.dataset import AudioDataset, DatasetType
 from howl.data.dataset.example import AudioClipExample
 from howl.data.searcher import WordTranscriptSearcher

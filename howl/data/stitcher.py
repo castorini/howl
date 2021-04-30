@@ -7,8 +7,8 @@ import soundfile
 import torch
 from tqdm import tqdm
 
-from howl.core.metadata import AudioClipMetadata
-from howl.core.vocab import Vocab
+from howl.data.common.metadata import AudioClipMetadata
+from howl.data.common.vocab import Vocab
 from howl.data.dataset.dataset import AudioClipDataset, AudioDataset, DatasetType
 from howl.data.dataset.example import AudioClipExample
 from howl.settings import SETTINGS

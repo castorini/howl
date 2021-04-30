@@ -1,6 +1,6 @@
 import unittest
 
-from howl.core.vocab import Vocab
+from howl.data.common.vocab import Vocab
 from howl.data.searcher import WordTranscriptSearcher
 from howl.settings import SETTINGS
 

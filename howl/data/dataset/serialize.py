@@ -11,7 +11,7 @@ import pandas as pd
 import soundfile
 from tqdm import tqdm
 
-from howl.core.metadata import UNKNOWN_TRANSCRIPTION, AudioClipMetadata
+from howl.data.common.metadata import UNKNOWN_TRANSCRIPTION, AudioClipMetadata
 from howl.data.dataset.dataset import (
     AudioClassificationDataset,
     AudioClipDataset,

@@ -3,8 +3,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List
 
-from howl.core.phone import PhonePhrase, PronunciationDictionary
-from howl.core.vocab import Vocab
+from howl.data.common.phone import PhonePhrase, PronunciationDictionary
+from howl.data.common.vocab import Vocab
 from howl.data.dataset import WakeWordDataset
 from howl.data.labeler import PhoneticFrameLabeler, WordFrameLabeler
 from howl.data.searcher import (

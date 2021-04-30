@@ -2,7 +2,7 @@ import random
 import unittest
 from pathlib import Path
 
-from howl.core.vocab import Vocab
+from howl.data.common.vocab import Vocab
 from howl.data.dataset.serialize import WakeWordDatasetLoader
 from howl.data.labeler import WordFrameLabeler
 from howl.data.stitcher import WordStitcher

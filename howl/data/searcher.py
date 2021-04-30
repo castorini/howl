@@ -5,8 +5,8 @@ from typing import List
 
 import numpy as np
 
-from howl.core.phone import PhonePhrase
-from howl.core.vocab import Vocab
+from howl.data.common.phone import PhonePhrase
+from howl.data.common.vocab import Vocab
 from howl.data.tokenizer import WakeWordTokenizer
 from howl.settings import SETTINGS
 

@@ -1,6 +1,6 @@
 from typing import List
 
-from howl.core.vocab import Vocab
+from howl.data.common.vocab import Vocab
 
 __all__ = ["WakeWordTokenizer", "TranscriptTokenizer"]
 

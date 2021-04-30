@@ -8,7 +8,7 @@ from typing import Any, Callable, Generic, List, TypeVar
 import torch
 import torch.utils.data as tud
 
-from howl.core.metadata import NEGATIVE_CLASS, AudioClipMetadata
+from howl.data.common.metadata import NEGATIVE_CLASS, AudioClipMetadata
 from howl.data.dataset.example import (
     AudioClipExample,
     ClassificationClipExample,

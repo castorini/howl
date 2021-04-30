@@ -1,6 +1,6 @@
 from hashlib import sha256
 
-from howl.core.metadata import AudioClipMetadata
+from howl.data.common.metadata import AudioClipMetadata
 
 
 def sha256_int(value: str):

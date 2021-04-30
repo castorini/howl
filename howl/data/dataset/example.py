@@ -4,8 +4,8 @@ from typing import Generic, TypeVar
 
 import torch
 
-from howl.core.frame import FrameLabelData
-from howl.core.metadata import AudioClipMetadata
+from howl.data.common.frame import FrameLabelData
+from howl.data.common.metadata import AudioClipMetadata
 
 __all__ = [
     "AudioClipExample",

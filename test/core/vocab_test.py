@@ -1,6 +1,6 @@
 import unittest
 
-from howl.core.vocab import Vocab, VocabTrie
+from howl.data.common.vocab import Vocab, VocabTrie
 
 
 class TestVocab(unittest.TestCase):
