@@ -6,8 +6,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from howl.data.batch import ClassificationBatch, SequenceBatch
-from howl.data.dataset.example import EmplacableExample, WakeWordClipExample
+from howl.data.common.batch import ClassificationBatch, SequenceBatch
+from howl.data.common.example import EmplacableExample, WakeWordClipExample
 from howl.data.tokenizer import TranscriptTokenizer
 
 __all__ = [

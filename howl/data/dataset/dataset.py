@@ -8,12 +8,12 @@ from typing import Any, Callable, Generic, List, TypeVar
 import torch
 import torch.utils.data as tud
 
-from howl.data.common.metadata import NEGATIVE_CLASS, AudioClipMetadata
-from howl.data.dataset.example import (
+from howl.data.common.example import (
     AudioClipExample,
     ClassificationClipExample,
     WakeWordClipExample,
 )
+from howl.data.common.metadata import NEGATIVE_CLASS, AudioClipMetadata
 from howl.data.labeler import FrameLabeler
 from howl.data.searcher import WordTranscriptSearcher
 from howl.settings import SETTINGS
