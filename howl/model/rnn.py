@@ -1,19 +1,14 @@
 from typing import Any
 
-from pydantic import BaseSettings
-from torch.nn.utils.rnn import pad_packed_sequence, pack_padded_sequence
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from pydantic import BaseSettings
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 from .base import RegisteredModel
 
-
-__all__ = ['LASEncoderConfig',
-           'FixedAttentionModuleConfig',
-           'LASClassifierConfig',
-           'LASEncoder',
-           'LASClassifier']
+__all__ = ["LASEncoderConfig", "FixedAttentionModuleConfig", "LASClassifierConfig", "LASEncoder", "LASClassifier"]
 
 
 class LASEncoderConfig(BaseSettings):
@@ -43,13 +38,15 @@ class LstmConfig(BaseSettings):
     num_labels: int = 2
 
 
-class SequentialLstm(RegisteredModel, name='seq-lstm'):
+class SequentialLstm(RegisteredModel, name="seq-lstm"):
     def __init__(self, num_labels: int, config: LstmConfig = LstmConfig()):
         super().__init__(num_labels)
         self.lstm = nn.LSTM(config.num_mels, config.hidden_size)
-        self.dnn = nn.Sequential(nn.Linear(config.hidden_size, int(2 * config.hidden_size)),
-                                 nn.ReLU(),
-                                 nn.Linear(int(2 * config.hidden_size), num_labels))
+        self.dnn = nn.Sequential(
+            nn.Linear(config.hidden_size, int(2 * config.hidden_size)),
+            nn.ReLU(),
+            nn.Linear(int(2 * config.hidden_size), num_labels),
+        )
         self.hc = None
 
     @property
@@ -74,13 +71,15 @@ class SequentialLstm(RegisteredModel, name='seq-lstm'):
         return self.dnn(rnn_seq)
 
 
-class SimpleLstm(RegisteredModel, name='lstm'):
+class SimpleLstm(RegisteredModel, name="lstm"):
     def __init__(self, num_labels: int, config: LstmConfig = LstmConfig()):
         super().__init__(num_labels)
         self.lstm = nn.LSTM(config.num_mels, config.hidden_size)
-        self.dnn = nn.Sequential(nn.Linear(config.hidden_size, int(2 * config.hidden_size)),
-                                 nn.ReLU(),
-                                 nn.Linear(int(2 * config.hidden_size), num_labels))
+        self.dnn = nn.Sequential(
+            nn.Linear(config.hidden_size, int(2 * config.hidden_size)),
+            nn.ReLU(),
+            nn.Linear(int(2 * config.hidden_size), num_labels),
+        )
         self.hc = None
 
     def forward(self, x, lengths):
@@ -92,24 +91,28 @@ class SimpleLstm(RegisteredModel, name='lstm'):
         return self.dnn(hc[0].squeeze(0))
 
 
-class SimpleGru(RegisteredModel, name='gru'):
+class SimpleGru(RegisteredModel, name="gru"):
     def __init__(self, num_labels: int, config: LASEncoderConfig = LASEncoderConfig()):
         super().__init__(num_labels)
         conv1 = nn.Conv2d(1, config.num_latent_channels, 3, padding=(1, 3))
         conv2 = nn.Conv2d(config.num_latent_channels, 1, 3, padding=1)
-        self.conv_encoder = nn.Sequential(conv1,
-                                          nn.BatchNorm2d(config.num_latent_channels),
-                                          nn.ReLU(),
-                                          nn.MaxPool2d((1, 2 if config.use_maxpool else 1)),
-                                          conv2,
-                                          nn.ReLU(),
-                                          nn.BatchNorm2d(1))
+        self.conv_encoder = nn.Sequential(
+            conv1,
+            nn.BatchNorm2d(config.num_latent_channels),
+            nn.ReLU(),
+            nn.MaxPool2d((1, 2 if config.use_maxpool else 1)),
+            conv2,
+            nn.ReLU(),
+            nn.BatchNorm2d(1),
+        )
         self.use_maxpool = config.use_maxpool
         self.lstm_encoder = nn.GRU(config.num_mels, config.hidden_size, bidirectional=False)
-        self.dnn = nn.Sequential(nn.Linear(config.hidden_size, int(2 * config.hidden_size)),
-                                 nn.ReLU(),
-                                 nn.Dropout(0.2),
-                                 nn.Linear(int(2 * config.hidden_size), num_labels))
+        self.dnn = nn.Sequential(
+            nn.Linear(config.hidden_size, int(2 * config.hidden_size)),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(int(2 * config.hidden_size), num_labels),
+        )
 
     def forward(self, x, lengths):
         if lengths is None:
@@ -133,16 +136,20 @@ class LASEncoder(nn.Module):
         out_channels = config.num_latent_channels
         hidden_size = config.hidden_size
         self.use_maxpool = config.use_maxpool
-        self.conv1 = conv1 = nn.Conv2d(config.num_spec_channels, stride=1, kernel_size=3, padding=2, out_channels=out_channels)
+        self.conv1 = conv1 = nn.Conv2d(
+            config.num_spec_channels, stride=1, kernel_size=3, padding=2, out_channels=out_channels
+        )
         self.conv2 = conv2 = nn.Conv2d(out_channels, stride=1, kernel_size=3, padding=2, out_channels=out_channels)
-        self.conv_encoder = nn.Sequential(conv1,
-                                          nn.BatchNorm2d(out_channels),
-                                          nn.ReLU(),
-                                          nn.MaxPool2d((1, 2 if config.use_maxpool else 1)),
-                                          conv2,
-                                          nn.BatchNorm2d(out_channels),
-                                          nn.ReLU(),
-                                          nn.MaxPool2d((1, 2 if config.use_maxpool else 1)))
+        self.conv_encoder = nn.Sequential(
+            conv1,
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(),
+            nn.MaxPool2d((1, 2 if config.use_maxpool else 1)),
+            conv2,
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(),
+            nn.MaxPool2d((1, 2 if config.use_maxpool else 1)),
+        )
         self.lstm_encoder = nn.LSTM(out_channels * 44, hidden_size, config.num_layers, bias=True, bidirectional=True)
 
     def forward(self, x, lengths):
@@ -175,24 +182,26 @@ class FixedAttentionModule(nn.Module):
         rnn_seq = values.view(values.size(0), values.size(1), self.num_heads, values.size(2) // self.num_heads)
         keys = keys.view(values.size(0), keys.size(1), self.num_heads, keys.size(2) // self.num_heads)
         cvec = self.context_vec.view(-1, self.num_heads).unsqueeze(-1).expand(-1, -1, rnn_seq.size(0))
-        logits = torch.einsum('ijkl,lki->ijk', rnn_seq, cvec)
+        logits = torch.einsum("ijkl,lki->ijk", rnn_seq, cvec)
         if mask is not None:
             mask = (1 - mask) * -100
             logits += mask.unsqueeze(-1).expand_as(logits)
         scores = F.softmax(logits, 0)
-        vec = torch.einsum('ijk,ijkl->jkl', scores, keys)
+        vec = torch.einsum("ijk,ijkl->jkl", scores, keys)
         return vec.view(vec.size(0), -1)
 
 
-class LASClassifier(RegisteredModel, name='las'):
+class LASClassifier(RegisteredModel, name="las"):
     def __init__(self, num_labels: int, config: LASClassifierConfig = LASClassifierConfig()):
         super().__init__(num_labels)
         self.encoder = LASEncoder(config.las_config)
         self.attn = FixedAttentionModule(config.fixed_attn_config)
-        self.fc = nn.Sequential(nn.Linear(config.las_config.hidden_size * 2, config.dnn_size),
-                                nn.ReLU(),
-                                nn.Dropout(config.dropout),
-                                nn.Linear(config.dnn_size, num_labels))
+        self.fc = nn.Sequential(
+            nn.Linear(config.las_config.hidden_size * 2, config.dnn_size),
+            nn.ReLU(),
+            nn.Dropout(config.dropout),
+            nn.Linear(config.dnn_size, num_labels),
+        )
 
     def forward(self, x, lengths):
         rnn_seq, rnn_out = self.encoder(x, lengths)

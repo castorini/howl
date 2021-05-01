@@ -1,10 +1,10 @@
 import string
 from typing import List
 
-from howl.data.dataset.phone import PhoneEnum, PhonePhrase, PronunciationDictionary
-from howl.data.tokenize import Vocab
-
-from .base import AudioClipMetadata, FrameLabelData
+from howl.data.common.frame import FrameLabelData
+from howl.data.common.metadata import AudioClipMetadata
+from howl.data.common.phone import PhoneEnum, PhonePhrase, PronunciationDictionary
+from howl.data.common.vocab import Vocab
 
 __all__ = ["FrameLabeler", "WordFrameLabeler", "PhoneticFrameLabeler"]
 
@@ -15,15 +15,32 @@ class FrameLabeler:
 
 
 class PhoneticFrameLabeler(FrameLabeler):
-    def __init__(self, pronounce_dict: PronunciationDictionary, phrases: List[PhonePhrase]):
+    def __init__(
+        self, pronounce_dict: PronunciationDictionary, phrases: List[PhonePhrase]
+    ):
         self.pronounce_dict = pronounce_dict
         self.phrases = phrases
         punctuation_to_replace = str.maketrans(
-            {"‘": "'", "’": "'", "”": '"', "“": '"', "—": "-", "ä": "a", "ö": "o", "ō": "o", "é": "e", "à": "a"}
+            {
+                "‘": "'",
+                "’": "'",
+                "”": '"',
+                "“": '"',
+                "—": "-",
+                "ä": "a",
+                "ö": "o",
+                "ō": "o",
+                "é": "e",
+                "à": "a",
+            }
         )
         punctuation_to_remove = str.maketrans({key: None for key in string.punctuation})
         # First transformation is None because we want to process the original word first
-        self.punctuation_transforms = [None, punctuation_to_replace, punctuation_to_remove]
+        self.punctuation_transforms = [
+            None,
+            punctuation_to_replace,
+            punctuation_to_remove,
+        ]
 
     def transform(self, original_word: str) -> PhonePhrase:
         """Transform the word into list of Phones
@@ -104,7 +121,9 @@ class PhoneticFrameLabeler(FrameLabeler):
             if phrase:
                 phonetic_transcription.extend(phrase)
             elif len(original_word) > 0:
-                print(f"Failed to find phonemes for {original_word} {[ord(c) for c in original_word]}")
+                print(
+                    f"Failed to find phonemes for {original_word} {[ord(c) for c in original_word]}"
+                )
 
         # TODO: idx might not be the correct label due to repeated phonemes
         for idx, phrase in enumerate(self.phrases):
@@ -127,7 +146,9 @@ class PhoneticFrameLabeler(FrameLabeler):
                 #       char_index = phoneme_mapping[start]
                 #       end_time = metadata.end_timestamps[char_index]
                 #       frame_labels[end_time] = idx
-                frame_labels[metadata.end_timestamps[start + len(str(phrase)) - 1]] = idx
+                frame_labels[
+                    metadata.end_timestamps[start + len(str(phrase)) - 1]
+                ] = idx
                 start += 1
 
         # TODO: process phonetic_transcription to compute valid FrameLabelData
@@ -154,8 +175,15 @@ class WordFrameLabeler(FrameLabeler):
                 label = self.vocab[word]
                 end_timestamp = metadata.end_timestamps[char_idx + word_size - 1]
                 frame_labels[end_timestamp] = label
-                char_indices.append((label, list(range(char_idx, char_idx + word_size))))
-                start_timestamp.append((label, metadata.end_timestamps[char_idx - 1] if char_idx > 0 else 0.0))
+                char_indices.append(
+                    (label, list(range(char_idx, char_idx + word_size)))
+                )
+                start_timestamp.append(
+                    (
+                        label,
+                        metadata.end_timestamps[char_idx - 1] if char_idx > 0 else 0.0,
+                    )
+                )
 
             char_idx += word_size + 1  # space
 

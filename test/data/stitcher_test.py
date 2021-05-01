@@ -2,9 +2,10 @@ import random
 import unittest
 from pathlib import Path
 
-from howl.data.dataset import WakeWordDatasetLoader, WordFrameLabeler
+from howl.data.common.labeler import WordFrameLabeler
+from howl.data.common.vocab import Vocab
+from howl.data.dataset.dataset_loader import WakeWordDatasetLoader
 from howl.data.stitcher import WordStitcher
-from howl.data.tokenize import Vocab
 from howl.settings import SETTINGS
 
 
@@ -22,7 +23,7 @@ class TestStitcher(unittest.TestCase):
         labeler = WordFrameLabeler(vocab)
 
         loader = WakeWordDatasetLoader()
-        ds_kwargs = dict(sr=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono, frame_labeler=labeler)
+        ds_kwargs = dict(sr=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono, frame_labeler=labeler,)
 
         test_dataset_path = Path("test/test_data/stitcher")
         stitched_dataset_path = test_dataset_path / "stitched"
