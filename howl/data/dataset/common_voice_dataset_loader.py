@@ -7,7 +7,7 @@ import pandas as pd
 
 from howl.data.common.metadata import UNKNOWN_TRANSCRIPTION, AudioClipMetadata
 from howl.data.dataset.dataset import AudioClipDataset, DatasetType
-from howl.data.dataset_loader.dataset_loader import RegisteredPathDatasetLoader
+from howl.data.dataset.dataset_loader import RegisteredPathDatasetLoader
 from howl.utils.hash import sha256_int
 
 __all__ = [
@@ -20,23 +20,16 @@ __all__ = [
 
 
 class MozillaCommonVoiceLoader(RegisteredPathDatasetLoader, name="mozilla-cv"):
-    def load_splits(
-        self, path: Path, **dataset_kwargs
-    ) -> Tuple[AudioClipDataset, AudioClipDataset, AudioClipDataset]:
+    def load_splits(self, path: Path, **dataset_kwargs) -> Tuple[AudioClipDataset, AudioClipDataset, AudioClipDataset]:
         def load(filename, set_type):
             logging.info(f"Loading split {filename}...")
             df = pd.read_csv(str(path / filename), sep="\t", quoting=3, na_filter=False)
             metadata_list = []
             for tup in df.itertuples():
                 metadata_list.append(
-                    AudioClipMetadata(
-                        path=(path / "clips" / tup.path).absolute(),
-                        transcription=tup.sentence,
-                    )
+                    AudioClipMetadata(path=(path / "clips" / tup.path).absolute(), transcription=tup.sentence,)
                 )
-            return AudioClipDataset(
-                metadata_list=metadata_list, set_type=set_type, **dataset_kwargs
-            )
+            return AudioClipDataset(metadata_list=metadata_list, set_type=set_type, **dataset_kwargs)
 
         assert path.exists(), "dataset path doesn't exist"
         filenames = ("train.tsv", "dev.tsv", "test.tsv")
@@ -49,18 +42,12 @@ class MozillaCommonVoiceLoader(RegisteredPathDatasetLoader, name="mozilla-cv"):
 
 
 class MozillaKeywordLoader(RegisteredPathDatasetLoader, name="mozilla-kw"):
-    def load_splits(
-        self, path: Path, **dataset_kwargs
-    ) -> Tuple[AudioClipDataset, AudioClipDataset, AudioClipDataset]:
+    def load_splits(self, path: Path, **dataset_kwargs) -> Tuple[AudioClipDataset, AudioClipDataset, AudioClipDataset]:
         logging.info("Loading Mozilla keyword dataset...")
-        df = pd.read_csv(
-            str(path / "validated.tsv"), sep="\t", quoting=3, na_filter=False
-        )
+        df = pd.read_csv(str(path / "validated.tsv"), sep="\t", quoting=3, na_filter=False)
         md_splits = ([], [], [])
         for tup in df.itertuples():
-            md = AudioClipMetadata(
-                path=(path / "clips" / tup.path).absolute(), transcription=tup.sentence
-            )
+            md = AudioClipMetadata(path=(path / "clips" / tup.path).absolute(), transcription=tup.sentence)
             bucket = sha256_int(tup.client_id) % 100
             if bucket < 80:
                 md_splits[0].append(md)
@@ -69,28 +56,15 @@ class MozillaKeywordLoader(RegisteredPathDatasetLoader, name="mozilla-kw"):
             else:
                 md_splits[2].append(md)
         return (
-            AudioClipDataset(
-                metadata_list=md_splits[0],
-                set_type=DatasetType.TRAINING,
-                **dataset_kwargs,
-            ),
-            AudioClipDataset(
-                metadata_list=md_splits[1], set_type=DatasetType.DEV, **dataset_kwargs
-            ),
-            AudioClipDataset(
-                metadata_list=md_splits[2], set_type=DatasetType.TEST, **dataset_kwargs
-            ),
+            AudioClipDataset(metadata_list=md_splits[0], set_type=DatasetType.TRAINING, **dataset_kwargs,),
+            AudioClipDataset(metadata_list=md_splits[1], set_type=DatasetType.DEV, **dataset_kwargs),
+            AudioClipDataset(metadata_list=md_splits[2], set_type=DatasetType.TEST, **dataset_kwargs),
         )
 
 
 class MozillaWakeWordLoader(RegisteredPathDatasetLoader, name="mozilla-ww"):
     def __init__(
-        self,
-        training_pct=80,
-        dev_pct=10,
-        test_pct=10,
-        split_by_speaker=True,
-        split="verified",
+        self, training_pct=80, dev_pct=10, test_pct=10, split_by_speaker=True, split="verified",
     ):
         self.split_by_speaker = split_by_speaker
         total = training_pct + dev_pct + test_pct
@@ -104,9 +78,7 @@ class MozillaWakeWordLoader(RegisteredPathDatasetLoader, name="mozilla-ww"):
         )
         self.split = split
 
-    def load_splits(
-        self, path: Path, **dataset_kwargs
-    ) -> Tuple[AudioClipDataset, AudioClipDataset, AudioClipDataset]:
+    def load_splits(self, path: Path, **dataset_kwargs) -> Tuple[AudioClipDataset, AudioClipDataset, AudioClipDataset]:
         assert path.exists(), "dataset path doesn't exist"
         if self.split in {"verified", "rejected"}:
             audio_path = path / self.split
@@ -126,37 +98,17 @@ class MozillaWakeWordLoader(RegisteredPathDatasetLoader, name="mozilla-ww"):
                     transcription = f.read()
             else:
                 transcription = UNKNOWN_TRANSCRIPTION
-            metadata = AudioClipMetadata(
-                path=sound_fp.absolute(), transcription=transcription
-            )
-            bucket = (
-                sha256_int(speaker_id)
-                if self.split_by_speaker
-                else sha256_int(sound_id)
-            )
+            metadata = AudioClipMetadata(path=sound_fp.absolute(), transcription=transcription)
+            bucket = sha256_int(speaker_id) if self.split_by_speaker else sha256_int(sound_id)
             bucket %= 100
-            bucket = next(
-                idx for idx, cutoff in enumerate(self.cutoffs) if bucket < cutoff
-            )
+            bucket = next(idx for idx, cutoff in enumerate(self.cutoffs) if bucket < cutoff)
             metadatas[bucket].append(metadata)
         return (
-            AudioClipDataset(
-                metadata_list=metadatas[0],
-                set_type=DatasetType.TRAINING,
-                **dataset_kwargs,
-            ),
-            AudioClipDataset(
-                metadata_list=metadatas[1], set_type=DatasetType.DEV, **dataset_kwargs
-            ),
-            AudioClipDataset(
-                metadata_list=metadatas[2], set_type=DatasetType.TEST, **dataset_kwargs
-            ),
+            AudioClipDataset(metadata_list=metadatas[0], set_type=DatasetType.TRAINING, **dataset_kwargs,),
+            AudioClipDataset(metadata_list=metadatas[1], set_type=DatasetType.DEV, **dataset_kwargs),
+            AudioClipDataset(metadata_list=metadatas[2], set_type=DatasetType.TEST, **dataset_kwargs),
         )
 
 
-SoundIdSplitMozillaWakeWordLoader = partial(
-    MozillaWakeWordLoader, split_by_speaker=False
-)
-SpeakerSplitMozillaWakeWordLoader = partial(
-    MozillaWakeWordLoader, split_by_speaker=True
-)
+SoundIdSplitMozillaWakeWordLoader = partial(MozillaWakeWordLoader, split_by_speaker=False)
+SpeakerSplitMozillaWakeWordLoader = partial(MozillaWakeWordLoader, split_by_speaker=True)

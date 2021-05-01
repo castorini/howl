@@ -23,9 +23,7 @@ __all__ = [
 
 
 class PathDatasetLoader:
-    def load_splits(
-        self, path: Path, **dataset_kwargs
-    ) -> Tuple[AudioDataset, AudioDataset, AudioDataset]:
+    def load_splits(self, path: Path, **dataset_kwargs) -> Tuple[AudioDataset, AudioDataset, AudioDataset]:
         raise NotImplementedError
 
 
@@ -51,31 +49,17 @@ class MetadataLoaderMixin:
         if prefix is None:
             prefix = self.default_prefix
         logging.info(f"Loading flat dataset from {path}...")
-        training_path = (
-            path / f"{prefix}metadata-{DatasetType.TRAINING.name.lower()}.jsonl"
-        )
+        training_path = path / f"{prefix}metadata-{DatasetType.TRAINING.name.lower()}.jsonl"
         dev_path = path / f"{prefix}metadata-{DatasetType.DEV.name.lower()}.jsonl"
         test_path = path / f"{prefix}metadata-{DatasetType.TEST.name.lower()}.jsonl"
         return (
-            self.dataset_class(
-                metadata_list=load(training_path),
-                set_type=DatasetType.TRAINING,
-                **dataset_kwargs,
-            ),
-            self.dataset_class(
-                metadata_list=load(dev_path), set_type=DatasetType.DEV, **dataset_kwargs
-            ),
-            self.dataset_class(
-                metadata_list=load(test_path),
-                set_type=DatasetType.TEST,
-                **dataset_kwargs,
-            ),
+            self.dataset_class(metadata_list=load(training_path), set_type=DatasetType.TRAINING, **dataset_kwargs,),
+            self.dataset_class(metadata_list=load(dev_path), set_type=DatasetType.DEV, **dataset_kwargs),
+            self.dataset_class(metadata_list=load(test_path), set_type=DatasetType.TEST, **dataset_kwargs,),
         )
 
 
-class AudioClipDatasetLoader(
-    MetadataLoaderMixin, RegisteredPathDatasetLoader, name="clip"
-):
+class AudioClipDatasetLoader(MetadataLoaderMixin, RegisteredPathDatasetLoader, name="clip"):
     dataset_class = AudioClipDataset
     metadata_class = AudioClipMetadata
 
@@ -89,10 +73,5 @@ class WakeWordDatasetLoader(MetadataLoaderMixin, PathDatasetLoader):
 class RecursiveNoiseDatasetLoader:
     def load(self, path: Path, **dataset_kwargs) -> AudioClipDataset:
         wav_names = path.glob("**/*.wav")
-        metadata_list = [
-            AudioClipMetadata(path=filename.absolute(), transcription="")
-            for filename in wav_names
-        ]
-        return AudioClipDataset(
-            metadata_list=metadata_list, set_type=DatasetType.TRAINING, **dataset_kwargs
-        )
+        metadata_list = [AudioClipMetadata(path=filename.absolute(), transcription="") for filename in wav_names]
+        return AudioClipDataset(metadata_list=metadata_list, set_type=DatasetType.TRAINING, **dataset_kwargs)

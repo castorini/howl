@@ -10,9 +10,8 @@ from torchaudio.transforms import ComputeDeltas, MelSpectrogram
 
 from howl.data.common.example import EmplacableExample, WakeWordClipExample
 from howl.data.dataset.dataset import AudioClipDataset
+from howl.data.transform.meyda import MeydaMelSpectrogram
 from howl.settings import SETTINGS
-
-from .meyda import MeydaMelSpectrogram
 
 __all__ = [
     "AugmentationParameter",

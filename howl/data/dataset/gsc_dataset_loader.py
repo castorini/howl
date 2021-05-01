@@ -4,7 +4,7 @@ from typing import List, Tuple
 
 from howl.data.common.metadata import AudioClipMetadata
 from howl.data.dataset.dataset import AudioClassificationDataset, DatasetType
-from howl.data.dataset_loader.dataset_loader import RegisteredPathDatasetLoader
+from howl.data.dataset.dataset_loader import RegisteredPathDatasetLoader
 
 __all__ = [
     "GoogleSpeechCommandsDatasetLoader",
@@ -19,9 +19,7 @@ class GoogleSpeechCommandsDatasetLoader(RegisteredPathDatasetLoader, name="gsc")
     def load_splits(
         self, path: Path, **dataset_kwargs
     ) -> Tuple[
-        AudioClassificationDataset,
-        AudioClassificationDataset,
-        AudioClassificationDataset,
+        AudioClassificationDataset, AudioClassificationDataset, AudioClassificationDataset,
     ]:
         def load(set_type):
             metadata_list = []
@@ -29,16 +27,9 @@ class GoogleSpeechCommandsDatasetLoader(RegisteredPathDatasetLoader, name="gsc")
                 key = str(Path(path.parent.name) / path.name)
                 if file_map[key] != set_type:
                     continue
-                metadata_list.append(
-                    AudioClipMetadata(
-                        path=path.absolute(), transcription=path.parent.name
-                    )
-                )
+                metadata_list.append(AudioClipMetadata(path=path.absolute(), transcription=path.parent.name))
             return AudioClassificationDataset(
-                metadata_list=metadata_list,
-                label_map=label_map,
-                set_type=set_type,
-                **dataset_kwargs
+                metadata_list=metadata_list, label_map=label_map, set_type=set_type, **dataset_kwargs
             )
 
         file_map = defaultdict(lambda: DatasetType.TRAINING)

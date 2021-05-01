@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 from howl.data.common.metadata import AudioClipMetadata
 from howl.data.dataset.dataset import AudioClipDataset, DatasetType
-from howl.data.dataset_loader.dataset_loader import RegisteredPathDatasetLoader
+from howl.data.dataset.dataset_loader import RegisteredPathDatasetLoader
 from howl.utils.transcribe import SpeechToText
 
 __all__ = [
@@ -32,9 +32,7 @@ class HeySnipsWakeWordLoader(RegisteredPathDatasetLoader, name="hey-snips"):
         self.num_processes = num_processes
         self.pool = Pool(processes=self.num_processes)
 
-    def load_splits(
-        self, path: Path, **dataset_kwargs
-    ) -> Tuple[AudioClipDataset, AudioClipDataset, AudioClipDataset]:
+    def load_splits(self, path: Path, **dataset_kwargs) -> Tuple[AudioClipDataset, AudioClipDataset, AudioClipDataset]:
         self.path = path
 
         def load(filename, set_type):
@@ -50,40 +48,26 @@ class HeySnipsWakeWordLoader(RegisteredPathDatasetLoader, name="hey-snips"):
             pbar = tqdm(range(0, total, self.num_processes), desc=f"{filename}")
             for starting_idx in pbar:
                 transcription_results = []
-                for metadata in raw_metadata_list[
-                    starting_idx : starting_idx + self.num_processes
-                ]:
+                for metadata in raw_metadata_list[starting_idx : starting_idx + self.num_processes]:
                     transcription_results.append(
-                        self.pool.apply_async(
-                            transcribe_hey_snips_audio, (self.path, metadata,)
-                        )
+                        self.pool.apply_async(transcribe_hey_snips_audio, (self.path, metadata,))
                     )
 
                 processing_count = starting_idx + len(transcription_results)
 
                 for result in transcription_results:
-                    pbar.set_postfix(
-                        dict(
-                            transcription_fail_rate=f"{transcription_fail_count}/{processing_count}"
-                        )
-                    )
+                    pbar.set_postfix(dict(transcription_fail_rate=f"{transcription_fail_count}/{processing_count}"))
                     path, transcription = result.get()
 
                     if transcription == "":
                         transcription_fail_count += 1
                         continue
 
-                    metadata_list.append(
-                        AudioClipMetadata(path=path, transcription=transcription)
-                    )
+                    metadata_list.append(AudioClipMetadata(path=path, transcription=transcription))
 
-            logging.info(
-                f"{transcription_fail_count}/{total} samples have empty transcription"
-            )
+            logging.info(f"{transcription_fail_count}/{total} samples have empty transcription")
 
-            return AudioClipDataset(
-                metadata_list=metadata_list, set_type=set_type, **dataset_kwargs
-            )
+            return AudioClipDataset(metadata_list=metadata_list, set_type=set_type, **dataset_kwargs)
 
         assert path.exists(), "dataset path doesn't exist"
         filenames = ("train.json", "dev.json", "test.json")

@@ -97,7 +97,7 @@ class AudioDataset(tud.Dataset, Generic[T]):
     def compute_statistics(
         self, word_searcher: WordTranscriptSearcher = None, compute_length: bool = True, use_trim: bool = True
     ) -> AudioDatasetStatistics:
-        from howl.data.transform import trim
+        from howl.data.transform.operator import trim
 
         seconds = 0
         total_vocab_count = Counter()
