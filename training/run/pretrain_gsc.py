@@ -9,7 +9,9 @@ from torch.optim.adamw import AdamW
 from tqdm import tqdm, trange
 
 from howl.data.dataloader import StandardAudioDataLoaderBuilder
-from howl.data.dataset import GoogleSpeechCommandsDatasetLoader
+from howl.data.dataset_loader.gsc_dataset_loader import (
+    GoogleSpeechCommandsDatasetLoader,
+)
 from howl.data.transform import (
     NoiseTransform,
     StandardAudioTransform,
@@ -37,7 +39,8 @@ def main():
         for idx, batch in enumerate(pbar):
             batch = batch.to(device)
             scores = model(
-                zmuv_transform(std_transform(batch.audio_data)), std_transform.compute_lengths(batch.lengths)
+                zmuv_transform(std_transform(batch.audio_data)),
+                std_transform.compute_lengths(batch.lengths),
             )
             num_tot += scores.size(0)
             labels = batch.labels.to(device)
@@ -56,7 +59,12 @@ def main():
 
     apb = ArgumentParserBuilder()
     apb.add_options(
-        opt("--model", type=str, choices=RegisteredModel.registered_names(), default="las"),
+        opt(
+            "--model",
+            type=str,
+            choices=RegisteredModel.registered_names(),
+            default="las",
+        ),
         opt("--workspace", type=str, default=str(Path("workspaces") / "default")),
         opt("--load-weights", action="store_true"),
         opt("--eval", action="store_true"),
@@ -69,28 +77,40 @@ def main():
     loader = GoogleSpeechCommandsDatasetLoader(SETTINGS.training.vocab)
     sr = SETTINGS.audio.sample_rate
     ds_kwargs = dict(sr=sr, mono=SETTINGS.audio.use_mono)
-    train_ds, dev_ds, test_ds = loader.load_splits(Path(SETTINGS.dataset.dataset_path), **ds_kwargs)
+    train_ds, dev_ds, test_ds = loader.load_splits(
+        Path(SETTINGS.dataset.dataset_path), **ds_kwargs
+    )
 
     sr = SETTINGS.audio.sample_rate
     device = torch.device(SETTINGS.training.device)
     std_transform = StandardAudioTransform().to(device).eval()
     zmuv_transform = ZmuvTransform().to(device)
     batchifier = partial(batchify, label_provider=lambda x: x.label)
-    truncater = partial(truncate_length, length=int(SETTINGS.training.max_window_size_seconds * sr))
-    train_comp = compose(truncater, TimeshiftTransform().train(), NoiseTransform().train(), batchifier)
+    truncater = partial(
+        truncate_length, length=int(SETTINGS.training.max_window_size_seconds * sr)
+    )
+    train_comp = compose(
+        truncater, TimeshiftTransform().train(), NoiseTransform().train(), batchifier
+    )
     prep_dl = StandardAudioDataLoaderBuilder(train_ds, collate_fn=batchifier).build(1)
     prep_dl.shuffle = True
-    train_dl = StandardAudioDataLoaderBuilder(train_ds, collate_fn=train_comp).build(SETTINGS.training.batch_size)
-    dev_dl = StandardAudioDataLoaderBuilder(dev_ds, collate_fn=compose(truncater, batchifier)).build(
+    train_dl = StandardAudioDataLoaderBuilder(train_ds, collate_fn=train_comp).build(
         SETTINGS.training.batch_size
     )
-    test_dl = StandardAudioDataLoaderBuilder(test_ds, collate_fn=compose(truncater, batchifier)).build(
-        SETTINGS.training.batch_size
-    )
+    dev_dl = StandardAudioDataLoaderBuilder(
+        dev_ds, collate_fn=compose(truncater, batchifier)
+    ).build(SETTINGS.training.batch_size)
+    test_dl = StandardAudioDataLoaderBuilder(
+        test_ds, collate_fn=compose(truncater, batchifier)
+    ).build(SETTINGS.training.batch_size)
 
     model = RegisteredModel.find_registered_class(args.model)(30).to(device)
     params = list(filter(lambda x: x.requires_grad, model.parameters()))
-    optimizer = AdamW(params, SETTINGS.training.learning_rate, weight_decay=SETTINGS.training.weight_decay)
+    optimizer = AdamW(
+        params,
+        SETTINGS.training.learning_rate,
+        weight_decay=SETTINGS.training.weight_decay,
+    )
     logging.info(f"{sum(p.numel() for p in params)} parameters")
     criterion = nn.CrossEntropyLoss()
 
@@ -120,7 +140,9 @@ def main():
     for epoch_idx in trange(SETTINGS.training.num_epochs, position=0, leave=True):
         model.train()
         std_transform.train()
-        pbar = tqdm(train_dl, total=len(train_dl), position=1, desc="Training", leave=True)
+        pbar = tqdm(
+            train_dl, total=len(train_dl), position=1, desc="Training", leave=True
+        )
         for batch in pbar:
             batch.to(device)
             audio_data = zmuv_transform(std_transform(batch.audio_data))
