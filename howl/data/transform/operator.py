@@ -98,6 +98,7 @@ def tensorize_audio_data(
         max_length = max(audio_data.size(-1) for audio_data in audio_data_lst)
     audio_tensor = []
     for audio_data in audio_data_lst:
+        print(audio_data.shape)
         squeezed_data = audio_data.squeeze()
         if squeezed_data.dim() == 0:
             squeezed_data = squeezed_data.unsqueeze(0)

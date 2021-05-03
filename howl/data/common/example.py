@@ -10,7 +10,6 @@ from howl.data.common.metadata import AudioClipMetadata
 __all__ = [
     "AudioClipExample",
     "ClassificationClipExample",
-    "EmplacableExample",
     "WakeWordClipExample",
 ]
 

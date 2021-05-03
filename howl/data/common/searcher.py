@@ -13,7 +13,6 @@ from howl.settings import SETTINGS
 __all__ = [
     "LabelColoring",
     "PhoneticTranscriptSearcher",
-    "TranscriptSearcher",
     "WordTranscriptSearcher",
 ]
 
@@ -67,9 +66,7 @@ class WordTranscriptSearcher(TranscriptSearcher):
         super().__init__(**kwargs)
         self.vocab = vocab
         self.tokenizer = WakeWordTokenizer(self.vocab, False)
-        self.inference_sequence_str = "".join(
-            map(str, self.settings.inference_sequence)
-        )
+        self.inference_sequence_str = "".join(map(str, self.settings.inference_sequence))
         # self.wakeword = self.vocab.decode(self.settings.inference_sequence)
 
     def search(self, item: str) -> bool:
@@ -115,10 +112,7 @@ class PhoneticTranscriptSearcher(TranscriptSearcher):
     def __init__(self, phrases: List[PhonePhrase], coloring: LabelColoring, **kwargs):
         super().__init__(**kwargs)
         self.phrases = phrases
-        label_map = [
-            (phrase.audible_transcript, coloring.color_map[idx])
-            for idx, phrase in enumerate(phrases)
-        ]
+        label_map = [(phrase.audible_transcript, coloring.color_map[idx]) for idx, phrase in enumerate(phrases)]
         buckets = defaultdict(list)
         for transcript, color in label_map:
             buckets[color].append(transcript)
