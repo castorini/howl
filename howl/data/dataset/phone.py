@@ -39,18 +39,28 @@ class Phone:
 class PhonePhrase:
     phones: List[Phone]
 
-    def __post_init__(self):
-        self.audible_phones = [x for x in self.phones if x.is_speech]
-        self.audible_transcript = " ".join(x.text for x in self.audible_phones)
-        self.sil_indices = [idx for idx, x in enumerate(self.phones) if not x.is_speech]
-
     @property
     def text(self):
         return str(self)
 
+    @property
+    def audible_phones(self):
+        return [x for x in self.phones if x.is_speech]
+
+    @property
+    def audible_transcript(self):
+        return " ".join(x.text for x in self.audible_phones)
+
+    @property
+    def sil_indices(self):
+        return [idx for idx, x in enumerate(self.phones) if not x.is_speech]
+
     @classmethod
     def from_string(cls, string: str):
         return cls([Phone(x) for x in string.split()])
+
+    def extend(self, other: "PhonePhrase"):
+        self.phones.extend(other.phones)
 
     def __str__(self):
         return " ".join(x.text for x in self.phones)
@@ -154,7 +164,7 @@ class PronunciationDictionary:
             for line in f:
                 if line.startswith(";"):
                     continue
-                word, pronunciation = line.split(" ", 1)
+                word, pronunciation = line.split(maxsplit=1)
                 if len(word) == 0 or len(pronunciation) == 0:
                     continue
                 data[word.lower()].append(PhonePhrase.from_string(pronunciation.strip().lower()))

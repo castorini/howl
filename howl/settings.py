@@ -2,7 +2,7 @@ from typing import List
 
 from pydantic import BaseSettings
 
-__all__ = ['AudioSettings', 'RawDatasetSettings', 'DatasetSettings', 'SETTINGS']
+__all__ = ["AudioSettings", "RawDatasetSettings", "DatasetSettings", "SETTINGS"]
 
 
 class CacheSettings(BaseSettings):
@@ -34,11 +34,11 @@ class InferenceEngineSettings(BaseSettings):
 class TrainingSettings(BaseSettings):
     seed: int = 0
     # TODO:: vocab should not belong to training
-    vocab: List[str] = ['fire']
+    vocab: List[str] = ["fire"]
     num_epochs: int = 10
     num_labels: int = 2
     learning_rate: float = 1e-3
-    device: str = 'cuda:0'
+    device: str = "cuda:0"
     batch_size: int = 16
     lr_decay: float = 0.75
     max_window_size_seconds: float = 0.75
@@ -46,8 +46,9 @@ class TrainingSettings(BaseSettings):
     eval_stride_size_seconds: float = 0.063
     weight_decay: float = 0
     convert_static: bool = False
-    objective: str = 'frame'  # frame or ctc
-    token_type: str = 'word'
+    objective: str = "frame"  # frame or ctc
+    # TODO: support phone token_type
+    token_type: str = "word"
     phone_dictionary: str = None
     use_noise_dataset: bool = False
 
@@ -65,6 +66,7 @@ class DatasetSettings(BaseSettings):
 
 class HowlSettings:
     """Lazy-loaded class containing all required settings"""
+
     _audio: AudioSettings = None
     _audio_transform: AudioTransformSettings = None
     _inference_engine: InferenceEngineSettings = None
@@ -117,13 +119,13 @@ class HowlSettings:
 
 
 KEY_TO_SETTINGS_CLASS = {
-    '_audio': AudioSettings,
-    '_audio_transform': AudioTransformSettings,
-    '_inference_engine': InferenceEngineSettings,
-    '_raw_dataset': RawDatasetSettings,
-    '_dataset': DatasetSettings,
-    '_cache': CacheSettings,
-    '_training': TrainingSettings,
+    "_audio": AudioSettings,
+    "_audio_transform": AudioTransformSettings,
+    "_inference_engine": InferenceEngineSettings,
+    "_raw_dataset": RawDatasetSettings,
+    "_dataset": DatasetSettings,
+    "_cache": CacheSettings,
+    "_training": TrainingSettings,
 }
 
 SETTINGS = HowlSettings()
