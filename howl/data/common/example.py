@@ -17,7 +17,7 @@ __all__ = [
 class EmplacableExample:
     audio_data: torch.Tensor
 
-    def emplaced_audio_data(
+    def update_audio_data(
         self, audio_data: torch.Tensor, scale: float = 1, bias: float = 0, new: bool = False
     ) -> "EmplacableExample":
         raise NotImplementedError
@@ -35,7 +35,7 @@ class AudioClipExample(EmplacableExample, Generic[T]):
     def pin_memory(self):
         self.audio_data.pin_memory()
 
-    def emplaced_audio_data(
+    def update_audio_data(
         self, audio_data: torch.Tensor, scale: float = 1, bias: float = 0, new: bool = False
     ) -> "AudioClipExample":
         metadata = self.metadata
@@ -51,10 +51,10 @@ class WakeWordClipExample(AudioClipExample[AudioClipMetadata]):
         super().__init__(*args, **kwargs)
         self.label_data = label_data
 
-    def emplaced_audio_data(
+    def update_audio_data(
         self, audio_data: torch.Tensor, scale: float = 1, bias: float = 0, new: bool = False
     ) -> "WakeWordClipExample":
-        ex = super().emplaced_audio_data(audio_data, scale, bias, new)
+        ex = super().update_audio_data(audio_data, scale, bias, new)
         label_data = {} if new else {scale * k + bias: v for k, v in self.label_data.timestamp_label_map.items()}
         return WakeWordClipExample(
             FrameLabelData(label_data, self.label_data.start_timestamp, self.label_data.char_indices),
@@ -70,5 +70,5 @@ class ClassificationClipExample(AudioClipExample[AudioClipMetadata]):
         super().__init__(*args, **kwargs)
         self.label = label
 
-    def emplaced_audio_data(self, audio_data: torch.Tensor, **kwargs) -> "ClassificationClipExample":
+    def update_audio_data(self, audio_data: torch.Tensor, **kwargs) -> "ClassificationClipExample":
         return ClassificationClipExample(self.label, self.metadata, audio_data, self.sample_rate)

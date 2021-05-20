@@ -52,7 +52,7 @@ def identity(x):
 
 def trim(examples: Sequence[EmplacableExample], top_db: int = 40):
     return [
-        ex.emplaced_audio_data(torch.from_numpy(effects.trim(ex.audio_data.cpu().numpy(), top_db=top_db)[0]))
+        ex.update_audio_data(torch.from_numpy(effects.trim(ex.audio_data.cpu().numpy(), top_db=top_db)[0]))
         for ex in examples
     ]
 
@@ -66,12 +66,12 @@ def random_slice(
             new_examples.append(ex)
             continue
         a = random.randint(0, ex.audio_data.size(-1) - max_window_size)
-        new_examples.append(ex.emplaced_audio_data(ex.audio_data[..., a : a + max_window_size]))
+        new_examples.append(ex.update_audio_data(ex.audio_data[..., a : a + max_window_size]))
     return new_examples
 
 
 def truncate_length(examples: Sequence[EmplacableExample], length: int = None):
-    return [ex.emplaced_audio_data(ex.audio_data[..., :length]) for ex in examples]
+    return [ex.update_audio_data(ex.audio_data[..., :length]) for ex in examples]
 
 
 def batchify(examples: Sequence[EmplacableExample], label_provider=None):

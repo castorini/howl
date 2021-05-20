@@ -88,7 +88,7 @@ class NegativeSampleTransform(AugmentModule):
         new_examples = []
         for example in examples:
             audio_data = example.audio_data[..., : int(example.audio_data.size(-1) * param.magnitude)]
-            example = example.emplaced_audio_data(audio_data)
+            example = example.update_audio_data(audio_data)
             example.contains_wake_word = False
             new_examples.append(example)
         return new_examples
@@ -112,7 +112,7 @@ class TimeshiftTransform(AugmentModule):
             audio_data = (
                 audio_data[..., w:] if self.rand.random() < 0.5 else audio_data[..., : example.audio_data.size(-1) - w]
             )
-            new_examples.append(example.emplaced_audio_data(audio_data))
+            new_examples.append(example.update_audio_data(audio_data))
         return new_examples
 
 
@@ -127,7 +127,7 @@ class TimestretchTransform(AugmentModule):
         for example in examples:
             rate = 1.5  # np.clip(np.random.normal(1.1, param.magnitude), 0.8, 2)
             audio = torch.from_numpy(librosa.effects.time_stretch(example.audio_data.squeeze().cpu().numpy(), rate))
-            new_examples.append(example.emplaced_audio_data(audio, scale=1 / rate))
+            new_examples.append(example.update_audio_data(audio, scale=1 / rate))
         return new_examples
 
 
@@ -154,7 +154,7 @@ class NoiseTransform(AugmentModule):
                 )
             noise_mask.clamp_(-1, 1)
             waveform = (waveform + noise_mask).clamp_(-1, 1)
-            new_examples.append(example.emplaced_audio_data(waveform))
+            new_examples.append(example.update_audio_data(waveform))
         return new_examples
 
 
@@ -184,7 +184,7 @@ class DatasetMixer(AugmentModule):
             bg_audio = bg_ex[..., a:b]
             alpha = 1 if param.name == "replace" else self.rand.random() * param.magnitude
             mixed_wf = waveform * (1 - alpha) + bg_audio * alpha
-            ex = example.emplaced_audio_data(mixed_wf, new=alpha == 1)
+            ex = example.update_audio_data(mixed_wf, new=alpha == 1)
             new_examples.append(ex)
         return new_examples
 

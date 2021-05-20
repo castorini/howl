@@ -82,7 +82,7 @@ class WakeWordFrameBatchifier:
                 if b - a < 0:
                     select_negative = True
                 else:
-                    new_examples.append((label, ex.emplaced_audio_data(ex.audio_data[..., a:b])))
+                    new_examples.append((label, ex.update_audio_data(ex.audio_data[..., a:b])))
 
             # use the interval of negative labels to generate a negative sample from audio with positive label
             if select_negative:
@@ -102,7 +102,7 @@ class WakeWordFrameBatchifier:
                 if b - a > self.window_size_ms:
                     a = random.randint(0, int(b - self.window_size_ms))
                     b = a + self.window_size_ms
-                new_examples.append((self.negative_label, ex.emplaced_audio_data(ex.audio_data[..., a:b])))
+                new_examples.append((self.negative_label, ex.update_audio_data(ex.audio_data[..., a:b])))
 
         labels_lst = [x[0] for x in new_examples]
         max_length = int(self.window_size_ms / 1000 * self.sample_rate) if self.pad_to_window else None
