@@ -17,7 +17,6 @@ class AudioClipMetadata(BaseModel):
     phone_strings: Optional[List[str]]
     words: Optional[List[str]]
     phone_end_timestamps: Optional[List[float]]
-    word_end_timestamps: Optional[List[float]]
     end_timestamps: Optional[List[float]]  # TODO: remove, backwards compat right now
     transcription: Optional[str] = ""
 
