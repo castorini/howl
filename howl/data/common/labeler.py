@@ -118,20 +118,22 @@ class PhoneticFrameLabeler(FrameLabeler):
                     start = phonetic_transcription.audible_index(phrase, start)
                 except ValueError:
                     break
-                start = phonetic_transcription.all_idx_to_transcript_idx(
-                    phonetic_transcription.audible_idx_to_all_idx(start)
-                )
+
                 # TDOO: metadata.end_timestamps contains when the given character in the transcript finishes
                 #       in order to label the the phonemes right, we need a mapping from characters to phonemes
-                #
-                #       phonetic_transcription = list of phones for the transcription
-                #       end_timestamps = when character of the given index in the transcription is pronounced
-                #       phoeneme_mapping = from character index to phone index in phonetic_transcription
-                #
-                #       char_index = phoneme_mapping[start]
-                #       end_time = metadata.end_timestamps[char_index]
-                #       frame_labels[end_time] = idx
-                frame_labels[metadata.end_timestamps[start + len(str(phrase)) - 1]] = idx
+                # # compute where the phrase located in the transcript
+                # start = phonetic_transcription.all_idx_to_transcript_idx(
+                #     phonetic_transcription.audible_idx_to_all_idx(start)
+                # )
+
+                # phonetic_transcription = list of phones for the transcription
+                # end_timestamps = when character of the given index in the transcription is pronounced
+                # phoeneme_mapping = from character index to phone index in phonetic_transcription
+
+                # char_index = phoneme_mapping[start]
+                # end_time = metadata.end_timestamps[char_index]
+                # frame_labels[end_time] = idx
+                frame_labels[metadata.end_timestamps[start]] = idx
                 start += 1
 
         # TODO: process phonetic_transcription to compute valid FrameLabelData
