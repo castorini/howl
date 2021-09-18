@@ -5,16 +5,12 @@ from howl.data.common.labeler import PhoneticFrameLabeler, WordFrameLabeler
 from howl.data.common.metadata import AudioClipMetadata
 from howl.data.common.phone import PhonePhrase, PronunciationDictionary
 from howl.data.common.vocab import Vocab
-from howl.settings import SETTINGS
 
 
 class TestPhoneticFrameLabeler(unittest.TestCase):
     def test_phonetic_frame_labeler(self):
 
         vocab = ["hey", "fire", "fox"]
-        SETTINGS.training.vocab = vocab
-        SETTINGS.training.token_type = "phone"
-        SETTINGS.inference_engine.inference_sequence = [0, 1]
 
         phone_dict_file = Path("test/test_data/pronounciation_dictionary.txt")
         pronounce_dict = PronunciationDictionary.from_file(phone_dict_file)
@@ -44,9 +40,6 @@ class TestPhoneticFrameLabeler(unittest.TestCase):
 class TestWordFrameLabeler(unittest.TestCase):
     def test_word_frame_labeler(self):
         """test compute_frame_label"""
-        SETTINGS.training.vocab = ["hello", "world"]
-        SETTINGS.training.token_type = "word"
-        SETTINGS.inference_engine.inference_sequence = [0, 1]
 
         vocab = Vocab({"Hello": 0, "World": 1}, oov_token_id=2, oov_word_repr="<OOV>")
 

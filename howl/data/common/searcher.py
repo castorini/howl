@@ -24,14 +24,25 @@ class LabelColoring:
         self.label_counter = 0
 
     def append_label(self, label: int, color: int = None):
+        if label in self.color_map:
+            registered_color = self.color_map[label]
+            if color is None:
+                color = registered_color
+            elif color != registered_color:
+                raise RuntimeError(
+                    f"given label {label} is already registered with color {registered_color} "
+                    f"which mismatches with the given color {color}"
+                )
+            return
         color = self._inc_color_counter(color)
         self.color_map[label] = color
+        self.label_counter = max(self.label_counter, label + 1)
 
     def _inc_color_counter(self, color: int = None):
         if color is None:
             color = self.color_counter
         else:
-            self.color_counter = max(self.color_counter, color + 1)
+            self.color_counter = max(self.color_counter, color)
         self.color_counter += 1
         return color
 
