@@ -8,6 +8,7 @@ import torch
 
 from howl.context import InferenceContext
 from howl.model.inference import InferenceEngine
+from howl.utils.logging_utils import setup_logger
 
 
 class HowlClient:
@@ -25,6 +26,7 @@ class HowlClient:
         context: InferenceContext = None,
         device: torch.device = torch.device("cpu"),
         chunk_size: int = 500,
+        logger: logging.Logger = None,
     ):
         """
         Initializes the client.
@@ -37,6 +39,10 @@ class HowlClient:
             device (torch.device): Device for CPU/GPU support (Default: cpu).
             chunk_size (int): Number of frames per buffer for audio.
         """
+        self.logger = logger
+        if self.logger is None:
+            self.logger = setup_logger(self.__class__.__name__)
+
         self.listeners = []
         self.chunk_size = chunk_size
         self.device = device
@@ -76,7 +82,7 @@ class HowlClient:
 
             self._infer_detected = True
             phrase = " ".join(self.ctx.vocab[x] for x in self.engine.sequence).title()
-            logging.info(f"{phrase} detected")
+            self.logger.info(f"{phrase} detected")
             # Execute user-provided listener callbacks
             for lis in self.listeners:
                 lis(self.engine.sequence)
@@ -113,7 +119,7 @@ class HowlClient:
             stream_callback=self._on_audio,
         )
         self.stream = stream
-        logging.info("Starting Howl inference client...")
+        self.logger.info("Starting Howl inference client...")
         stream.start_stream()
         return self
 

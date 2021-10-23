@@ -7,6 +7,7 @@ from howl.context import InferenceContext
 from howl.data.transform.operator import ZmuvTransform
 from howl.model import RegisteredModel, Workspace
 from howl.model.inference import FrameInferenceEngine, SequenceInferenceEngine
+from howl.utils.logging_utils import setup_logger
 
 from .args import ArgumentParserBuilder, opt
 
@@ -18,6 +19,8 @@ def main():
         opt("--workspace", type=str, default=str(Path("workspaces") / "default")),
     )
     args = apb.parser.parse_args()
+
+    logger = setup_logger("howl-demo")
     ws = Workspace(Path(args.workspace), delete_existing=False)
     settings = ws.load_settings()
 
@@ -42,7 +45,7 @@ def main():
     else:
         engine = SequenceInferenceEngine(model, zmuv_transform, ctx)
 
-    client = HowlClient(engine, ctx, device=device)
+    client = HowlClient(engine, ctx, device=device, logger=logger)
     client.start().join()
 
 
