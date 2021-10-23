@@ -19,6 +19,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install setuptools wheel
+        sudo apt-get update
         sudo apt-get install libasound-dev portaudio19-dev libportaudio2 libportaudiocpp0 libpulse-dev
         pip install -r requirements.txt
         pip install -r requirements_training.txt
