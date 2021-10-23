@@ -7,7 +7,7 @@ import coloredlogs
 
 
 def setup_logger(name, log_path=None, level=logging.DEBUG, use_stdout=True):
-    """Setup of logging to file
+    """Setup of logger
 
     Args:
         name: Logger name
