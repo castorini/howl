@@ -3,19 +3,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List
 
-from howl.data.dataset import (
-    PhonePhrase,
-    PhoneticFrameLabeler,
-    PronunciationDictionary,
-    WakeWordDataset,
-    WordFrameLabeler,
-)
-from howl.data.searcher import (
+from howl.data.common.labeler import PhoneticFrameLabeler, WordFrameLabeler
+from howl.data.common.phone import PhonePhrase, PronunciationDictionary
+from howl.data.common.searcher import (
     LabelColoring,
     PhoneticTranscriptSearcher,
     WordTranscriptSearcher,
 )
-from howl.data.tokenize import Vocab
+from howl.data.common.vocab import Vocab
+from howl.data.dataset import WakeWordDataset
 from howl.settings import SETTINGS
 
 

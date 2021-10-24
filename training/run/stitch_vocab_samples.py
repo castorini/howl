@@ -1,13 +1,11 @@
 import argparse
 from pathlib import Path
 
-from howl.data.dataset import (
-    AudioDatasetWriter,
-    WakeWordDatasetLoader,
-    WordFrameLabeler,
-)
+from howl.data.common.labeler import WordFrameLabeler
+from howl.data.common.vocab import Vocab
+from howl.data.dataset.dataset_loader import WakeWordDatasetLoader
+from howl.data.dataset.dataset_writer import AudioDatasetWriter
 from howl.data.stitcher import WordStitcher
-from howl.data.tokenize import Vocab
 from howl.settings import SETTINGS
 
 """Using aligned dataset, generate wakeword samples by stitching vocab samples
@@ -48,7 +46,7 @@ def main():
         help="train/dev/test pct for stitched dataset (default: [0.5, 0.25, 0.25])",
     )
     parser.add_argument(
-        "--disable-detect-keyword", action="store_false", help="disable keyword detection based verifcation"
+        "--disable-detect-keyword", action="store_false", help="disable keyword detection based verifcation",
     )
 
     args = parser.parse_args()
@@ -58,7 +56,7 @@ def main():
 
     vocab = Vocab(SETTINGS.training.vocab)
     labeler = WordFrameLabeler(vocab)
-    ds_kwargs = dict(sr=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono, frame_labeler=labeler)
+    ds_kwargs = dict(sr=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono, frame_labeler=labeler,)
 
     # load aligned datasets
     train_ds, dev_ds, test_ds = WakeWordDatasetLoader().load_splits(aligned_ds_path, **ds_kwargs)

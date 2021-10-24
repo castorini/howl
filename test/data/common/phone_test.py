@@ -1,7 +1,7 @@
 import unittest
 from pathlib import Path
 
-from howl.data.dataset import PhonePhrase, PronunciationDictionary
+from howl.data.common.phone import PhonePhrase, PronunciationDictionary
 
 
 class TestPhonePhrase(unittest.TestCase):

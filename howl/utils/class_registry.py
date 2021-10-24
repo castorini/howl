@@ -1,10 +1,9 @@
 from typing import List, Type, TypeVar
 
+T = TypeVar("T", bound="ClassRegistry")
 
-T = TypeVar('T', bound='RegisteredObjectBase')
 
-
-class RegisteredObjectBase:
+class ClassRegistry:
     registered_map = {}
 
     def __init_subclass__(cls, name: str = None):

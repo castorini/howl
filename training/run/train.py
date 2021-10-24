@@ -8,15 +8,13 @@ from torch.optim.adamw import AdamW
 from tqdm import tqdm, trange
 
 from howl.context import InferenceContext
+from howl.data.common.tokenizer import WakeWordTokenizer
 from howl.data.dataloader import StandardAudioDataLoaderBuilder
-from howl.data.dataset import (
-    DatasetType,
+from howl.data.dataset.dataset import DatasetType, WakeWordDataset
+from howl.data.dataset.dataset_loader import (
     RecursiveNoiseDatasetLoader,
-    Sha256Splitter,
-    WakeWordDataset,
     WakeWordDatasetLoader,
 )
-from howl.data.tokenize import WakeWordTokenizer
 from howl.data.transform import (
     AudioSequenceBatchifier,
     DatasetMixer,
@@ -30,6 +28,7 @@ from howl.data.transform import (
 from howl.model import ConfusionMatrix, ConvertedStaticModel, RegisteredModel, Workspace
 from howl.model.inference import FrameInferenceEngine, SequenceInferenceEngine
 from howl.settings import SETTINGS
+from howl.utils.hash import Sha256Splitter
 from howl.utils.random import set_seed
 
 from .args import ArgumentParserBuilder, opt
@@ -95,26 +94,30 @@ def main():
         evaluate_engine(ww_test_pos_ds, "Test positive", positive_set=True)
         evaluate_engine(ww_test_neg_ds, "Test negative", positive_set=False)
         if SETTINGS.training.use_noise_dataset:
-            evaluate_engine(ww_test_pos_ds, "Test noisy positive", positive_set=True, mixer=test_mixer)
-            evaluate_engine(ww_test_neg_ds, "Test noisy negative", positive_set=False, mixer=test_mixer)
+            evaluate_engine(
+                ww_test_pos_ds, "Test noisy positive", positive_set=True, mixer=test_mixer,
+            )
+            evaluate_engine(
+                ww_test_neg_ds, "Test noisy negative", positive_set=False, mixer=test_mixer,
+            )
 
     apb = ArgumentParserBuilder()
     apb.add_options(
-        opt("--model", type=str, choices=RegisteredModel.registered_names(), default="las"),
+        opt("--model", type=str, choices=RegisteredModel.registered_names(), default="las",),
         opt("--workspace", type=str, default=str(Path("workspaces") / "default")),
         opt("--load-weights", action="store_true"),
         opt("--load-last", action="store_true"),
         opt("--no-dev-per-epoch", action="store_false", dest="dev_per_epoch"),
-        opt("--dataset-paths", "-i", type=str, nargs="+", default=[SETTINGS.dataset.dataset_path]),
+        opt("--dataset-paths", "-i", type=str, nargs="+", default=[SETTINGS.dataset.dataset_path],),
         opt("--eval", action="store_true"),
     )
     args = apb.parser.parse_args()
 
     use_frame = SETTINGS.training.objective == "frame"
-    ctx = InferenceContext(SETTINGS.training.vocab, token_type=SETTINGS.training.token_type, use_blank=not use_frame)
+    ctx = InferenceContext(SETTINGS.training.vocab, token_type=SETTINGS.training.token_type, use_blank=not use_frame,)
     if use_frame:
         batchifier = WakeWordFrameBatchifier(
-            ctx.negative_label, window_size_ms=int(SETTINGS.training.max_window_size_seconds * 1000)
+            ctx.negative_label, window_size_ms=int(SETTINGS.training.max_window_size_seconds * 1000),
         )
         criterion = nn.CrossEntropyLoss()
     else:
@@ -126,7 +129,7 @@ def main():
     writer = ws.summary_writer
     set_seed(SETTINGS.training.seed)
     loader = WakeWordDatasetLoader()
-    ds_kwargs = dict(sr=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono, frame_labeler=ctx.labeler)
+    ds_kwargs = dict(sr=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono, frame_labeler=ctx.labeler,)
 
     ww_train_ds, ww_dev_ds, ww_test_ds = (
         WakeWordDataset(metadata_list=[], set_type=DatasetType.TRAINING, **ds_kwargs),
@@ -158,7 +161,7 @@ def main():
 
     if SETTINGS.training.use_noise_dataset:
         noise_ds = RecursiveNoiseDatasetLoader().load(
-            Path(SETTINGS.raw_dataset.noise_dataset_path), sr=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono
+            Path(SETTINGS.raw_dataset.noise_dataset_path), sr=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono,
         )
         logging.info(f"Loaded {len(noise_ds.metadata_list)} noise files.")
         noise_ds_train, noise_ds_dev = noise_ds.split(Sha256Splitter(80))
@@ -176,7 +179,7 @@ def main():
     if SETTINGS.training.convert_static:
         model = ConvertedStaticModel(model, 40, 10)
     params = list(filter(lambda x: x.requires_grad, model.parameters()))
-    optimizer = AdamW(params, SETTINGS.training.learning_rate, weight_decay=SETTINGS.training.weight_decay)
+    optimizer = AdamW(params, SETTINGS.training.learning_rate, weight_decay=SETTINGS.training.weight_decay,)
     logging.info(f"{sum(p.numel() for p in params)} parameters")
 
     if (ws.path / "zmuv.pt.bin").exists():
@@ -210,7 +213,7 @@ def main():
             batch.to(device)
             if use_frame:
                 scores = model(
-                    zmuv_transform(std_transform(batch.audio_data)), std_transform.compute_lengths(batch.lengths)
+                    zmuv_transform(std_transform(batch.audio_data)), std_transform.compute_lengths(batch.lengths),
                 )
                 loss = criterion(scores, batch.labels)
             else:
@@ -235,7 +238,9 @@ def main():
         writer.add_scalar("Training/LearningRate", group["lr"], epoch_idx)
 
         if args.dev_per_epoch:
-            evaluate_engine(ww_dev_pos_ds, "Dev positive", positive_set=True, save=True, write_errors=False)
+            evaluate_engine(
+                ww_dev_pos_ds, "Dev positive", positive_set=True, save=True, write_errors=False,
+            )
 
     do_evaluate()
 
