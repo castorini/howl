@@ -1,3 +1,5 @@
+import logging
+import os
 from pathlib import Path
 
 import torch
@@ -10,26 +12,14 @@ from howl.context import InferenceContext
 from howl.data.common.tokenizer import WakeWordTokenizer
 from howl.data.dataloader import StandardAudioDataLoaderBuilder
 from howl.data.dataset.dataset import DatasetType, WakeWordDataset
-from howl.data.dataset.dataset_loader import (
-    RecursiveNoiseDatasetLoader,
-    WakeWordDatasetLoader,
-)
-from howl.data.transform.batchifier import (
-    AudioSequenceBatchifier,
-    WakeWordFrameBatchifier,
-)
+from howl.data.dataset.dataset_loader import RecursiveNoiseDatasetLoader, WakeWordDatasetLoader
+from howl.data.transform.batchifier import AudioSequenceBatchifier, WakeWordFrameBatchifier
 from howl.data.transform.operator import ZmuvTransform, batchify, compose
-from howl.data.transform.transform import (
-    DatasetMixer,
-    NoiseTransform,
-    StandardAudioTransform,
-)
+from howl.data.transform.transform import DatasetMixer, NoiseTransform, StandardAudioTransform
 from howl.model import ConfusionMatrix, ConvertedStaticModel, RegisteredModel, Workspace
 from howl.model.inference import FrameInferenceEngine, SequenceInferenceEngine
 from howl.settings import SETTINGS
-from howl.utils.hash import Sha256Splitter
-from howl.utils.logging_utils import setup_logger
-from howl.utils.random import set_seed
+from howl.utils import hash, logging_utils, random
 
 from .args import ArgumentParserBuilder, opt
 from .create_raw_dataset import print_stats
@@ -114,8 +104,8 @@ def main():
     args = apb.parser.parse_args()
 
     # region prepare training environment
-    set_seed(SETTINGS.training.seed)
-    logger = setup_logger("train")
+    random.set_seed(SETTINGS.training.seed)
+    logger = logging_utils.setup_logger(os.path.basename(__file__), logging.INFO)
     use_frame = SETTINGS.training.objective == "frame"
     ws = Workspace(Path(args.workspace), delete_existing=not args.eval)
     writer = ws.summary_writer
@@ -167,8 +157,8 @@ def main():
             Path(SETTINGS.raw_dataset.noise_dataset_path), sr=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono,
         )
         logger.info(f"Loaded {len(noise_ds.metadata_list)} noise files.")
-        noise_ds_train, noise_ds_dev = noise_ds.split(Sha256Splitter(80))
-        noise_ds_dev, noise_ds_test = noise_ds_dev.split(Sha256Splitter(50))
+        noise_ds_train, noise_ds_dev = noise_ds.split(hash.Sha256Splitter(80))
+        noise_ds_dev, noise_ds_test = noise_ds_dev.split(hash.Sha256Splitter(50))
         train_comp = (DatasetMixer(noise_ds_train).train(),) + train_comp
         dev_mixer = DatasetMixer(noise_ds_dev, seed=0, do_replace=False)
         test_mixer = DatasetMixer(noise_ds_test, seed=0, do_replace=False)

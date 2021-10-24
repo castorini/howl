@@ -1,25 +1,18 @@
 import logging
+import os
 from pathlib import Path
 
 from howl.context import InferenceContext
 from howl.data.dataset.dataset import AudioDataset
-from howl.data.dataset.dataset_loader import RegisteredPathDatasetLoader
 from howl.data.dataset.dataset_writer import AudioDatasetWriter
+from howl.data.dataset_loader.dataset_loader_factory import DatasetLoaderType, get_dataset_loader
 from howl.settings import SETTINGS
-from howl.utils.hash import sha256_int
+from howl.utils import hash, logging_utils
 
 from .args import ArgumentParserBuilder, opt
 
-"""
-This scripts processes given audio dataset and creates datasets that howl can take in
-distributions can be customized using negative-pct and positive-pct arguments
 
-sample command:
-VOCAB='["fire"]' INFERENCE_SEQUENCE=[0] DATASET_PATH=data/fire-positive \
-python -m training.run.create_raw_dataset -i ~/path/to/common-voice --positive-pct 100 --negative-pct 0
-"""
-
-
+# TODO: to be replaced to dataset.print_stats
 def print_stats(header: str, context: InferenceContext, *datasets: AudioDataset, compute_length=True):
     word_searcher = context.searcher if context.token_type == "word" else None
     for ds in datasets:
@@ -30,8 +23,18 @@ def print_stats(header: str, context: InferenceContext, *datasets: AudioDataset,
 
 
 def main():
+    """
+    This scripts processes given audio dataset and creates datasets that howl can take in
+    distributions can be customized using negative-pct and positive-pct arguments
+
+    sample command:
+    VOCAB='["fire"]' INFERENCE_SEQUENCE=[0] DATASET_PATH=data/fire-positive \
+    python -m training.run.create_raw_dataset -i ~/path/to/common-voice --dataset-loader-type mozilla-cv \
+    --positive-pct 100 --negative-pct 0
+    """
+
     def filter_fn(x):
-        bucket = sha256_int(x.path.stem) % 100
+        bucket = hash.sha256_int(x.path.stem) % 100
         if bucket < args.negative_pct:
             # drop the samples whose transcript is wakeword
             return not ctx.searcher.search(x.transcription.lower())
@@ -51,31 +54,37 @@ def main():
             default=100,
             help="The percentage of the dataset to check for positive examples.",
         ),
-        opt("--input-path", "-i", type=str),
-        opt("--dataset-type", type=str, default="mozilla-cv", choices=RegisteredPathDatasetLoader.registered_names(),),
+        opt("--input-audio-dataset-path", "-i", type=str, help="location of the input audio dataset",),
+        opt(
+            "--dataset-loader-type",
+            type=str,
+            default=DatasetLoaderType.COMMON_VOICE_DATASET_LOADER.value,
+            choices=[e.value for e in DatasetLoaderType],
+            help="type of dataset loader to use",
+        ),
     )
     args = apb.parser.parse_args()
-    if args.input_path is None:
-        args.input_path = SETTINGS.raw_dataset.common_voice_dataset_path
+    if args.input_audio_dataset_path is None:
+        args.input_audio_dataset_path = SETTINGS.raw_dataset.common_voice_dataset_path
+
+    logger = logging_utils.setup_logger(os.path.basename(__file__), logging.INFO)
+
+    dataset_loader_type = DatasetLoaderType(args.dataset_loader_type)
+    dataset_loader = get_dataset_loader(dataset_loader_type, Path(args.input_audio_dataset_path), logger)
+    ds_kwargs = dict(sr=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono)
+    train_ds, dev_ds, test_ds = dataset_loader.load_splits(**ds_kwargs)
 
     ctx = InferenceContext(SETTINGS.training.vocab, token_type=SETTINGS.training.token_type)
-    loader = RegisteredPathDatasetLoader.find_registered_class(args.dataset_type)()
-    ds_kwargs = dict(sr=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono)
-    train_ds, dev_ds, test_ds = loader.load_splits(Path(args.input_path), **ds_kwargs)
-
-    if args.dataset_type == "mozilla-cv":
+    if dataset_loader_type == DatasetLoaderType.COMMON_VOICE_DATASET_LOADER:
         train_ds = train_ds.filter(filter_fn)
         dev_ds = dev_ds.filter(filter_fn)
         test_ds = test_ds.filter(filter_fn)
 
-    print_stats("Dataset", ctx, train_ds, dev_ds, test_ds, compute_length=True)
-
+    word_searcher = ctx.searcher if ctx.token_type == "word" else None
     for ds in train_ds, dev_ds, test_ds:
-        try:
-            AudioDatasetWriter(ds).write(Path(SETTINGS.dataset.dataset_path))
-        except KeyboardInterrupt:
-            logging.info("Skipping...")
-            pass
+        ds.print_stats(logger, word_searcher=word_searcher, compute_length=True)
+        logger.info(f"Generating {ds.split.value} dataset")
+        AudioDatasetWriter(ds).write(Path(SETTINGS.dataset.dataset_path))
 
 
 if __name__ == "__main__":

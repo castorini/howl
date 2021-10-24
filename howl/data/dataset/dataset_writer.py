@@ -68,7 +68,7 @@ class AudioDatasetWriter:
             for metadata in tqdm(self.dataset.metadata_list, disable=not self.print_progress, desc="Writing files",):
                 try:
                     process(metadata)
-                except EOFError:
-                    logging.warning(f"Skipping bad file {metadata.path}")
+                except EOFError as e:
+                    logging.warning(f"Skipping bad file {metadata.path}: {e}")
                     continue
                 writer.write(metadata)
