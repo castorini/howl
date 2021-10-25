@@ -1,18 +1,16 @@
 import enum
+import logging
 from collections import Counter, defaultdict
 from copy import deepcopy
 from dataclasses import dataclass
+from enum import Enum, unique
 from functools import lru_cache
 from typing import Any, Callable, Generic, List, TypeVar
 
 import torch
 import torch.utils.data as tud
 
-from howl.data.common.example import (
-    AudioClipExample,
-    ClassificationClipExample,
-    WakeWordClipExample,
-)
+from howl.data.common.example import AudioClipExample, ClassificationClipExample, WakeWordClipExample
 from howl.data.common.labeler import FrameLabeler
 from howl.data.common.metadata import NEGATIVE_CLASS, AudioClipMetadata
 from howl.data.common.searcher import WordTranscriptSearcher
@@ -38,10 +36,22 @@ class AudioDatasetStatistics:
 
 
 class DatasetType(enum.Enum):
+    """To be replaced by SplitType"""
+
     TRAINING = enum.auto()
     DEV = enum.auto()
     TEST = enum.auto()
     UNSPECIFIED = enum.auto()
+
+
+@unique
+class DatasetSplit(str, Enum):
+    """String based Enum of different dataset split"""
+
+    TRAINING = "training"
+    DEV = "dev"
+    TEST = "test"
+    UNSPECIFIED = "unspecified"  # to be removed once DatasetType is fully replaced by DatasetSplit
 
 
 T = TypeVar("T", bound=AudioClipMetadata)
@@ -54,11 +64,13 @@ class AudioDataset(tud.Dataset, Generic[T]):
         sr: int = 16000,
         mono: bool = True,
         set_type: DatasetType = DatasetType.UNSPECIFIED,
+        split: DatasetSplit = DatasetSplit.UNSPECIFIED,
     ):
         self.metadata_list = metadata_list
         self.set_type = set_type
         self.sr = sr
         self.mono = mono
+        self.split = split
 
     @property
     def is_training(self):
@@ -95,7 +107,7 @@ class AudioDataset(tud.Dataset, Generic[T]):
         return len(self.metadata_list)
 
     def compute_statistics(
-        self, word_searcher: WordTranscriptSearcher = None, compute_length: bool = True, use_trim: bool = True
+        self, word_searcher: WordTranscriptSearcher = None, compute_length: bool = True, use_trim: bool = True,
     ) -> AudioDatasetStatistics:
         from howl.data.transform.operator import trim
 
@@ -110,13 +122,31 @@ class AudioDataset(tud.Dataset, Generic[T]):
                 total_vocab_count += vocab_count
         return AudioDatasetStatistics(len(self), seconds, total_vocab_count)
 
+    def print_stats(
+        self, logger: logging.Logger = None, header: str = None, **compute_statistics_kwargs,
+    ):
+        """Print statistics of the dataset
+
+        Args:
+            logger: logger to use
+            header: additional text message to prepend
+            **compute_statistics_kwargs: other arguments passed to compute_statistics
+        """
+        if header is None:
+            log_msg = "Dataset "
+        else:
+            log_msg = header + " "
+        log_msg += f"({self.split.value}) - {self.compute_statistics(**compute_statistics_kwargs)}"
+
+        logger.info(log_msg)
+
 
 class AudioClipDataset(AudioDataset[AudioClipMetadata]):
     @lru_cache(maxsize=SETTINGS.cache.cache_size)
     def __getitem__(self, idx) -> AudioClipExample:
         metadata = self.metadata_list[idx]
         audio_data = silent_load(str(metadata.path), self.sr, self.mono)
-        return AudioClipExample(metadata=metadata, audio_data=torch.from_numpy(audio_data), sample_rate=self.sr)
+        return AudioClipExample(metadata=metadata, audio_data=torch.from_numpy(audio_data), sample_rate=self.sr,)
 
 
 class WakeWordDataset(AudioDataset[AudioClipMetadata]):
@@ -165,7 +195,7 @@ class HonkSpeechCommandsDataset(AudioClassificationDataset):
         if idx < super().__len__():
             return super().__getitem__(idx)
         return ClassificationClipExample(
-            metadata=AudioClipMetadata(), audio_data=torch.zeros(16000), sample_rate=self.sr, label=self.silence_label
+            metadata=AudioClipMetadata(), audio_data=torch.zeros(16000), sample_rate=self.sr, label=self.silence_label,
         )
 
     def __len__(self):

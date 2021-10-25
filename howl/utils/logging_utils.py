@@ -6,14 +6,14 @@ from logging.handlers import RotatingFileHandler
 import coloredlogs
 
 
-def setup_logger(name, log_path=None, level=logging.DEBUG, use_stdout=True):
+def setup_logger(name, level=logging.DEBUG, use_stdout=True, log_path=None):
     """Setup of logger
 
     Args:
         name: Logger name
-        log_path: Log file path
         level: Verbosity level
         use_stdout: Whether to add stdout as a handler
+        log_path: Log file path
 
     Returns:
         A logger
@@ -35,7 +35,7 @@ def setup_logger(name, log_path=None, level=logging.DEBUG, use_stdout=True):
         os.makedirs(os.path.dirname(log_path), exist_ok=True)
         # Limit log to 5MB
         handler = RotatingFileHandler(
-            log_path, mode="a", maxBytes=5 * 1024 * 1024, backupCount=2, encoding=None, delay=False
+            log_path, mode="a", maxBytes=5 * 1024 * 1024, backupCount=2, encoding=None, delay=False,
         )
         handler.setFormatter(formatter)
         handler.setLevel(level)

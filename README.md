@@ -81,7 +81,7 @@ VOCAB='["fire"]' INFERENCE_SEQUENCE=[0] DATASET_PATH=data/fire-positive python -
 4. Create a negative dataset without the keyword:
 note that 5% is sufficient when generating negative dataset from common-voice dataset
 ```bash
-VOCAB='["fire"]' INFERENCE_SEQUENCE=[0] DATASET_PATH=data/fire-negative python -m training.run.create_raw_dataset -i ~/path/to/common-voice --positive-pct 0 --negative-pct 5 
+VOCAB='["fire"]' INFERENCE_SEQUENCE=[0] DATASET_PATH=data/fire-negative python -m training.run.create_raw_dataset -i ~/path/to/common-voice --positive-pct 0 --negative-pct 5
 ```
 
 5. Generate some mock alignment for the negative set, where we don't care about alignment:
@@ -158,7 +158,7 @@ First, follow the installation instructions in the quickstart guide.
 2. Process the dataset to a format howl can load
 
 ```bash
-VOCAB='["hey","snips"]' INFERENCE_SEQUENCE=[0,1] DATASET_PATH=data/hey-snips python -m training.run.create_raw_dataset --dataset-type 'hey-snips' -i ~/path/to/hey_snips_dataset
+VOCAB='["hey","snips"]' INFERENCE_SEQUENCE=[0,1] DATASET_PATH=data/hey-snips python -m training.run.create_raw_dataset --dataset-loader-type 'hey-snips' -i ~/path/to/hey_snips_dataset
 ```
 
 3. Generate some mock alignment for the dataset, where we don't care about alignment:
