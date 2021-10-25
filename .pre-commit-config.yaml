@@ -40,7 +40,7 @@ repos:
                '--disable=missing-class-docstring',
                '--disable=missing-module-docstring']
 # TODO: enable to check for docstring and drop missing-docstring from pylint
-#-   repo: https://github.com/pycqa/pydocstyle
-#    rev: 6.1.1
-#    hooks:
-#    -   id: pydocstyle
+-   repo: https://github.com/pycqa/pydocstyle
+    rev: 6.1.1
+    hooks:
+    -   id: pydocstyle
