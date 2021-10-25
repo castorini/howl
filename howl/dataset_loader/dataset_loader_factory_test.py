@@ -2,11 +2,13 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from howl.data.dataset_loader.common_voice_dataset_loader import CommonVoiceDatasetLoader
-from howl.data.dataset_loader.dataset_loader_factory import DatasetLoaderType, get_dataset_loader
+from howl.dataset_loader.common_voice_dataset_loader import CommonVoiceDatasetLoader
+from howl.dataset_loader.dataset_loader_factory import DatasetLoaderType, get_dataset_loader
 
 
-class TestMozillaCommonVoiceLoader(unittest.TestCase):
+class TestDatasetLoaderFactory(unittest.TestCase):
+    """Test case for dataset_loader_factory.py"""
+
     def test_missing_dataset(self):
         """Test failure case caused by missing dataset"""
         temp_dir = tempfile.TemporaryDirectory()

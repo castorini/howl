@@ -2,8 +2,8 @@ import logging
 from enum import Enum, unique
 from pathlib import Path
 
-from howl.data.dataset_loader.common_voice_dataset_loader import CommonVoiceDatasetLoader
-from howl.data.dataset_loader.dataset_loader import AudioDatasetLoader
+from howl.dataset_loader.common_voice_dataset_loader import CommonVoiceDatasetLoader
+from howl.dataset_loader.dataset_loader import AudioDatasetLoader
 
 
 @unique

@@ -19,13 +19,18 @@ from howl.data.transform.transform import DatasetMixer, NoiseTransform, Standard
 from howl.model import ConfusionMatrix, ConvertedStaticModel, RegisteredModel, Workspace
 from howl.model.inference import FrameInferenceEngine, SequenceInferenceEngine
 from howl.settings import SETTINGS
-from howl.utils import hash, logging_utils, random
+from howl.utils import hash_utils, logging_utils, random
 
 from .args import ArgumentParserBuilder, opt
 from .create_raw_dataset import print_stats
 
 
 def main():
+    """Train or evaluate howl model"""
+    # TODO: train.py needs to be refactored
+    # pylint: disable=too-many-branches
+    # pylint: disable=too-many-statements
+
     def evaluate_engine(
         dataset: WakeWordDataset,
         prefix: str,
@@ -34,6 +39,7 @@ def main():
         write_errors: bool = True,
         mixer: DatasetMixer = None,
     ):
+        """Evaluate the current model on the given dataset"""
         audio_transform.eval()
 
         if use_frame:
@@ -50,17 +56,17 @@ def main():
         conf_matrix = ConfusionMatrix()
         pbar = tqdm(dataset, desc=prefix)
         if write_errors:
-            with (ws.path / "errors.tsv").open("a") as f:
-                print(prefix, file=f)
-        for idx, ex in enumerate(pbar):
+            with (workspace.path / "errors.tsv").open("a") as error_file:
+                print(prefix, file=error_file)
+        for _, ex in enumerate(pbar):
             if mixer is not None:
                 (ex,) = mixer([ex])
             audio_data = ex.audio_data.to(device)
             engine.reset()
             seq_present = engine.infer(audio_data)
             if seq_present != positive_set and write_errors:
-                with (ws.path / "errors.tsv").open("a") as f:
-                    f.write(
+                with (workspace.path / "errors.tsv").open("a") as error_file:
+                    error_file.write(
                         f"{ex.metadata.transcription}\t{int(seq_present)}\t{int(positive_set)}\t{ex.metadata.path}\n"
                     )
             conf_matrix.increment(seq_present, positive_set)
@@ -68,14 +74,19 @@ def main():
 
         logger.info(f"{conf_matrix}")
         if save and not args.eval:
+            # TODO: evaluate_engine must be moved outside of the main
+            # pylint: disable=undefined-loop-variable
             writer.add_scalar(f"{prefix}/Metric/tp", conf_matrix.tp, epoch_idx)
-            ws.increment_model(model, conf_matrix.tp)
+            workspace.increment_model(model, conf_matrix.tp)
         if args.eval:
             threshold = engine.threshold
-            with (ws.path / (str(round(threshold, 2)) + "_results.csv")).open("a") as f:
-                f.write(f"{prefix},{threshold},{conf_matrix.tp},{conf_matrix.tn},{conf_matrix.fp},{conf_matrix.fn}\n")
+            with (workspace.path / (str(round(threshold, 2)) + "_results.csv")).open("a") as result_file:
+                result_file.write(
+                    f"{prefix},{threshold},{conf_matrix.tp},{conf_matrix.tn},{conf_matrix.fp},{conf_matrix.fn}\n"
+                )
 
     def do_evaluate():
+        """Run evaluation on different datasets"""
         evaluate_engine(ww_dev_pos_ds, "Dev positive", positive_set=True)
         evaluate_engine(ww_dev_neg_ds, "Dev negative", positive_set=False)
         if SETTINGS.training.use_noise_dataset:
@@ -107,8 +118,8 @@ def main():
     random.set_seed(SETTINGS.training.seed)
     logger = logging_utils.setup_logger(os.path.basename(__file__), logging.INFO)
     use_frame = SETTINGS.training.objective == "frame"
-    ws = Workspace(Path(args.workspace), delete_existing=not args.eval)
-    writer = ws.summary_writer
+    workspace = Workspace(Path(args.workspace), delete_existing=not args.eval)
+    writer = workspace.summary_writer
     device = torch.device(SETTINGS.training.device)
     # endregion prepare training environment
 
@@ -157,8 +168,8 @@ def main():
             Path(SETTINGS.raw_dataset.noise_dataset_path), sr=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono,
         )
         logger.info(f"Loaded {len(noise_ds.metadata_list)} noise files.")
-        noise_ds_train, noise_ds_dev = noise_ds.split(hash.Sha256Splitter(80))
-        noise_ds_dev, noise_ds_test = noise_ds_dev.split(hash.Sha256Splitter(50))
+        noise_ds_train, noise_ds_dev = noise_ds.split(hash_utils.Sha256Splitter(80))
+        noise_ds_dev, noise_ds_test = noise_ds_dev.split(hash_utils.Sha256Splitter(50))
         train_comp = (DatasetMixer(noise_ds_train).train(),) + train_comp
         dev_mixer = DatasetMixer(noise_ds_dev, seed=0, do_replace=False)
         test_mixer = DatasetMixer(noise_ds_test, seed=0, do_replace=False)
@@ -170,8 +181,8 @@ def main():
     # endregion initialize audio pre-processors
 
     # region prepare model for zmuv normalization
-    if (ws.path / "zmuv.pt.bin").exists():
-        zmuv_transform.load_state_dict(torch.load(str(ws.path / "zmuv.pt.bin")))
+    if (workspace.path / "zmuv.pt.bin").exists():
+        zmuv_transform.load_state_dict(torch.load(str(workspace.path / "zmuv.pt.bin")))
     else:
         for idx, batch in enumerate(tqdm(prep_dl, desc="Constructing ZMUV")):
             batch.to(device)
@@ -179,7 +190,7 @@ def main():
             if idx == 2000:  # TODO: quick debugging, remove later
                 break
         logger.info(dict(zmuv_mean=zmuv_transform.mean, zmuv_std=zmuv_transform.std))
-    torch.save(zmuv_transform.state_dict(), str(ws.path / "zmuv.pt.bin"))
+    torch.save(zmuv_transform.state_dict(), str(workspace.path / "zmuv.pt.bin"))
     # endregion prepare model for zmuv normalization
 
     # region prepare model training
@@ -197,17 +208,17 @@ def main():
     logger.info(f"{sum(p.numel() for p in params)} parameters")
 
     if args.load_weights:
-        ws.load_model(model, best=not args.load_last)
+        workspace.load_model(model, best=not args.load_last)
     # endregion prepare model training
 
     if args.eval:
-        ws.load_model(model, best=not args.load_last)
+        workspace.load_model(model, best=not args.load_last)
         do_evaluate()
         return
 
     # region train model
-    ws.write_args(args)
-    ws.write_settings(SETTINGS)
+    workspace.write_args(args)
+    workspace.write_settings(SETTINGS)
     writer.add_scalar("Meta/Parameters", sum(p.numel() for p in params))
     for epoch_idx in trange(SETTINGS.training.num_epochs, position=0, leave=True):
         model.train()
@@ -241,6 +252,8 @@ def main():
 
         mean = total_loss / len(train_dl)
         writer.add_scalar("Training/Loss", mean.item(), epoch_idx)
+        # TODO: group["lr"] is invalid
+        # pylint: disable=undefined-loop-variable
         writer.add_scalar("Training/LearningRate", group["lr"], epoch_idx)
 
         if args.dev_per_epoch:

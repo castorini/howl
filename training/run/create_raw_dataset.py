@@ -3,22 +3,31 @@ import os
 from pathlib import Path
 
 from howl.context import InferenceContext
+from howl.data.common.metadata import AudioClipMetadata
 from howl.data.dataset.dataset import AudioDataset
 from howl.data.dataset.dataset_writer import AudioDatasetWriter
-from howl.data.dataset_loader.dataset_loader_factory import DatasetLoaderType, get_dataset_loader
+from howl.dataset_loader.dataset_loader_factory import DatasetLoaderType, get_dataset_loader
 from howl.settings import SETTINGS
-from howl.utils import hash, logging_utils
+from howl.utils import hash_utils, logging_utils
 
 from .args import ArgumentParserBuilder, opt
 
 
 # TODO: to be replaced to dataset.print_stats
 def print_stats(header: str, context: InferenceContext, *datasets: AudioDataset, compute_length=True):
+    """Print statistics for the give datasets
+
+    Args:
+        header: additional text message to prepend
+        context: inference context
+        *datasets: datasets of which statistics will be printed
+        compute_length: log total length of the audio
+    """
     word_searcher = context.searcher if context.token_type == "word" else None
-    for ds in datasets:
+    for dataset in datasets:
         logging.info(
-            f"{header} ({ds.set_type}) "
-            f"statistics: {ds.compute_statistics(word_searcher=word_searcher, compute_length=compute_length)}"
+            f"{header} ({dataset.set_type}) "
+            f"statistics: {dataset.compute_statistics(word_searcher=word_searcher, compute_length=compute_length)}"
         )
 
 
@@ -33,14 +42,23 @@ def main():
     --positive-pct 100 --negative-pct 0
     """
 
-    def filter_fn(x):
-        bucket = hash.sha256_int(x.path.stem) % 100
+    def filter_fn(metadata: AudioClipMetadata):
+        """Distribute given audio data into different bucket based on the configuration and
+        return True if it needs to be included
+
+        Args:
+            metadata: metadata of the audio sample
+
+        Returns:
+            True if it needs to be included for the dataset
+        """
+        bucket = hash_utils.sha256_int(metadata.path.stem) % 100
         if bucket < args.negative_pct:
             # drop the samples whose transcript is wakeword
-            return not ctx.searcher.search(x.transcription.lower())
+            return not ctx.searcher.search(metadata.transcription.lower())
         if bucket < args.positive_pct:
             # select all sample whose transcript contains at least one of the vocabs
-            return ctx.searcher.contains_any(x.transcription.lower())
+            return ctx.searcher.contains_any(metadata.transcription.lower())
         return False
 
     apb = ArgumentParserBuilder()
@@ -81,10 +99,10 @@ def main():
         test_ds = test_ds.filter(filter_fn)
 
     word_searcher = ctx.searcher if ctx.token_type == "word" else None
-    for ds in train_ds, dev_ds, test_ds:
-        ds.print_stats(logger, word_searcher=word_searcher, compute_length=True)
-        logger.info(f"Generating {ds.split.value} dataset")
-        AudioDatasetWriter(ds).write(Path(SETTINGS.dataset.dataset_path))
+    for dataset in train_ds, dev_ds, test_ds:
+        dataset.print_stats(logger, word_searcher=word_searcher, compute_length=True)
+        logger.info(f"Generating {dataset.split.value} dataset")
+        AudioDatasetWriter(dataset).write(Path(SETTINGS.dataset.dataset_path))
 
 
 if __name__ == "__main__":
