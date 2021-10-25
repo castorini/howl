@@ -7,11 +7,13 @@ from pathlib import Path
 import pytest
 
 from howl.data.dataset.dataset import DatasetSplit
-from howl.data.dataset_loader.common_voice_dataset_loader import CommonVoiceDatasetLoader
+from howl.dataset_loader.common_voice_dataset_loader import CommonVoiceDatasetLoader
 from howl.utils import filesystem_utils, test_utils
 
 
 class TestCommonVoiceDatasetLoader(unittest.TestCase):
+    """Test case for CommonVoiceDatasetLoader"""
+
     @contextmanager
     def _setup_test_env(self):
         """prepare an environment for ml-pipeline test cases by creating necessary folders"""
@@ -31,19 +33,19 @@ class TestCommonVoiceDatasetLoader(unittest.TestCase):
             self.assertEqual(dataset_loader.name, "mozilla-cv")
             self.assertEqual(dataset_loader.dataset_path, dataset_path)
 
-            sr = 1000
-            train_ds, dev_ds, test_ds = dataset_loader.load_splits(sr=sr)
+            sample_rate = 1000
+            train_ds, dev_ds, test_ds = dataset_loader.load_splits(sr=sample_rate)
             self.assertEqual(len(train_ds.metadata_list), 3)
             self.assertEqual(train_ds.split, DatasetSplit.TRAINING)
-            self.assertEqual(train_ds.sr, sr)
+            self.assertEqual(train_ds.sample_rate, sample_rate)
 
             self.assertEqual(len(dev_ds.metadata_list), 2)
             self.assertEqual(dev_ds.split, DatasetSplit.DEV)
-            self.assertEqual(dev_ds.sr, sr)
+            self.assertEqual(dev_ds.sample_rate, sample_rate)
 
             self.assertEqual(len(test_ds.metadata_list), 2)
             self.assertEqual(test_ds.split, DatasetSplit.TEST)
-            self.assertEqual(test_ds.sr, sr)
+            self.assertEqual(test_ds.sample_rate, sample_rate)
 
     def test_missing_dataset(self):
         """Test failure case caused by missing dataset"""

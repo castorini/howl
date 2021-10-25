@@ -7,8 +7,10 @@ from howl.utils import logging_utils
 
 
 class AudioDatasetLoader:
+    """Load and create dataset instances from local files."""
+
     def __init__(self, name: str, dataset_path: Path, logger: logging.Logger = None):
-        """Load audio datasets from the provided path
+        """Initialize AudioDatasetLoader for the given path.
 
         Args:
             name: unique name for the dataset loader
@@ -25,7 +27,7 @@ class AudioDatasetLoader:
             self.logger = logging_utils.setup_logger(f"AudioDatasetLoader({self.name})")
 
     def _load_dataset(self, split: DatasetSplit, **dataset_kwargs) -> AudioDataset:
-        """Load dataset of given split
+        """Load dataset of given split.
 
         Args:
             split: split of the dataset to load
@@ -34,6 +36,7 @@ class AudioDatasetLoader:
         Returns:
             dataset for the given split
         """
+        # pylint: disable=unused-argument
         self.logger.info(f"Loading {split.value} split")
         raise NotImplementedError("Not yet implemented for {}".format(self.__class__.__name__))
 

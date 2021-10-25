@@ -8,27 +8,27 @@ from tqdm import tqdm
 
 from howl.context import InferenceContext
 from howl.data.dataset.dataset import DatasetType, WakeWordDataset
-from howl.data.dataset.dataset_loader import (
-    RecursiveNoiseDatasetLoader,
-    WakeWordDatasetLoader,
-)
-from howl.data.transform import DatasetMixer
+from howl.data.dataset.dataset_loader import RecursiveNoiseDatasetLoader, WakeWordDatasetLoader
+from howl.data.transform.transform import DatasetMixer
 from howl.settings import SETTINGS
-from howl.utils.hash import Sha256Splitter
+from howl.utils.hash_utils import Sha256Splitter
 
 from .args import ArgumentParserBuilder, opt
 from .create_raw_dataset import print_stats
 
-"""
-This script is used to transform datasets for howl to dataset for Mycroft-precise
-
-sample command:
-python -m training.run.generate_precise_dataset.py --i <datasets to convert> --o <location of the output dataset>
-"""
-
 
 def main():
+    """
+    This script is used to transform datasets for howl to dataset for Mycroft-precise
+
+    sample command:
+    python -m training.run.generate_precise_dataset.py --i <datasets to convert> --o <location of the output dataset>
+    """
+    # TODO: generate_precise_dataset.py needs to be refactored
+    # pylint: disable=too-many-statements
+
     def copy_files(dataset, output_dir, deep_copy=False):
+        """Copy dataset to output dir"""
         print("copying files to", output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
         for item in tqdm(dataset):
@@ -42,7 +42,8 @@ def main():
                 pass
 
     def write_files(dataset, output_dir, mixer: DatasetMixer):
-        print("copying files to", output_dir)
+        """Write audio files of the given dataste to output dir"""
+        print("Writing files to", output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
         for item in tqdm(dataset):
             (item,) = mixer([item])
@@ -99,7 +100,7 @@ def main():
     noise_ds = RecursiveNoiseDatasetLoader().load(
         Path(SETTINGS.raw_dataset.noise_dataset_path), sr=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono,
     )
-    noise_ds_train, noise_ds_dev = noise_ds.split(Sha256Splitter(80))
+    _noise_ds_train, noise_ds_dev = noise_ds.split(Sha256Splitter(80))
     noise_ds_dev, noise_ds_test = noise_ds_dev.split(Sha256Splitter(50))
 
     dev_mixer = DatasetMixer(noise_ds_dev, seed=10, do_replace=False)

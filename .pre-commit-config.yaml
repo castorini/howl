@@ -35,8 +35,11 @@ repos:
     hooks:
     -   id: pylint
         args: ['--max-line-length=120',
-               '--disable=import-error']
--   repo: https://github.com/pycqa/pydocstyle
-    rev: 6.1.1
-    hooks:
-    -   id: pydocstyle
+               '--disable=no-self-use',
+               '--disable=import-error',
+               '--disable=too-few-public-methods',
+               '--disable=logging-fstring-interpolation',
+               '--disable=missing-module-docstring',
+               '--disable=too-many-arguments',
+               '--disable=too-many-locals',
+               '--disable=fixme']
