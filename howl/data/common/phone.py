@@ -92,7 +92,7 @@ class PhonePhrase:
 
         pp = PhonePhrase.from_string("abc sil ghi")
         pp.audible_idx_to_all_idx(0) # 0 - where the first audible phone (abc) is located in the whole phrase
-        pp.audible_idx_to_all_idx(1) # 2 - where the second audible phone (abc) is located in the whole phrase
+        pp.audible_idx_to_all_idx(1) # 2 - where the second audible phone (sil) is located in the whole phrase
 
         Args:
             audible_idx (int): audible phone index to convert

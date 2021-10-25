@@ -7,7 +7,8 @@ import torch
 import torch.nn.functional as F
 
 from howl.context import InferenceContext
-from howl.data.transform import StandardAudioTransform, ZmuvTransform
+from howl.data.transform.operator import ZmuvTransform
+from howl.data.transform.transform import StandardAudioTransform
 from howl.model import RegisteredModel
 from howl.settings import SETTINGS
 from howl.utils.audio import stride

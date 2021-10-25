@@ -11,7 +11,7 @@ from howl.data.common.searcher import (
     WordTranscriptSearcher,
 )
 from howl.data.common.vocab import Vocab
-from howl.data.dataset import WakeWordDataset
+from howl.data.dataset.dataset import WakeWordDataset
 from howl.settings import SETTINGS
 
 

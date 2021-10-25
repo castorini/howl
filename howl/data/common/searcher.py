@@ -13,7 +13,6 @@ from howl.settings import SETTINGS
 __all__ = [
     "LabelColoring",
     "PhoneticTranscriptSearcher",
-    "TranscriptSearcher",
     "WordTranscriptSearcher",
 ]
 
@@ -25,14 +24,25 @@ class LabelColoring:
         self.label_counter = 0
 
     def append_label(self, label: int, color: int = None):
+        if label in self.color_map:
+            registered_color = self.color_map[label]
+            if color is None:
+                color = registered_color
+            elif color != registered_color:
+                raise RuntimeError(
+                    f"given label {label} is already registered with color {registered_color} "
+                    f"which mismatches with the given color {color}"
+                )
+            return
         color = self._inc_color_counter(color)
         self.color_map[label] = color
+        self.label_counter = max(self.label_counter, label + 1)
 
     def _inc_color_counter(self, color: int = None):
         if color is None:
             color = self.color_counter
         else:
-            self.color_counter = max(self.color_counter, color + 1)
+            self.color_counter = max(self.color_counter, color)
         self.color_counter += 1
         return color
 
@@ -67,9 +77,7 @@ class WordTranscriptSearcher(TranscriptSearcher):
         super().__init__(**kwargs)
         self.vocab = vocab
         self.tokenizer = WakeWordTokenizer(self.vocab, False)
-        self.inference_sequence_str = "".join(
-            map(str, self.settings.inference_sequence)
-        )
+        self.inference_sequence_str = "".join(map(str, self.settings.inference_sequence))
         # self.wakeword = self.vocab.decode(self.settings.inference_sequence)
 
     def search(self, item: str) -> bool:
@@ -115,10 +123,7 @@ class PhoneticTranscriptSearcher(TranscriptSearcher):
     def __init__(self, phrases: List[PhonePhrase], coloring: LabelColoring, **kwargs):
         super().__init__(**kwargs)
         self.phrases = phrases
-        label_map = [
-            (phrase.audible_transcript, coloring.color_map[idx])
-            for idx, phrase in enumerate(phrases)
-        ]
+        label_map = [(phrase.audible_transcript, coloring.color_map[idx]) for idx, phrase in enumerate(phrases)]
         buckets = defaultdict(list)
         for transcript, color in label_map:
             buckets[color].append(transcript)

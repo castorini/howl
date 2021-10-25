@@ -15,15 +15,15 @@ from howl.data.dataset.dataset_loader import (
     RecursiveNoiseDatasetLoader,
     WakeWordDatasetLoader,
 )
-from howl.data.transform import (
+from howl.data.transform.batchifier import (
     AudioSequenceBatchifier,
+    WakeWordFrameBatchifier,
+)
+from howl.data.transform.operator import ZmuvTransform, batchify, compose
+from howl.data.transform.transform import (
     DatasetMixer,
     NoiseTransform,
     StandardAudioTransform,
-    WakeWordFrameBatchifier,
-    ZmuvTransform,
-    batchify,
-    compose,
 )
 from howl.model import ConfusionMatrix, ConvertedStaticModel, RegisteredModel, Workspace
 from howl.model.inference import FrameInferenceEngine, SequenceInferenceEngine

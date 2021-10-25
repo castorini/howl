@@ -15,24 +15,11 @@ class FrameLabeler:
 
 
 class PhoneticFrameLabeler(FrameLabeler):
-    def __init__(
-        self, pronounce_dict: PronunciationDictionary, phrases: List[PhonePhrase]
-    ):
+    def __init__(self, pronounce_dict: PronunciationDictionary, phrases: List[PhonePhrase]):
         self.pronounce_dict = pronounce_dict
         self.phrases = phrases
         punctuation_to_replace = str.maketrans(
-            {
-                "‘": "'",
-                "’": "'",
-                "”": '"',
-                "“": '"',
-                "—": "-",
-                "ä": "a",
-                "ö": "o",
-                "ō": "o",
-                "é": "e",
-                "à": "a",
-            }
+            {"‘": "'", "’": "'", "”": '"', "“": '"', "—": "-", "ä": "a", "ö": "o", "ō": "o", "é": "e", "à": "a"}
         )
         punctuation_to_remove = str.maketrans({key: None for key in string.punctuation})
         # First transformation is None because we want to process the original word first
@@ -121,9 +108,7 @@ class PhoneticFrameLabeler(FrameLabeler):
             if phrase:
                 phonetic_transcription.extend(phrase)
             elif len(original_word) > 0:
-                print(
-                    f"Failed to find phonemes for {original_word} {[ord(c) for c in original_word]}"
-                )
+                print(f"Failed to find phonemes for {original_word} {[ord(c) for c in original_word]}")
 
         # TODO: idx might not be the correct label due to repeated phonemes
         for idx, phrase in enumerate(self.phrases):
@@ -133,22 +118,22 @@ class PhoneticFrameLabeler(FrameLabeler):
                     start = phonetic_transcription.audible_index(phrase, start)
                 except ValueError:
                     break
-                start = phonetic_transcription.all_idx_to_transcript_idx(
-                    phonetic_transcription.audible_idx_to_all_idx(start)
-                )
+
                 # TDOO: metadata.end_timestamps contains when the given character in the transcript finishes
                 #       in order to label the the phonemes right, we need a mapping from characters to phonemes
-                #
-                #       phonetic_transcription = list of phones for the transcription
-                #       end_timestamps = when character of the given index in the transcription is pronounced
-                #       phoeneme_mapping = from character index to phone index in phonetic_transcription
-                #
-                #       char_index = phoneme_mapping[start]
-                #       end_time = metadata.end_timestamps[char_index]
-                #       frame_labels[end_time] = idx
-                frame_labels[
-                    metadata.end_timestamps[start + len(str(phrase)) - 1]
-                ] = idx
+                # # compute where the phrase located in the transcript
+                # start = phonetic_transcription.all_idx_to_transcript_idx(
+                #     phonetic_transcription.audible_idx_to_all_idx(start)
+                # )
+
+                # phonetic_transcription = list of phones for the transcription
+                # end_timestamps = when character of the given index in the transcription is pronounced
+                # phoeneme_mapping = from character index to phone index in phonetic_transcription
+
+                # char_index = phoneme_mapping[start]
+                # end_time = metadata.end_timestamps[char_index]
+                # frame_labels[end_time] = idx
+                frame_labels[metadata.end_timestamps[start]] = idx
                 start += 1
 
         # TODO: process phonetic_transcription to compute valid FrameLabelData
@@ -156,9 +141,8 @@ class PhoneticFrameLabeler(FrameLabeler):
 
 
 class WordFrameLabeler(FrameLabeler):
-    def __init__(self, vocab: Vocab, ceil_word_boundary: bool = False):
+    def __init__(self, vocab: Vocab):
         self.vocab = vocab
-        self.ceil_word_boundary = ceil_word_boundary
 
     def compute_frame_labels(self, metadata: AudioClipMetadata) -> FrameLabelData:
         frame_labels = dict()
@@ -175,15 +159,8 @@ class WordFrameLabeler(FrameLabeler):
                 label = self.vocab[word]
                 end_timestamp = metadata.end_timestamps[char_idx + word_size - 1]
                 frame_labels[end_timestamp] = label
-                char_indices.append(
-                    (label, list(range(char_idx, char_idx + word_size)))
-                )
-                start_timestamp.append(
-                    (
-                        label,
-                        metadata.end_timestamps[char_idx - 1] if char_idx > 0 else 0.0,
-                    )
-                )
+                char_indices.append((label, list(range(char_idx, char_idx + word_size))))
+                start_timestamp.append((label, metadata.end_timestamps[char_idx - 1] if char_idx > 0 else 0.0,))
 
             char_idx += word_size + 1  # space
 
