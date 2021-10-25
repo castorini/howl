@@ -35,11 +35,7 @@ repos:
     hooks:
     -   id: pylint
         args: ['--max-line-length=120',
-               '--disable=import-error',
-               '--disable=missing-function-docstring',
-               '--disable=missing-class-docstring',
-               '--disable=missing-module-docstring']
-# TODO: enable to check for docstring and drop missing-docstring from pylint
+               '--disable=import-error']
 -   repo: https://github.com/pycqa/pydocstyle
     rev: 6.1.1
     hooks:
