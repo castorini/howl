@@ -6,7 +6,7 @@ from howl.dataset_loader.common_voice_dataset_loader import CommonVoiceDatasetLo
 from howl.dataset_loader.dataset_loader_factory import DatasetLoaderType, get_dataset_loader
 
 
-class TestDatasetLoaderFactory(unittest.TestCase):
+class DatasetLoaderFactoryTest(unittest.TestCase):
     """Test case for dataset_loader_factory.py"""
 
     def test_missing_dataset(self):

@@ -42,4 +42,5 @@ repos:
                '--disable=missing-module-docstring',
                '--disable=too-many-arguments',
                '--disable=too-many-locals',
+               '--disable=too-many-instance-attributes',
                '--disable=fixme']

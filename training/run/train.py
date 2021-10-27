@@ -1,4 +1,3 @@
-import logging
 import os
 from pathlib import Path
 
@@ -116,7 +115,7 @@ def main():
 
     # region prepare training environment
     random.set_seed(SETTINGS.training.seed)
-    logger = logging_utils.setup_logger(os.path.basename(__file__), logging.INFO)
+    logger = logging_utils.setup_logger(os.path.basename(__file__))
     use_frame = SETTINGS.training.objective == "frame"
     workspace = Workspace(Path(args.workspace), delete_existing=not args.eval)
     writer = workspace.summary_writer

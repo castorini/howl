@@ -18,16 +18,16 @@ class TestDataset(AudioDataset[AudioClipMetadata]):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        audio_data = torch.zeros(self.sr)
+        audio_data = torch.zeros(self.sample_rate)
 
         metadata1 = AudioClipMetadata(transcription="hello world")
-        sample1 = AudioClipExample(metadata=metadata1, audio_data=audio_data, sample_rate=self.sr)
+        sample1 = AudioClipExample(metadata=metadata1, audio_data=audio_data, sample_rate=self.sample_rate)
 
         metadata2 = AudioClipMetadata(transcription="happy new year")
-        sample2 = AudioClipExample(metadata=metadata2, audio_data=audio_data, sample_rate=self.sr)
+        sample2 = AudioClipExample(metadata=metadata2, audio_data=audio_data, sample_rate=self.sample_rate)
 
         metadata3 = AudioClipMetadata(transcription="what a beautiful world")
-        sample3 = AudioClipExample(metadata=metadata3, audio_data=audio_data, sample_rate=self.sr)
+        sample3 = AudioClipExample(metadata=metadata3, audio_data=audio_data, sample_rate=self.sample_rate)
 
         self.samples = [sample1, sample2, sample3]
 
@@ -39,9 +39,10 @@ class TestDataset(AudioDataset[AudioClipMetadata]):
 
 
 class TestAudioDataset(unittest.TestCase):
+    """Sample audio dataset for testing"""
+
     def test_compute_statistics(self):
-        """test compute statistics
-        """
+        """test compute statistics"""
         SETTINGS.training.vocab = ["hello", "world"]
         SETTINGS.training.token_type = "word"
         SETTINGS.inference_engine.inference_sequence = [0, 1]
