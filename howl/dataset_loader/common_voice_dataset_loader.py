@@ -30,23 +30,23 @@ class CommonVoiceDatasetLoader(AudioDatasetLoader):
         """
         super().__init__(self.NAME, dataset_path=dataset_path, logger=logger)
 
-    def _load_dataset(self, split: DatasetSplit, **dataset_kwargs) -> AudioDataset:
-        """Load dataset of given split
+    def _load_dataset(self, dataset_split: DatasetSplit, **dataset_kwargs) -> AudioDataset:
+        """Load dataset of given dataset_split
 
         Args:
-            split: split of the dataset to load
+            dataset_split: dataset_split of the dataset to load
             **dataset_kwargs: other arguments passed to the dataset
 
         Returns:
-            dataset for the given split
+            dataset for the given dataset_split
         """
-        metafile_path = self.dataset_path / self.METAFILE_MAPPING[split]
+        metafile_path = self.dataset_path / self.METAFILE_MAPPING[dataset_split]
         if not metafile_path.exists():
-            raise FileNotFoundError(f"Metafile path for {split.value} split is invalid: {metafile_path}")
+            raise FileNotFoundError(f"Metafile path for {dataset_split.value} split is invalid: {metafile_path}")
         data_frame = pd.read_csv(str(metafile_path), sep="\t", quoting=3, na_filter=False)
         metadata_list = []
         for tup in data_frame.itertuples():
             metadata_list.append(
                 AudioClipMetadata(path=(self.dataset_path / "clips" / tup.path).absolute(), transcription=tup.sentence,)
             )
-        return AudioClipDataset(metadata_list=metadata_list, split=split, **dataset_kwargs)
+        return AudioClipDataset(metadata_list=metadata_list, dataset_split=dataset_split, **dataset_kwargs)

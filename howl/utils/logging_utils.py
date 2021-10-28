@@ -6,7 +6,7 @@ from logging.handlers import RotatingFileHandler
 import coloredlogs
 
 
-def setup_logger(name, level=logging.DEBUG, use_stdout=True, log_path=None):
+def setup_logger(name, level=logging.INFO, use_stdout=True, log_path=None):
     """Setup of logger
 
     Args:

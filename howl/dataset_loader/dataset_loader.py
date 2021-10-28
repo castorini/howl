@@ -26,18 +26,18 @@ class AudioDatasetLoader:
         if self.logger is None:
             self.logger = logging_utils.setup_logger(f"AudioDatasetLoader({self.name})")
 
-    def _load_dataset(self, split: DatasetSplit, **dataset_kwargs) -> AudioDataset:
-        """Load dataset of given split.
+    def _load_dataset(self, dataset_split: DatasetSplit, **dataset_kwargs) -> AudioDataset:
+        """Load dataset of given dataset_split.
 
         Args:
-            split: split of the dataset to load
+            dataset_split: dataset_split of the dataset to load
             **dataset_kwargs: other arguments passed to the dataset
 
         Returns:
-            dataset for the given split
+            dataset for the given dataset_split
         """
         # pylint: disable=unused-argument
-        self.logger.info(f"Loading {split.value} split")
+        self.logger.info(f"Loading {dataset_split.value} split")
         raise NotImplementedError("Not yet implemented for {}".format(self.__class__.__name__))
 
     def load_splits(self, **dataset_kwargs) -> Tuple[AudioDataset, AudioDataset, AudioDataset]:

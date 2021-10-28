@@ -67,7 +67,7 @@ def main():
     ctx = InferenceContext(SETTINGS.training.vocab, token_type=SETTINGS.training.token_type, use_blank=not use_frame,)
 
     loader = WakeWordDatasetLoader()
-    ds_kwargs = dict(sr=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono, frame_labeler=ctx.labeler,)
+    ds_kwargs = dict(sample_rate=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono, frame_labeler=ctx.labeler,)
 
     inference_settings = SETTINGS.inference_engine
     wakeword = "_".join(np.array(SETTINGS.training.vocab)[inference_settings.inference_sequence]).strip()
@@ -98,7 +98,9 @@ def main():
     copy_files(ww_train_neg_ds, output_path / "not-wake-word", args.deep_copy)
 
     noise_ds = RecursiveNoiseDatasetLoader().load(
-        Path(SETTINGS.raw_dataset.noise_dataset_path), sr=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono,
+        Path(SETTINGS.raw_dataset.noise_dataset_path),
+        sample_rate=SETTINGS.audio.sample_rate,
+        mono=SETTINGS.audio.use_mono,
     )
     _noise_ds_train, noise_ds_dev = noise_ds.split(Sha256Splitter(80))
     noise_ds_dev, noise_ds_test = noise_ds_dev.split(Sha256Splitter(50))

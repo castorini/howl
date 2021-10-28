@@ -1,4 +1,3 @@
-import logging
 import os
 from pathlib import Path
 
@@ -30,6 +29,7 @@ def main():
     # TODO: train.py needs to be refactored
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-statements
+    # pylint: disable=duplicate-code
 
     def evaluate_engine(
         dataset: WakeWordDataset,
@@ -116,7 +116,7 @@ def main():
 
     # region prepare training environment
     random.set_seed(SETTINGS.training.seed)
-    logger = logging_utils.setup_logger(os.path.basename(__file__), logging.INFO)
+    logger = logging_utils.setup_logger(os.path.basename(__file__))
     use_frame = SETTINGS.training.objective == "frame"
     workspace = Workspace(Path(args.workspace), delete_existing=not args.eval)
     writer = workspace.summary_writer
@@ -126,7 +126,7 @@ def main():
     # region load datasets
     ctx = InferenceContext(SETTINGS.training.vocab, token_type=SETTINGS.training.token_type, use_blank=not use_frame,)
     loader = WakeWordDatasetLoader()
-    ds_kwargs = dict(sr=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono, frame_labeler=ctx.labeler,)
+    ds_kwargs = dict(sample_rate=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono, frame_labeler=ctx.labeler,)
 
     ww_train_ds, ww_dev_ds, ww_test_ds = (
         WakeWordDataset(metadata_list=[], set_type=DatasetType.TRAINING, **ds_kwargs),
@@ -165,7 +165,9 @@ def main():
 
     if SETTINGS.training.use_noise_dataset:
         noise_ds = RecursiveNoiseDatasetLoader().load(
-            Path(SETTINGS.raw_dataset.noise_dataset_path), sr=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono,
+            Path(SETTINGS.raw_dataset.noise_dataset_path),
+            sample_rate=SETTINGS.audio.sample_rate,
+            mono=SETTINGS.audio.use_mono,
         )
         logger.info(f"Loaded {len(noise_ds.metadata_list)} noise files.")
         noise_ds_train, noise_ds_dev = noise_ds.split(hash_utils.Sha256Splitter(80))
