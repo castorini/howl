@@ -19,6 +19,8 @@ __all__ = ["WordStitcher"]
 
 @dataclass
 class FrameLabelledSample:
+    """Frame level information"""
+
     audio_data: torch.Tensor
     audio_length_ms: float
     end_timestamps: Optional[List[float]]
@@ -26,6 +28,8 @@ class FrameLabelledSample:
 
 
 class Stitcher:
+    """Stitches audio clips to generate custom audio clip"""
+
     def __init__(self, vocab: Vocab, detect_keyword: bool = True):
         """Base Stitcher class
 
@@ -34,20 +38,28 @@ class Stitcher:
             detect_keyword (bool, optional): drop invalid stitched samples through secondary keyword detection step
         """
         self.sequence = SETTINGS.inference_engine.inference_sequence
-        self.sr = SETTINGS.audio.sample_rate
+        self.sample_rate = SETTINGS.audio.sample_rate
         self.vocab = vocab
         self.wakeword = " ".join(self.vocab[x] for x in self.sequence)
 
         self.detect_keyword = detect_keyword
         self.keyword_detector = []
         if self.detect_keyword:
-            for x in self.sequence:
-                self.keyword_detector.append(SphinxKeywordDetector(self.vocab[x]))
+            for word in self.sequence:
+                self.keyword_detector.append(SphinxKeywordDetector(self.vocab[word]))
 
 
 class WordStitcher(Stitcher):
+    """Stitches word-level audio clips to generate custom audio clip"""
+
+    # TODO: train.py needs to be refactored
+    # pylint: disable=too-many-branches
+    # pylint: disable=too-many-statements
+
     def __init__(self, **kwargs):
+        """Initialize WordStitcher"""
         super().__init__(**kwargs)
+        self.stitched_samples = []
 
     def concatenate_end_timestamps(self, end_timestamps_list: List[List[float]]) -> List[float]:
         """concatenate given list of end timestamps for single audio sample
@@ -89,8 +101,8 @@ class WordStitcher(Stitcher):
                     start_timestamp = sample.metadata.end_timestamps[vocab_start_idx]
                     end_timestamp = sample.metadata.end_timestamps[char_indices[-1]]
 
-                    audio_start_idx = int(start_timestamp * self.sr / 1000)
-                    audio_end_idx = int(end_timestamp * self.sr / 1000)
+                    audio_start_idx = int(start_timestamp * self.sample_rate / 1000)
+                    audio_end_idx = int(end_timestamp * self.sample_rate / 1000)
 
                     adjusted_end_timestamps = []
                     for char_idx in char_indices:
@@ -133,7 +145,7 @@ class WordStitcher(Stitcher):
 
             if self.detect_keyword:
                 temp_audio_file_path = "/tmp/temp.wav"
-                soundfile.write(temp_audio_file_path, audio_data.numpy(), self.sr)
+                soundfile.write(temp_audio_file_path, audio_data.numpy(), self.sample_rate)
 
                 keyword_exists = True
                 for detector in self.keyword_detector:
@@ -156,9 +168,9 @@ class WordStitcher(Stitcher):
 
             # TODO:: dataset writer load the samples upon write and does not use data in memory
             #        writer classes need to be refactored to use audio data if exist
-            soundfile.write(metatdata.path, audio_data.numpy(), self.sr)
+            soundfile.write(metatdata.path, audio_data.numpy(), self.sample_rate)
 
-            stitched_sample = AudioClipExample(metadata=metatdata, audio_data=audio_data, sample_rate=self.sr)
+            stitched_sample = AudioClipExample(metadata=metatdata, audio_data=audio_data, sample_rate=self.sample_rate)
 
             self.stitched_samples.append(stitched_sample)
 
@@ -180,9 +192,9 @@ class WordStitcher(Stitcher):
         next test_pct samples are used to generate test set
 
         Args:
-            train_pct (float): train set perceptage (0, 1)
-            dev_pct (float): dev set perceptage (0, 1)
-            test_pct (float): test set perceptage (0, 1)
+            train_pct (float): train set percentage (0, 1)
+            dev_pct (float): dev set percentage (0, 1)
+            test_pct (float): test set percentage (0, 1)
 
         Returns:
             Tuple[AudioClipDataset, AudioClipDataset, AudioClipDataset]: train/dev/test datasets
@@ -206,7 +218,7 @@ class WordStitcher(Stitcher):
             elif idx < test_bucket:
                 test_split.append(sample.metadata)
 
-        ds_kwargs = dict(sr=self.sr, mono=SETTINGS.audio.use_mono)
+        ds_kwargs = dict(sample_rate=self.sample_rate, mono=SETTINGS.audio.use_mono)
         return (
             AudioClipDataset(metadata_list=train_split, set_type=DatasetType.TRAINING, **ds_kwargs),
             AudioClipDataset(metadata_list=dev_split, set_type=DatasetType.DEV, **ds_kwargs),

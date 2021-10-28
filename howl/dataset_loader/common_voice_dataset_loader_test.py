@@ -34,17 +34,17 @@ class CommonVoiceDatasetLoaderTest(unittest.TestCase):
             self.assertEqual(dataset_loader.dataset_path, dataset_path)
 
             sample_rate = 1000
-            train_ds, dev_ds, test_ds = dataset_loader.load_splits(sr=sample_rate)
+            train_ds, dev_ds, test_ds = dataset_loader.load_splits(sample_rate=sample_rate)
             self.assertEqual(len(train_ds.metadata_list), 3)
-            self.assertEqual(train_ds.split, DatasetSplit.TRAINING)
+            self.assertEqual(train_ds.dataset_split, DatasetSplit.TRAINING)
             self.assertEqual(train_ds.sample_rate, sample_rate)
 
             self.assertEqual(len(dev_ds.metadata_list), 2)
-            self.assertEqual(dev_ds.split, DatasetSplit.DEV)
+            self.assertEqual(dev_ds.dataset_split, DatasetSplit.DEV)
             self.assertEqual(dev_ds.sample_rate, sample_rate)
 
             self.assertEqual(len(test_ds.metadata_list), 2)
-            self.assertEqual(test_ds.split, DatasetSplit.TEST)
+            self.assertEqual(test_ds.dataset_split, DatasetSplit.TEST)
             self.assertEqual(test_ds.sample_rate, sample_rate)
 
     def test_missing_dataset(self):

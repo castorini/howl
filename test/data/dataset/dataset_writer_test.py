@@ -30,10 +30,12 @@ class TestDataset(AudioClipDataset):
             metadata_list.append(metadata)
             self.samples.append(sample)
 
-        super().__init__(metadata_list, sr=SETTINGS.audio.sample_rate, set_type=DatasetType.TRAINING)
+        super().__init__(metadata_list, sample_rate=SETTINGS.audio.sample_rate, set_type=DatasetType.TRAINING)
 
 
-class TestAudioDatasetWriter(unittest.TestCase):
+class AudioDatasetWriterTest(unittest.TestCase):
+    """Test functionality of AudioDatasetWriter"""
+
     @pytest.mark.skip(reason="write function fails due to missing audio data")
     def test_write(self):
         """test multiprocessing functionality for writing a huge dataset

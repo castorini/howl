@@ -9,12 +9,13 @@ from howl.data.stitcher import WordStitcher
 from howl.settings import SETTINGS
 
 
-class TestStitcher(unittest.TestCase):
-    def test_compute_statistics(self):
-        random.seed(1)
+class StitcherTest(unittest.TestCase):
+    """Test case for Stitcher"""
 
+    def test_compute_statistics(self):
         """test compute statistics
         """
+        random.seed(1)
         SETTINGS.training.vocab = ["hey", "fire", "fox"]
         SETTINGS.training.token_type = "word"
         SETTINGS.inference_engine.inference_sequence = [0, 1, 2]
@@ -23,7 +24,7 @@ class TestStitcher(unittest.TestCase):
         labeler = WordFrameLabeler(vocab)
 
         loader = WakeWordDatasetLoader()
-        ds_kwargs = dict(sr=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono, frame_labeler=labeler,)
+        ds_kwargs = dict(sample_rate=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono, frame_labeler=labeler,)
 
         test_dataset_path = Path("test/test_data/stitcher")
         stitched_dataset_path = test_dataset_path / "stitched"
@@ -38,7 +39,3 @@ class TestStitcher(unittest.TestCase):
         self.assertEqual(len(stitched_train_ds), 10)
         self.assertEqual(len(stitched_dev_ds), 5)
         self.assertEqual(len(stitched_test_ds), 5)
-
-
-if __name__ == "__main__":
-    unittest.main()

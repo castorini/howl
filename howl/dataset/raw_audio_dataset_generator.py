@@ -41,7 +41,7 @@ class RawAudioDatasetGenerator:
         self.dataset_loader = get_dataset_loader(dataset_loader_type, Path(input_dataset_path), self.logger)
         self.inference_ctx = InferenceContext(SETTINGS.training.vocab, token_type=SETTINGS.training.token_type)
 
-        ds_kwargs = dict(sr=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono)
+        ds_kwargs = dict(sample_rate=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono)
         self.train_ds, self.dev_ds, self.test_ds = self.dataset_loader.load_splits(**ds_kwargs)
 
     def filter_fn(self, metadata: AudioClipMetadata, sample_type: SampleType, percentage: int = 100):
@@ -91,5 +91,5 @@ class RawAudioDatasetGenerator:
 
         for dataset in train_ds, dev_ds, test_ds:
             dataset.print_stats(self.logger, word_searcher=word_searcher, compute_length=True)
-            self.logger.info(f"Generating {dataset.split.value} dataset")
+            self.logger.info(f"Generating {dataset.dataset_split.value} dataset")
             AudioDatasetWriter(dataset).write(dataset_path)

@@ -8,18 +8,18 @@ from howl.data.dataset.dataset_writer import AudioDatasetWriter
 from howl.data.stitcher import WordStitcher
 from howl.settings import SETTINGS
 
-"""Using aligned dataset, generate wakeword samples by stitching vocab samples
-
-VOCAB="[vocab1,vocab2,vocab3]" INFERENCE_SEQUENCE=[1,2,3] \
-    python -m training.run.stitch_vocab_samples \
-    --aligned-dataset "aligned-dataset" \
-    --stitched-dataset "stitched-dataset" \
-    --num-stitched-samples 500 \
-    --stitched-dataset-pct [0.5, 0.25, 0.25]
-"""
-
 
 def main():
+    """Using aligned dataset, generate wakeword samples by stitching vocab samples
+
+    VOCAB="[vocab1,vocab2,vocab3]" INFERENCE_SEQUENCE=[1,2,3] \
+        python -m training.run.stitch_vocab_samples \
+        --aligned-dataset "aligned-dataset" \
+        --stitched-dataset "stitched-dataset" \
+        --num-stitched-samples 500 \
+        --stitched-dataset-pct [0.5, 0.25, 0.25]
+    """
+
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--stitched-dataset",
@@ -56,7 +56,7 @@ def main():
 
     vocab = Vocab(SETTINGS.training.vocab)
     labeler = WordFrameLabeler(vocab)
-    ds_kwargs = dict(sr=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono, frame_labeler=labeler,)
+    ds_kwargs = dict(sample_rate=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono, frame_labeler=labeler,)
 
     # load aligned datasets
     train_ds, dev_ds, test_ds = WakeWordDatasetLoader().load_splits(aligned_ds_path, **ds_kwargs)
@@ -69,12 +69,11 @@ def main():
     stitched_train_ds, stitched_dev_ds, stitched_test_ds = stitcher.load_splits(*args.stitched_dataset_pct)
 
     # save metadata
-    for ds in stitched_train_ds, stitched_dev_ds, stitched_test_ds:
+    for dataset in stitched_train_ds, stitched_dev_ds, stitched_test_ds:
         try:
-            AudioDatasetWriter(ds, prefix="aligned-").write(stitched_ds_path)
+            AudioDatasetWriter(dataset, prefix="aligned-").write(stitched_ds_path)
         except KeyboardInterrupt:
             print("Skipping...")
-            pass
 
 
 if __name__ == "__main__":

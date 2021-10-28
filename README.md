@@ -57,7 +57,7 @@ client.start().join()
 
 4. `pip install -r requirements.txt -r requirements_training.txt` (some apt packages might need to be installed)
 
-5. `./download_mfa.sh` to setup montreal forced alginer (MFA) for dataset generation
+5. `./download_mfa.sh` to setup montreal forced aligner (MFA) for dataset generation
 
 ### Preparing a Dataset
 
