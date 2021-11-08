@@ -19,9 +19,9 @@ from howl.model import ConfusionMatrix, ConvertedStaticModel, RegisteredModel, W
 from howl.model.inference import FrameInferenceEngine, SequenceInferenceEngine
 from howl.settings import SETTINGS
 from howl.utils import hash_utils, logging_utils, random
+from training.run.deprecated.create_raw_dataset import print_stats
 
 from .args import ArgumentParserBuilder, opt
-from .create_raw_dataset import print_stats
 
 
 def main():
@@ -165,7 +165,7 @@ def main():
 
     if SETTINGS.training.use_noise_dataset:
         noise_ds = RecursiveNoiseDatasetLoader().load(
-            Path(SETTINGS.raw_dataset.noise_dataset_path),
+            Path(SETTINGS.training.noise_dataset_path),
             sample_rate=SETTINGS.audio.sample_rate,
             mono=SETTINGS.audio.use_mono,
         )

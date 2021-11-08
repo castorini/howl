@@ -73,51 +73,46 @@ In the example that follows, we describe the process of generating a dataste for
 2. To provide alignment for the data, install [Montreal Forced Aligner](https://montreal-forced-aligner.readthedocs.io/en/stable/installation.html) (MFA)
 and download an [English pronunciation dictionary](http://svn.code.sf.net/p/cmusphinx/code/trunk/cmudict/cmudict-0.7b).
 
-3. Create a positive dataset containing the keyword:
-```bash
-VOCAB='["fire"]' INFERENCE_SEQUENCE=[0] DATASET_PATH=data/fire-positive python -m training.run.create_raw_dataset -i ~/path/to/common-voice --positive-pct 100 --negative-pct 0
-```
-
-4. Create a negative dataset without the keyword:
+3. Create raw audio datasets containing the keyword for howl from open audio datasets:
 note that 5% is sufficient when generating negative dataset from common-voice dataset
 ```bash
-VOCAB='["fire"]' INFERENCE_SEQUENCE=[0] DATASET_PATH=data/fire-negative python -m training.run.create_raw_dataset -i ~/path/to/common-voice --positive-pct 0 --negative-pct 5
+VOCAB='["fire"]' INFERENCE_SEQUENCE=[0] python -m training.run.generate_raw_audio_dataset -i ~/path/to/common-voice --positive-pct 100 --negative-pct 5
 ```
 
-5. Generate some mock alignment for the negative set, where we don't care about alignment:
+4. Generate some mock alignment for the negative set, where we don't care about alignment:
 
 ```bash
-DATASET_PATH=data/fire-negative python -m training.run.attach_alignment --align-type stub
+DATASET_PATH=datasets/fire-negative python -m training.run.attach_alignment --align-type stub
 ```
 
-6. Use MFA to generate alignment for the positive set:
+5. Use MFA to generate alignment for the positive set:
 
 ```bash
-mfa_align data/fire-positive/audio eng.dict pretrained_models/english.zip output-folder
+mfa_align datasets/fire-positive/audio eng.dict pretrained_models/english.zip output-folder
 ```
 
-7. Attach the MFA alignment to the positive dataset:
+6. Attach the MFA alignment to the positive dataset:
 
 ```bash
-DATASET_PATH=data/fire-positive python -m training.run.attach_alignment --align-type mfa -i output-folder
+DATASET_PATH=datasets/fire-positive python -m training.run.attach_alignment --align-type mfa -i output-folder
 ```
 
-8. (Optional) Stitch vocab samples of aligned dataset to generate wakeword samples
+7. (Optional) Stitch vocab samples of aligned dataset to generate wakeword samples
 
 ```bash
-VOCAB='["fire"]' INFERENCE_SEQUENCE=[0] python -m training.run.stitch_vocab_samples --aligned-dataset "data/fire-positive" --stitched-dataset "data/fire-stitched"
+VOCAB='["fire"]' INFERENCE_SEQUENCE=[0] python -m training.run.stitch_vocab_samples --aligned-dataset "datasets/fire-positive" --stitched-dataset "data/fire-stitched"
 ```
 
 ### Training and Running a Model
 
 1. Source the relevant environment variables for training the `res8` model: `source envs/res8.env`.
-2. Train the model: `python -m training.run.train -i data/fire-positive data/fire-negative data/fire-stitched --model res8 --workspace workspaces/fire-res8`.
+2. Train the model: `python -m training.run.train -i datasets/fire-positive datasets/fire-negative datasets/fire-stitched --model res8 --workspace workspaces/fire-res8`.
 3. For the CLI demo, run `python -m training.run.demo --model res8 --workspace workspaces/fire-res8`.
 
 `train_model.sh` is also available which encaspulates individual command into a single bash script
 
 ```bash
-./train_model.sh <env file path (e.g. envs/res8.env)> <model type (e.g. res8)> <workspace path (e.g. workspaces/fire-res8)> <dataset1 (e.g. data/fire-positive)> <dataset2(e.g. data/fire-negative)> ...
+./train_model.sh <env file path (e.g. envs/res8.env)> <model type (e.g. res8)> <workspace path (e.g. workspaces/fire-res8)> <dataset1 (e.g. datasets/fire-positive)> <dataset2 (e.g. datasets/fire-negative)> ...
 ```
 
 ### Pretrained Models
@@ -158,25 +153,25 @@ First, follow the installation instructions in the quickstart guide.
 2. Process the dataset to a format howl can load
 
 ```bash
-VOCAB='["hey","snips"]' INFERENCE_SEQUENCE=[0,1] DATASET_PATH=data/hey-snips python -m training.run.create_raw_dataset --dataset-loader-type 'hey-snips' -i ~/path/to/hey_snips_dataset
+VOCAB='["hey","snips"]' INFERENCE_SEQUENCE=[0,1] DATASET_PATH=datasets/hey-snips python -m training.run.deprecated.create_raw_dataset --dataset-loader-type 'hey-snips' -i ~/path/to/hey_snips_dataset
 ```
 
 3. Generate some mock alignment for the dataset, where we don't care about alignment:
 
 ```bash
-DATASET_PATH=data/hey-snips python -m training.run.attach_alignment --align-type stub
+DATASET_PATH=datasets/hey-snips python -m training.run.attach_alignment --align-type stub
 ```
 
 4. Use MFA to generate alignment for the dataset set:
 
 ```bash
-mfa_align data/hey-snips/audio eng.dict pretrained_models/english.zip output-folder
+mfa_align datasets/hey-snips/audio eng.dict pretrained_models/english.zip output-folder
 ```
 
 5. Attach the MFA alignment to the dataset:
 
 ```bash
-DATASET_PATH=data/hey-snips python -m training.run.attach_alignment --align-type mfa -i output-folder
+DATASET_PATH=datasets/hey-snips python -m training.run.attach_alignment --align-type mfa -i output-folder
 ```
 
 6. Source the appropriate environment variables: `source envs/res8.env`
