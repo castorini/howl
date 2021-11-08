@@ -9,8 +9,7 @@ from howl.data.dataset.dataset_writer import AudioDatasetWriter
 from howl.dataset_loader.dataset_loader_factory import DatasetLoaderType, get_dataset_loader
 from howl.settings import SETTINGS
 from howl.utils import hash_utils, logging_utils
-
-from .args import ArgumentParserBuilder, opt
+from training.run.args import ArgumentParserBuilder, opt
 
 
 # TODO: to be replaced to dataset.print_stats

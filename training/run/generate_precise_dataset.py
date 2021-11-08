@@ -12,9 +12,9 @@ from howl.data.dataset.dataset_loader import RecursiveNoiseDatasetLoader, WakeWo
 from howl.data.transform.transform import DatasetMixer
 from howl.settings import SETTINGS
 from howl.utils.hash_utils import Sha256Splitter
+from training.run.deprecated.create_raw_dataset import print_stats
 
 from .args import ArgumentParserBuilder, opt
-from .create_raw_dataset import print_stats
 
 
 def main():
@@ -98,7 +98,7 @@ def main():
     copy_files(ww_train_neg_ds, output_path / "not-wake-word", args.deep_copy)
 
     noise_ds = RecursiveNoiseDatasetLoader().load(
-        Path(SETTINGS.raw_dataset.noise_dataset_path),
+        Path(SETTINGS.training.noise_dataset_path),
         sample_rate=SETTINGS.audio.sample_rate,
         mono=SETTINGS.audio.use_mono,
     )
