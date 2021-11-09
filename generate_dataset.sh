@@ -28,16 +28,16 @@ done
 VOCAB="${VOCAB::-1}]"
 
 DATASET_FOLDER="datasets"
-printf "\n\n>>> generating datasets for ${VOCAB} at ${DATASET_FOLDER}"
+printf "\n\n>>> generating datasets for ${VOCAB} at ${DATASET_FOLDER}\n"
 mkdir -p "${DATASET_FOLDER}"
 
 NEGATIVE_PCT=0
 if [ ${SKIP_NEG_DATASET} != "true" ]; then
-    printf "\n\n>>> dataset with negative samples will also be generated"
+    printf "\n\n>>> dataset with negative samples will also be generated\n"
     NEGATIVE_PCT=5
 fi
 
-printf "\n\n>>> generating raw audio dataset"
+printf "\n\n>>> generating raw audio dataset\n"
 mkdir -p "${DATASET_FOLDER}"
 time VOCAB=${VOCAB} INFERENCE_SEQUENCE=${INFERENCE_SEQUENCE} python -m training.run.generate_raw_audio_dataset -i ${COMMON_VOICE_DATASET_PATH} --positive-pct 100 --negative-pct ${NEGATIVE_PCT}
 
@@ -45,7 +45,7 @@ NEG_DATASET_PATH="${DATASET_FOLDER}/${DATASET_NAME}/negative"
 POS_DATASET_PATH="${DATASET_FOLDER}/${DATASET_NAME}/positive"
 
 POS_DATASET_ALIGNMENT="${POS_DATASET_PATH}/alignment"
-printf "\n\n>>> generating alignment for the positive dataset using MFA: ${POS_DATASET_ALIGNMENT}"
+printf "\n\n>>> generating alignment for the positive dataset using MFA: ${POS_DATASET_ALIGNMENT}\n"
 mkdir -p "${POS_DATASET_ALIGNMENT}"
 MFA_FOLDER="./montreal-forced-aligner"
 pushd ${MFA_FOLDER}
@@ -56,11 +56,11 @@ pushd ${MFA_FOLDER}
 time yes n | ./bin/mfa_align --verbose --clean --num_jobs 12 "../${POS_DATASET_PATH}/audio" librispeech-lexicon.txt pretrained_models/english.zip "../${POS_DATASET_ALIGNMENT}"
 popd
 
-printf "\n\n>>> attaching the MFA alignment to the positive dataset"
+printf "\n\n>>> attaching the MFA alignment to the positive dataset\n"
 time DATASET_PATH=${POS_DATASET_PATH} python -m training.run.attach_alignment --align-type mfa -i "${POS_DATASET_ALIGNMENT}"
 
 STITCHED_DATASET="${DATASET_FOLDER}/stitched"
-printf "\n\n>>> stitching vocab samples to generate a datset made up of stitched wakeword samples: ${STITCHED_DATASET}"
+printf "\n\n>>> stitching vocab samples to generate a datset made up of stitched wakeword samples: ${STITCHED_DATASET}\n"
 time VOCAB=${VOCAB} INFERENCE_SEQUENCE=${INFERENCE_SEQUENCE} python -m training.run.stitch_vocab_samples --aligned-dataset "${POS_DATASET_PATH}" --stitched-dataset "${STITCHED_DATASET}"
 
-printf "\n\n>>> Dataset is ready for ${VOCAB}"
+printf "\n\n>>> Dataset is ready for ${VOCAB}\n"
