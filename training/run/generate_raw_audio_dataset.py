@@ -32,16 +32,18 @@ def main(
     raw_dataset_generator = RawAudioDatasetGenerator(input_audio_dataset_path, dataset_loader_type, logger)
     datasets_dir_path.mkdir(exist_ok=True)
 
-    dataset_prefix = ""
+    wakeword = ""
     for idx, sequence in enumerate(SETTINGS.inference_engine.inference_sequence):
-        dataset_prefix += SETTINGS.training.vocab[sequence]
+        wakeword += SETTINGS.training.vocab[sequence]
         if idx != len(SETTINGS.inference_engine.inference_sequence) - 1:
-            dataset_prefix += "_"
+            wakeword += "_"
 
-    logger.info(f"Generating raw audio dataset for {dataset_prefix} from {input_audio_dataset_path}")
+    logger.info(f"Generating raw audio dataset for {wakeword} from {input_audio_dataset_path}")
+    wakeword_dataset_path = datasets_dir_path / wakeword
+    wakeword_dataset_path.mkdir()
 
     if positive_pct > 0:
-        positive_dataset_path = datasets_dir_path / f"{dataset_prefix}-positive"
+        positive_dataset_path = wakeword_dataset_path / "positive"
         logger.info(f"Generating positive dataset: {positive_dataset_path}")
         positive_dataset_path.mkdir()
         raw_dataset_generator.generate_datasets(positive_dataset_path, SampleType.POSITIVE, percentage=positive_pct)
@@ -49,7 +51,7 @@ def main(
         logger.warning("Skipping positive dataset generation because positive_pct is 0")
 
     if negative_pct > 0:
-        negative_dataset_path = datasets_dir_path / f"{dataset_prefix}-negative"
+        negative_dataset_path = wakeword_dataset_path / "negative"
         logger.info(f"Generating negative dataset: {negative_dataset_path}")
         negative_dataset_path.mkdir()
         raw_dataset_generator.generate_datasets(negative_dataset_path, SampleType.POSITIVE, percentage=negative_pct)

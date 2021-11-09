@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 
 import pandas as pd
+from tqdm import tqdm
 
 from howl.data.common.metadata import AudioClipMetadata
 from howl.data.dataset.dataset import AudioClipDataset, AudioDataset, DatasetSplit
@@ -45,7 +46,8 @@ class CommonVoiceDatasetLoader(AudioDatasetLoader):
             raise FileNotFoundError(f"Metafile path for {dataset_split.value} split is invalid: {metafile_path}")
         data_frame = pd.read_csv(str(metafile_path), sep="\t", quoting=3, na_filter=False)
         metadata_list = []
-        for tup in data_frame.itertuples():
+        progress_bar = tqdm(data_frame.itertuples(), desc=f"loading {dataset_split.value} metadata")
+        for tup in progress_bar:
             metadata_list.append(
                 AudioClipMetadata(path=(self.dataset_path / "clips" / tup.path).absolute(), transcription=tup.sentence,)
             )

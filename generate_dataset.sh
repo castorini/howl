@@ -7,7 +7,7 @@ INFERENCE_SEQUENCE=${3} # inference sequence (e.g. [0,1,2])
 #${4} pass true to skip generating negative dataset
 
 if [ $# -lt 3 ]; then
-    echo 1>&2 "invalid arguments: ./generate_dataset.sh <common voice dataset path> <underscore separated wakeword> <inference sequence>"
+    printf 1>&2 "invalid arguments: ./generate_dataset.sh <common voice dataset path> <underscore separated wakeword> <inference sequence>"
     exit 2
 elif [ $# -eq 4 ]; then
     SKIP_NEG_DATASET=${4}
@@ -15,39 +15,37 @@ else
     SKIP_NEG_DATASET="false"
 fi
 
-echo "COMMON_VOICE_DATASET_PATH: ${COMMON_VOICE_DATASET_PATH}"
-echo "DATASET_NAME: ${DATASET_NAME}"
-echo "INFERENCE_SEQUENCE: ${INFERENCE_SEQUENCE}"
+printf "COMMON_VOICE_DATASET_PATH: ${COMMON_VOICE_DATASET_PATH}"
+printf "DATASET_NAME: ${DATASET_NAME}"
+printf "INFERENCE_SEQUENCE: ${INFERENCE_SEQUENCE}"
 
 VOCAB="["
 IFS='_'
 read -ra ADDR <<< "${DATASET_NAME}"
-for i in "${ADDR[@]}"; do 
+for i in "${ADDR[@]}"; do
     VOCAB+="\"${i}\","
 done
 VOCAB="${VOCAB::-1}]"
 
-DATASET_FOLDER="data/${DATASET_NAME}"
-echo ">>> generating datasets for ${VOCAB} at ${DATASET_FOLDER}"
+DATASET_FOLDER="datasets"
+printf "\n\n>>> generating datasets for ${VOCAB} at ${DATASET_FOLDER}"
 mkdir -p "${DATASET_FOLDER}"
 
+NEGATIVE_PCT=0
 if [ ${SKIP_NEG_DATASET} != "true" ]; then
-    NEG_DATASET_PATH="${DATASET_FOLDER}/negative"
-    echo ">>> generating negative dataset: ${NEG_DATASET_PATH}"
-    mkdir -p "${NEG_DATASET_PATH}"
-    time VOCAB=${VOCAB} INFERENCE_SEQUENCE=${INFERENCE_SEQUENCE} DATASET_PATH=${NEG_DATASET_PATH} python -m training.run.create_raw_dataset -i ${COMMON_VOICE_DATASET_PATH} --positive-pct 0 --negative-pct 5
-
-    echo ">>> generating mock alignment for the negative set"
-    time DATASET_PATH=${NEG_DATASET_PATH} python -m training.run.attach_alignment --align-type stub
+    printf "\n\n>>> dataset with negative samples will also be generated"
+    NEGATIVE_PCT=5
 fi
 
-POS_DATASET_PATH="${DATASET_FOLDER}/positive"
-echo ">>> generating positive dataset: ${POS_DATASET_PATH}"
-mkdir -p "${POS_DATASET_PATH}"
-time VOCAB=${VOCAB} INFERENCE_SEQUENCE=${INFERENCE_SEQUENCE} DATASET_PATH=${POS_DATASET_PATH} python -m training.run.create_raw_dataset -i ${COMMON_VOICE_DATASET_PATH} --positive-pct 100 --negative-pct 0
+printf "\n\n>>> generating raw audio dataset"
+mkdir -p "${DATASET_FOLDER}"
+time VOCAB=${VOCAB} INFERENCE_SEQUENCE=${INFERENCE_SEQUENCE} python -m training.run.generate_raw_audio_dataset -i ${COMMON_VOICE_DATASET_PATH} --positive-pct 100 --negative-pct ${NEGATIVE_PCT}
+
+NEG_DATASET_PATH="${DATASET_FOLDER}/${DATASET_NAME}/negative"
+POS_DATASET_PATH="${DATASET_FOLDER}/${DATASET_NAME}/positive"
 
 POS_DATASET_ALIGNMENT="${POS_DATASET_PATH}/alignment"
-echo ">>> generating alignment for the positive dataset using MFA: ${POS_DATASET_ALIGNMENT}"
+printf "\n\n>>> generating alignment for the positive dataset using MFA: ${POS_DATASET_ALIGNMENT}"
 mkdir -p "${POS_DATASET_ALIGNMENT}"
 MFA_FOLDER="./montreal-forced-aligner"
 pushd ${MFA_FOLDER}
@@ -58,11 +56,11 @@ pushd ${MFA_FOLDER}
 time yes n | ./bin/mfa_align --verbose --clean --num_jobs 12 "../${POS_DATASET_PATH}/audio" librispeech-lexicon.txt pretrained_models/english.zip "../${POS_DATASET_ALIGNMENT}"
 popd
 
-echo ">>> attaching the MFA alignment to the positive dataset"
+printf "\n\n>>> attaching the MFA alignment to the positive dataset"
 time DATASET_PATH=${POS_DATASET_PATH} python -m training.run.attach_alignment --align-type mfa -i "${POS_DATASET_ALIGNMENT}"
 
 STITCHED_DATASET="${DATASET_FOLDER}/stitched"
-echo ">>> stitching vocab samples to generate a datset made up of stitched wakeword samples: ${STITCHED_DATASET}"
+printf "\n\n>>> stitching vocab samples to generate a datset made up of stitched wakeword samples: ${STITCHED_DATASET}"
 time VOCAB=${VOCAB} INFERENCE_SEQUENCE=${INFERENCE_SEQUENCE} python -m training.run.stitch_vocab_samples --aligned-dataset "${POS_DATASET_PATH}" --stitched-dataset "${STITCHED_DATASET}"
 
-echo ">>> Dataset is ready for ${VOCAB}"
+printf "\n\n>>> Dataset is ready for ${VOCAB}"

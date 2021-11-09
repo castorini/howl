@@ -1,4 +1,5 @@
 import logging
+from copy import deepcopy
 from enum import Enum, unique
 from pathlib import Path
 
@@ -79,11 +80,13 @@ class RawAudioDatasetGenerator:
             percentage: percentage of dataset to consider
         """
 
+        self.logger.info(f"Generating {sample_type.value} dataset using {percentage}% of the data")
+
         if self.dataset_loader_type == DatasetLoaderType.COMMON_VOICE_DATASET_LOADER:
             predicate_fn_kwargs = dict(sample_type=sample_type, percentage=percentage)
-            train_ds = self.train_ds.filter(self.filter_fn, **predicate_fn_kwargs)
-            dev_ds = self.dev_ds.filter(self.filter_fn, **predicate_fn_kwargs)
-            test_ds = self.test_ds.filter(self.filter_fn, **predicate_fn_kwargs)
+            train_ds = deepcopy(self.train_ds).filter(self.filter_fn, **predicate_fn_kwargs)
+            dev_ds = deepcopy(self.dev_ds).filter(self.filter_fn, **predicate_fn_kwargs)
+            test_ds = deepcopy(self.test_ds).filter(self.filter_fn, **predicate_fn_kwargs)
 
         word_searcher = None
         if self.inference_ctx.token_type == "word":

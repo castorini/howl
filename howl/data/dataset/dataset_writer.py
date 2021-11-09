@@ -68,7 +68,9 @@ class AudioDatasetWriter:
         folder.mkdir(exist_ok=True)
         audio_folder = folder / "audio"
         audio_folder.mkdir(exist_ok=True)
-        with AudioDatasetMetadataWriter(folder, self.dataset.set_type, prefix=self.prefix, mode=self.mode) as writer:
+        with AudioDatasetMetadataWriter(
+            folder, self.dataset.dataset_split, prefix=self.prefix, mode=self.mode
+        ) as writer:
             for metadata in tqdm(self.dataset.metadata_list, disable=not self.print_progress, desc="Writing files",):
                 try:
                     process(metadata)
