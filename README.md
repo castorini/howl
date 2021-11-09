@@ -82,25 +82,25 @@ VOCAB='["fire"]' INFERENCE_SEQUENCE=[0] python -m training.run.generate_raw_audi
 4. Generate some mock alignment for the negative set, where we don't care about alignment:
 
 ```bash
-DATASET_PATH=datasets/fire-negative python -m training.run.attach_alignment --align-type stub
+DATASET_PATH=datasets/fire/negative python -m training.run.attach_alignment --align-type stub
 ```
 
 5. Use MFA to generate alignment for the positive set:
 
 ```bash
-mfa_align datasets/fire-positive/audio eng.dict pretrained_models/english.zip output-folder
+mfa_align datasets/fire/positive/audio eng.dict pretrained_models/english.zip output-folder
 ```
 
 6. Attach the MFA alignment to the positive dataset:
 
 ```bash
-DATASET_PATH=datasets/fire-positive python -m training.run.attach_alignment --align-type mfa -i output-folder
+DATASET_PATH=datasets/fire/positive python -m training.run.attach_alignment --align-type mfa -i output-folder
 ```
 
 7. (Optional) Stitch vocab samples of aligned dataset to generate wakeword samples
 
 ```bash
-VOCAB='["fire"]' INFERENCE_SEQUENCE=[0] python -m training.run.stitch_vocab_samples --aligned-dataset "datasets/fire-positive" --stitched-dataset "data/fire-stitched"
+VOCAB='["fire"]' INFERENCE_SEQUENCE=[0] python -m training.run.stitch_vocab_samples --aligned-dataset "datasets/fire/positive" --stitched-dataset "data/fire-stitched"
 ```
 
 ### Training and Running a Model

@@ -9,6 +9,7 @@ from typing import Any, Callable, Generic, List, TypeVar
 
 import torch
 import torch.utils.data as tud
+from tqdm import tqdm
 
 from howl.data.common.example import AudioClipExample, ClassificationClipExample, WakeWordClipExample
 from howl.data.common.labeler import FrameLabeler
@@ -96,7 +97,7 @@ class AudioDataset(tud.Dataset, Generic[GenericTypeT]):
             self = deepcopy(self)
         metadata_list = self.metadata_list
         self.metadata_list = []
-        for metadata in metadata_list:
+        for metadata in tqdm(metadata_list, desc="filtering"):
             if predicate_fn(metadata, **predicate_fn_kwargs):
                 self.metadata_list.append(metadata)
         return self
@@ -130,7 +131,7 @@ class AudioDataset(tud.Dataset, Generic[GenericTypeT]):
 
         seconds = 0
         total_vocab_count = Counter()
-        for ex in self:
+        for ex in tqdm(self, desc="computing dataset statistics"):
             if compute_length:
                 audio_data = trim([ex])[0].audio_data if use_trim else ex.audio_data
                 seconds += audio_data.size(-1) / self.sample_rate

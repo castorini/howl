@@ -43,13 +43,23 @@ class RawAudioDatasetGeneratorTest(unittest.TestCase):
             positive_dataset = temp_dir_path / "positive_dataset"
             raw_dataset_generator.generate_datasets(positive_dataset, SampleType.POSITIVE)
             lab_file_paths = glob.glob(str(positive_dataset / "audio/*.lab"))
+            self.assertGreater(len(lab_file_paths), 0)
             for path in lab_file_paths:
                 with open(path, "r") as lab_file:
                     self.assertIn(SETTINGS.training.vocab[0], lab_file.readline())
 
+            self.assertEqual(test_utils.get_num_of_lines(positive_dataset / "metadata-training.jsonl"), 2)
+            self.assertEqual(test_utils.get_num_of_lines(positive_dataset / "metadata-dev.jsonl"), 1)
+            self.assertEqual(test_utils.get_num_of_lines(positive_dataset / "metadata-test.jsonl"), 0)
+
             negative_dataset = temp_dir_path / "negative_dataset"
             raw_dataset_generator.generate_datasets(negative_dataset, SampleType.NEGATIVE)
             lab_file_paths = glob.glob(str(negative_dataset / "audio/*.lab"))
+            self.assertGreater(len(lab_file_paths), 0)
             for path in lab_file_paths:
                 with open(path, "r") as lab_file:
                     self.assertNotIn(SETTINGS.training.vocab[0], lab_file.readline())
+
+            self.assertEqual(test_utils.get_num_of_lines(negative_dataset / "metadata-training.jsonl"), 1)
+            self.assertEqual(test_utils.get_num_of_lines(negative_dataset / "metadata-dev.jsonl"), 1)
+            self.assertEqual(test_utils.get_num_of_lines(negative_dataset / "metadata-test.jsonl"), 2)
