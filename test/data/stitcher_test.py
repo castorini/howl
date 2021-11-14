@@ -1,19 +1,19 @@
 import random
 import unittest
-from pathlib import Path
 
 from howl.data.common.labeler import WordFrameLabeler
 from howl.data.common.vocab import Vocab
 from howl.data.dataset.dataset_loader import WakeWordDatasetLoader
 from howl.data.stitcher import WordStitcher
 from howl.settings import SETTINGS
+from howl.utils import test_utils
 
 
 class StitcherTest(unittest.TestCase):
     """Test case for Stitcher"""
 
-    def test_compute_statistics(self):
-        """test compute statistics
+    def test_word_stitcher(self):
+        """test word stitcher
         """
         random.seed(1)
         SETTINGS.training.vocab = ["hey", "fire", "fox"]
@@ -26,7 +26,7 @@ class StitcherTest(unittest.TestCase):
         loader = WakeWordDatasetLoader()
         ds_kwargs = dict(sample_rate=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono, frame_labeler=labeler,)
 
-        test_dataset_path = Path("test/test_data/stitcher")
+        test_dataset_path = test_utils.test_data_path() / "stitcher"
         stitched_dataset_path = test_dataset_path / "stitched"
         stitched_dataset_path.mkdir(exist_ok=True)
 

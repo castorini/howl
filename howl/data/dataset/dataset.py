@@ -1,12 +1,15 @@
 import enum
+import functools
 import logging
+import multiprocessing
 from collections import Counter, defaultdict
 from copy import deepcopy
 from dataclasses import dataclass
 from enum import Enum, unique
 from functools import lru_cache
-from typing import Any, Callable, Generic, List, TypeVar
+from typing import Any, Callable, Generic, List, Tuple, TypeVar
 
+import librosa.effects as effects
 import torch
 import torch.utils.data as tud
 from tqdm import tqdm
@@ -15,7 +18,6 @@ from howl.data.common.example import AudioClipExample, ClassificationClipExample
 from howl.data.common.labeler import FrameLabeler
 from howl.data.common.metadata import NEGATIVE_CLASS, AudioClipMetadata
 from howl.data.common.searcher import WordTranscriptSearcher
-from howl.data.transform.operator import trim
 from howl.settings import SETTINGS
 from howl.utils.audio import silent_load
 
@@ -124,21 +126,87 @@ class AudioDataset(tud.Dataset, Generic[GenericTypeT]):
         """Return number of samples in the dataset"""
         return len(self.metadata_list)
 
-    def compute_statistics(
-        self, word_searcher: WordTranscriptSearcher = None, compute_length: bool = True, use_trim: bool = True,
-    ) -> AudioDatasetStatistics:
-        """Compute statistic of the dataset"""
+    @staticmethod
+    def _compute_sample_statistic(
+        metadata: AudioClipMetadata,
+        mono: bool,
+        sample_rate: int,
+        word_searcher: WordTranscriptSearcher,
+        compute_length: bool,
+        use_trim: bool,
+        top_db: int = 40,
+    ) -> Tuple[float, Counter]:
+        """Compute statistic of the given sample
 
+        Args:
+            metadata: metadata of the sample
+            mono: if True, the audio file will be loaded assuming the data is mono channel
+            sample_rate: sample rate of the audio file
+            word_searcher: used to filter out the sample of target vocab
+            compute_length: compute total audio length
+            use_trim: trim audio data based on decibels before computing total audio length
+            top_db: decibels higher than top_db will be trim
+
+        Returns:
+            audio data length and vocab counts
+        """
         seconds = 0
+        vocab_count = Counter()
+        if compute_length:
+            audio_data = silent_load(str(metadata.path), sample_rate, mono)
+            if use_trim:
+                audio_data = torch.from_numpy(effects.trim(audio_data, top_db=top_db)[0])
+            seconds = audio_data.size(-1) / sample_rate
+        if word_searcher:
+            vocab_count = Counter(word_searcher.count_vocab(metadata.transcription))
+        return seconds, vocab_count
+
+    def compute_statistics(
+        self,
+        word_searcher: WordTranscriptSearcher = None,
+        compute_length: bool = True,
+        use_trim: bool = True,
+        top_db: int = 40,
+    ) -> AudioDatasetStatistics:
+        """Compute statistic of the dataset
+
+        Args:
+            word_searcher: used to filter out the sample of target vocab
+            compute_length: compute total audio length
+            use_trim: trim audio data based on decibels before computing total audio length
+            top_db: decibels higher than top_db will be trim
+
+        Returns:
+            instance of AudioDatasetStatistics
+
+        """
+        num_processes = max(multiprocessing.cpu_count() // 2, 4)
+        pool = multiprocessing.Pool(processes=num_processes)
+
+        statistics_list = tqdm(
+            pool.imap(
+                functools.partial(
+                    AudioDataset._compute_sample_statistic,
+                    mono=self.mono,
+                    sample_rate=self.sample_rate,
+                    word_searcher=word_searcher,
+                    compute_length=compute_length,
+                    use_trim=use_trim,
+                    top_db=top_db,
+                ),
+                self.metadata_list,
+            ),
+            desc="Computing statistics",
+            total=(len(self)),
+        )
+
+        total_seconds = 0
         total_vocab_count = Counter()
-        for ex in tqdm(self, desc="computing dataset statistics"):
-            if compute_length:
-                audio_data = trim([ex])[0].audio_data if use_trim else ex.audio_data
-                seconds += audio_data.size(-1) / self.sample_rate
-            if word_searcher:
-                vocab_count = Counter(word_searcher.count_vocab(ex.metadata.transcription))
-                total_vocab_count += vocab_count
-        return AudioDatasetStatistics(len(self), seconds, total_vocab_count)
+        for statistics in statistics_list:
+            total_seconds += statistics[0]
+            total_vocab_count += statistics[1]
+
+        return AudioDatasetStatistics(len(self), total_seconds, total_vocab_count)
 
     def print_stats(
         self, logger: logging.Logger = None, header: str = None, **compute_statistics_kwargs,
