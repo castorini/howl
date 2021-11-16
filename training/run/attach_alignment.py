@@ -50,7 +50,7 @@ def main():
         raise ValueError
 
     for dataset in (train_ds, dev_ds, test_ds):
-        with AudioDatasetMetadataWriter(ds_path, dataset.set_type, "aligned-", mode="w") as writer:
+        with AudioDatasetMetadataWriter(ds_path, dataset.set_type, "aligned-") as writer:
             for ex in tqdm(dataset, total=len(dataset)):
                 try:
                     transcription = id_align_map[ex.metadata.audio_id]
