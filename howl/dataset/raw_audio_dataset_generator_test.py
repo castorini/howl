@@ -40,7 +40,7 @@ class RawAudioDatasetGeneratorTest(unittest.TestCase):
             self.assertEqual(raw_dataset_generator.dataset_loader_type, dataset_loader_type)
             self.assertEqual(raw_dataset_generator.inference_ctx.token_type, SETTINGS.training.token_type)
 
-            positive_dataset = temp_dir_path / "positive_dataset"
+            positive_dataset = temp_dir_path / "positive"
             raw_dataset_generator.generate_datasets(positive_dataset, SampleType.POSITIVE)
             lab_file_paths = glob.glob(str(positive_dataset / "audio/*.lab"))
             self.assertGreater(len(lab_file_paths), 0)
@@ -52,7 +52,7 @@ class RawAudioDatasetGeneratorTest(unittest.TestCase):
             self.assertEqual(test_utils.get_num_of_lines(positive_dataset / "metadata-dev.jsonl"), 1)
             self.assertEqual(test_utils.get_num_of_lines(positive_dataset / "metadata-test.jsonl"), 0)
 
-            negative_dataset = temp_dir_path / "negative_dataset"
+            negative_dataset = temp_dir_path / "negative"
             raw_dataset_generator.generate_datasets(negative_dataset, SampleType.NEGATIVE)
             lab_file_paths = glob.glob(str(negative_dataset / "audio/*.lab"))
             self.assertGreater(len(lab_file_paths), 0)
