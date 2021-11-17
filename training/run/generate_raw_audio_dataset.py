@@ -54,6 +54,8 @@ def main(
         negative_dataset_path = wakeword_dataset_path / "negative"
         logger.info(f"Generating negative dataset: {negative_dataset_path}")
         negative_dataset_path.mkdir()
+        # skip statistics computation for the negative dataset
+        # because the process is slow due to its size and it doesn't have any vocab
         raw_dataset_generator.generate_datasets(
             negative_dataset_path, SampleType.NEGATIVE, percentage=negative_pct, print_statistics=False
         )
