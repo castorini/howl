@@ -21,30 +21,6 @@ Citation:
 }
 ```
 
-## Quickstart Guide
-
-1. Install PyAudio and [PyTorch 1.5+](https://pytorch.org) through your distribution's package system.
-
-2. Install Howl using `pip`
-
-```
-pip install howl
-```
-
-3. To immediately use a pre-trained Howl model for inference, we provide the `client` API. The following example (also found under `examples/hey_fire_fox.py`) loads the "hey_fire_fox" pretrained model with a simple callback and starts the inference client.
-
-```
-from howl.client import HowlClient
-
-def hello_callback(detected_words):
-    print("Detected: {}".format(detected_words))
-
-client = HowlClient()
-client.from_pretrained("hey_fire_fox", force_reload=False)
-client.add_listener(hello_callback)
-client.start().join()
-```
-
 ## Training Guide
 
 ### Installation
@@ -61,47 +37,20 @@ client.start().join()
 
 ### Preparing a Dataset
 
-Assuming MFA is installed using `download_mfa.sh` and [Common Voice dataset](https://commonvoice.mozilla.org/) is downloaded already, one can easily generate a dataset for custom wakeword using `generate_dataset.sh` script.
+Generating a dataset for a custom wakeword requires three steps:
+1. Generating raw audio dataset that howl can load from open datasets
+2. Generate orthographic transcription alignments for each audio file.
+3. Attach the alignment to the raw audio dataset generated in step 1.
+
+Having said that we recommend [Common Voice dataset](https://commonvoice.mozilla.org/) for the open audio datasets and [Montreal Forced Aligner](https://montreal-forced-aligner.readthedocs.io/en/stable/installation.html) (MFA) for the transcription alignment.
+Downloading MFA can be achieved simply running `download_mfa.sh` script. Along with the aligner, the script will download necessary [English pronunciation dictionary](http://svn.code.sf.net/p/cmusphinx/code/trunk/cmudict/cmudict-0.7b).
+
+Once they are ready, a dataset can be generated using the following script.
 ```bash
 ./generate_dataset.sh <common voice dataset path> <underscore separated wakeword (e.g. hey_fire_fox)> <inference sequence (e.g. [0,1,2])> <(Optional) "true" to skip negative dataset generation>
 ```
 
-In the example that follows, we describe the process of generating a dataste for the word, "fire."
-
-1. Download a supported data source. We recommend [Common Voice](https://commonvoice.mozilla.org/) for its breadth and free license.
-
-2. To provide alignment for the data, install [Montreal Forced Aligner](https://montreal-forced-aligner.readthedocs.io/en/stable/installation.html) (MFA)
-and download an [English pronunciation dictionary](http://svn.code.sf.net/p/cmusphinx/code/trunk/cmudict/cmudict-0.7b).
-
-3. Create raw audio datasets containing the keyword for howl from open audio datasets:
-note that 5% is sufficient when generating negative dataset from common-voice dataset
-```bash
-VOCAB='["fire"]' INFERENCE_SEQUENCE=[0] python -m training.run.generate_raw_audio_dataset -i ~/path/to/common-voice --positive-pct 100 --negative-pct 5
-```
-
-4. Generate some mock alignment for the negative set, where we don't care about alignment:
-
-```bash
-DATASET_PATH=datasets/fire/negative python -m training.run.attach_alignment --align-type stub
-```
-
-5. Use MFA to generate alignment for the positive set:
-
-```bash
-mfa_align datasets/fire/positive/audio eng.dict pretrained_models/english.zip output-folder
-```
-
-6. Attach the MFA alignment to the positive dataset:
-
-```bash
-DATASET_PATH=datasets/fire/positive python -m training.run.attach_alignment --align-type mfa -i output-folder
-```
-
-7. (Optional) Stitch vocab samples of aligned dataset to generate wakeword samples
-
-```bash
-VOCAB='["fire"]' INFERENCE_SEQUENCE=[0] python -m training.run.stitch_vocab_samples --aligned-dataset "datasets/fire/positive" --stitched-dataset "data/fire-stitched"
-```
+For detailed explanation, please refer to [How to generate a dataset for custom wakeword](https://github.com/castorini/howl/tree/master/howl/dataset)
 
 ### Training and Running a Model
 
@@ -125,6 +74,30 @@ To get the latest models, simply run `git submodule update --init --recursive`
 
 ```bash
 VOCAB='["hey","fire","fox"]' INFERENCE_SEQUENCE=[0,1,2] INFERENCE_THRESHOLD=0 NUM_MELS=40 MAX_WINDOW_SIZE_SECONDS=0.5 python -m training.run.demo --model res8 --workspace howl-models/howl/hey-fire-fox
+```
+
+## Installing Howl using pip
+
+1. Install PyAudio and [PyTorch 1.5+](https://pytorch.org) through your distribution's package system.
+
+2. Install Howl using `pip`
+
+```
+pip install howl
+```
+
+3. To immediately use a pre-trained Howl model for inference, we provide the `client` API. The following example (also found under `examples/hey_fire_fox.py`) loads the "hey_fire_fox" pretrained model with a simple callback and starts the inference client.
+
+```
+from howl.client import HowlClient
+
+def hello_callback(detected_words):
+    print("Detected: {}".format(detected_words))
+
+client = HowlClient()
+client.from_pretrained("hey_fire_fox", force_reload=False)
+client.add_listener(hello_callback)
+client.start().join()
 ```
 
 ## Reproducing Paper Results
