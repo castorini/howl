@@ -54,7 +54,9 @@ def main(
         negative_dataset_path = wakeword_dataset_path / "negative"
         logger.info(f"Generating negative dataset: {negative_dataset_path}")
         negative_dataset_path.mkdir()
-        raw_dataset_generator.generate_datasets(negative_dataset_path, SampleType.POSITIVE, percentage=negative_pct)
+        raw_dataset_generator.generate_datasets(
+            negative_dataset_path, SampleType.NEGATIVE, percentage=negative_pct, print_statistics=False
+        )
     else:
         logger.warning("Skipping negative dataset generation because positive_pct is 0")
 

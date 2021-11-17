@@ -24,7 +24,7 @@ class AudioDatasetLoader:
 
         self.logger = logger
         if self.logger is None:
-            self.logger = logging_utils.setup_logger(f"AudioDatasetLoader({self.name})")
+            self.logger = logging_utils.setup_logger(f"DatasetLoader-{self.name}")
 
     def _load_dataset(self, dataset_split: DatasetSplit, **dataset_kwargs) -> AudioDataset:
         """Load dataset of given dataset_split.

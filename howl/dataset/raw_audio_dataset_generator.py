@@ -71,13 +71,16 @@ class RawAudioDatasetGenerator:
 
         return include_sample
 
-    def generate_datasets(self, dataset_path: Path, sample_type: SampleType, percentage: int = 100):
+    def generate_datasets(
+        self, dataset_path: Path, sample_type: SampleType, percentage: int = 100, print_statistics: bool = True
+    ):
         """Filter target samples from the loaded datasets and save datasets to the given path
 
         Args:
             dataset_path: path of the generated dataset
             sample_type: target sample type to filter
             percentage: percentage of dataset to consider
+            print_statistics: if True, compute statistic of the dataset for the vocab
         """
 
         self.logger.info(f"Generating {sample_type.value} dataset using {percentage}% of the data")
@@ -93,6 +96,7 @@ class RawAudioDatasetGenerator:
             word_searcher = self.inference_ctx.searcher
 
         for dataset in train_ds, dev_ds, test_ds:
-            dataset.print_stats(self.logger, word_searcher=word_searcher, compute_length=True)
+            if print_statistics:
+                dataset.print_stats(self.logger, word_searcher=word_searcher, compute_length=True)
             self.logger.info(f"Generating {dataset.dataset_split.value} dataset")
             AudioDatasetWriter(dataset, logger=self.logger).write(dataset_path)

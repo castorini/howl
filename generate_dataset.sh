@@ -4,7 +4,7 @@ set -e
 COMMON_VOICE_DATASET_PATH=${1} # common voice dataset path
 DATASET_NAME=${2} # underscore separated wakeword (e.g. hey_fire_fox)
 INFERENCE_SEQUENCE=${3} # inference sequence (e.g. [0,1,2])
-#${4} pass true to skip generating negative dataset
+# ${4} pass true to skip generating negative dataset
 
 if [ $# -lt 3 ]; then
     printf 1>&2 "invalid arguments: ./generate_dataset.sh <common voice dataset path> <underscore separated wakeword> <inference sequence>"
@@ -59,8 +59,13 @@ popd
 printf "\n\n>>> attaching the MFA alignment to the positive dataset\n"
 time DATASET_PATH=${POS_DATASET_PATH} python -m training.run.attach_alignment --align-type mfa -i "${POS_DATASET_ALIGNMENT}"
 
+if [ ${SKIP_NEG_DATASET} != "true" ]; then
+    printf "\n\n>>> attaching mock alignment to the negative dataset\n"
+    time DATASET_PATH=${NEG_DATASET_PATH} python -m training.run.attach_alignment --align-type stub
+fi
+
 STITCHED_DATASET="${DATASET_FOLDER}/stitched"
-printf "\n\n>>> stitching vocab samples to generate a datset made up of stitched wakeword samples: ${STITCHED_DATASET}\n"
+printf "\n\n>>> stitching vocab samples to generate a dataset made up of stitched wakeword samples: ${STITCHED_DATASET}\n"
 time VOCAB=${VOCAB} INFERENCE_SEQUENCE=${INFERENCE_SEQUENCE} python -m training.run.stitch_vocab_samples --aligned-dataset "${POS_DATASET_PATH}" --stitched-dataset "${STITCHED_DATASET}"
 
 printf "\n\n>>> Dataset is ready for ${VOCAB}\n"
