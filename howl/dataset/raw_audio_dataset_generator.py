@@ -95,4 +95,4 @@ class RawAudioDatasetGenerator:
         for dataset in train_ds, dev_ds, test_ds:
             dataset.print_stats(self.logger, word_searcher=word_searcher, compute_length=True)
             self.logger.info(f"Generating {dataset.dataset_split.value} dataset")
-            AudioDatasetWriter(dataset).write(dataset_path)
+            AudioDatasetWriter(dataset, logger=self.logger).write(dataset_path)

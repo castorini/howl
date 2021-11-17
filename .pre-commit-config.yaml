@@ -43,4 +43,6 @@ repos:
                '--disable=too-many-arguments',
                '--disable=too-many-locals',
                '--disable=too-many-instance-attributes',
-               '--disable=fixme']
+               '--disable=fixme',
+               '--disable=broad-except'
+        ]
