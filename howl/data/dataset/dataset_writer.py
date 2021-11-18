@@ -20,6 +20,7 @@ class AudioDatasetMetadataWriter:
     def __init__(self, dataset_path: Path, set_type: DatasetType, prefix: str = ""):
         """Initialize AudioDatasetMetadataWriter for the given dataset type"""
         self.metadata_json_file = None
+        # TODO: make use of template for the file name
         self.metadata_json_file_path = str(dataset_path / f"{prefix}metadata-{set_type.name.lower()}.jsonl")
         self.mode = "w"
 

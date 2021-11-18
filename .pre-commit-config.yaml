@@ -44,5 +44,6 @@ repos:
                '--disable=too-many-locals',
                '--disable=too-many-instance-attributes',
                '--disable=fixme',
-               '--disable=broad-except'
+               '--disable=broad-except',
+               '--disable=duplicate-code' # TODO: to be dropped once refactoring is completed
         ]
