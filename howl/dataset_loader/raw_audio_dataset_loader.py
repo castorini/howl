@@ -17,7 +17,7 @@ class RawAudioDatasetLoader(AudioDatasetLoader):
     NAME = "raw"
 
     def __init__(self, dataset_path: Path, logger: logging.Logger = None):
-        """Initialize AudioDatasetLoader for the given path.
+        """Initialize RawAudioDatasetLoader for the given path.
 
         Args:
             dataset_path: location of the dataset
