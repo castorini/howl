@@ -11,7 +11,7 @@ from howl.utils.audio import silent_load
 class RawAudioDataset(AudioDataset[AudioClipMetadata]):
     """raw audio dataset (dataset without transcription alignment)"""
 
-    METADATA_FILE_NAME_TEMPLATE = "metadata_{dataset_split}.jsonl"
+    METADATA_FILE_NAME_TEMPLATE = "metadata-{dataset_split}.jsonl"
 
     @lru_cache(maxsize=SETTINGS.cache.cache_size)
     def __getitem__(self, idx) -> AudioClipExample:
