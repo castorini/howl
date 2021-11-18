@@ -7,19 +7,19 @@ from pathlib import Path
 import pytest
 
 from howl.data.dataset.dataset import DatasetSplit
-from howl.dataset_loader.common_voice_dataset_loader import CommonVoiceDatasetLoader
+from howl.dataset_loader.raw_audio_dataset_loader import RawAudioDatasetLoader
 from howl.utils import filesystem_utils, test_utils
 
 
-class CommonVoiceDatasetLoaderTest(unittest.TestCase):
-    """Test case for CommonVoiceDatasetLoader"""
+class RawAudioDatasetLoaderTest(unittest.TestCase):
+    """Test case for RawAudioDataset"""
 
     @contextmanager
     def _setup_test_env(self):
-        """prepare an environment for common voice dataset loader test cases by creating necessary folders"""
+        """prepare an environment for raw audio dataset loader test cases by creating necessary folders"""
         temp_dir = tempfile.TemporaryDirectory()
-        dataset_path = Path(temp_dir.name) / "dataset/common-voice"
-        filesystem_utils.copytree(test_utils.common_voice_dataset_path(), dataset_path)
+        dataset_path = Path(temp_dir.name) / "the" / "positive"
+        filesystem_utils.copytree(test_utils.raw_audio_datasets_path() / "the" / "positive", dataset_path)
 
         try:
             yield dataset_path
@@ -29,21 +29,21 @@ class CommonVoiceDatasetLoaderTest(unittest.TestCase):
     def test_load_splits(self):
         """Test success case of load_splits"""
         with self._setup_test_env() as dataset_path:
-            dataset_loader = CommonVoiceDatasetLoader(dataset_path)
-            self.assertEqual(dataset_loader.name, "mozilla-cv")
+            dataset_loader = RawAudioDatasetLoader(dataset_path)
+            self.assertEqual(dataset_loader.name, "raw")
             self.assertEqual(dataset_loader.dataset_path, dataset_path)
 
             sample_rate = 1000
             train_ds, dev_ds, test_ds = dataset_loader.load_splits(sample_rate=sample_rate)
-            self.assertEqual(len(train_ds.metadata_list), 3)
+            self.assertEqual(len(train_ds.metadata_list), 2)
             self.assertEqual(train_ds.dataset_split, DatasetSplit.TRAINING)
             self.assertEqual(train_ds.sample_rate, sample_rate)
 
-            self.assertEqual(len(dev_ds.metadata_list), 2)
+            self.assertEqual(len(dev_ds.metadata_list), 1)
             self.assertEqual(dev_ds.dataset_split, DatasetSplit.DEV)
             self.assertEqual(dev_ds.sample_rate, sample_rate)
 
-            self.assertEqual(len(test_ds.metadata_list), 2)
+            self.assertEqual(len(test_ds.metadata_list), 0)
             self.assertEqual(test_ds.dataset_split, DatasetSplit.TEST)
             self.assertEqual(test_ds.sample_rate, sample_rate)
 
@@ -53,18 +53,18 @@ class CommonVoiceDatasetLoaderTest(unittest.TestCase):
         invalid_dataset_path = Path(temp_dir.name) / "empty_dir"
 
         with pytest.raises(FileNotFoundError):
-            CommonVoiceDatasetLoader(invalid_dataset_path)
+            RawAudioDatasetLoader(invalid_dataset_path)
 
         temp_dir.cleanup()
 
     def test_missing_tsv_file(self):
         """Test failure case of load_splits caused by missing tsv file"""
         with self._setup_test_env() as dataset_path:
-            # delete test.tsv
-            os.remove(dataset_path / "test.tsv")
+            # delete one of the metadata file
+            os.remove(dataset_path / "metadata-training.jsonl")
 
-            dataset_loader = CommonVoiceDatasetLoader(dataset_path)
-            self.assertEqual(dataset_loader.name, "mozilla-cv")
+            dataset_loader = RawAudioDatasetLoader(dataset_path)
+            self.assertEqual(dataset_loader.name, "raw")
             self.assertEqual(dataset_loader.dataset_path, dataset_path)
 
             with pytest.raises(FileNotFoundError):

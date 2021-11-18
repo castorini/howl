@@ -227,6 +227,7 @@ class AudioDataset(tud.Dataset, Generic[GenericTypeT]):
         logger.info(log_msg)
 
 
+# TODO: to be replaced by RawAudioDataset
 class AudioClipDataset(AudioDataset[AudioClipMetadata]):
     """A representation of an audio clip dataset"""
 

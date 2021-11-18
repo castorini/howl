@@ -19,6 +19,11 @@ def common_voice_dataset_path():
     return test_data_path() / "dataset/common-voice"
 
 
+def raw_audio_datasets_path():
+    """Test raw audio dataset folder path"""
+    return test_data_path() / "dataset/raw_audio_datasets"
+
+
 def get_num_of_lines(file_path: Path):
     """Get number of lines in the given file path"""
     return sum(1 for _ in open(file_path))
