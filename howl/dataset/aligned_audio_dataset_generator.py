@@ -36,18 +36,18 @@ class AlignedAudioDatasetGenerator:
         self,
         raw_audio_dataset_path: Path,
         alignment_type: AlignmentType,
-        alignment_path: Path = None,
+        alignments_path: Path = None,
         sample_rate: int = SETTINGS.audio.sample_rate,
         mono: bool = SETTINGS.audio.use_mono,
         token_type: TokenType = TokenType(SETTINGS.training.token_type),
         logger: logging.Logger = None,
     ):
-        """initialize RawAudioDatasetGenerator by loading dataset from the given path
+        """initialize AlignedAudioDatasetGenerator by loading dataset from the given path
 
         Args:
             raw_audio_dataset_path: location of the dataset
             alignment_type: type of the alignment
-            alignment_path: location of the alignments
+            alignments_path: location of the alignments
             mono: if True, the audio file will be loaded assuming the data is mono channel
             sample_rate: sample rate of the audio file
             logger: logger
@@ -66,7 +66,7 @@ class AlignedAudioDatasetGenerator:
         self.train_ds, self.dev_ds, self.test_ds = raw_audio_dataset.load_splits(**ds_kwargs)
 
         if alignment_type == AlignmentType.MFA:
-            self.alignments = self._load_mfa_alignments(alignment_path, token_type)
+            self.alignments = self._load_mfa_alignments(alignments_path, token_type)
         elif alignment_type == AlignmentType.STUB:
             self.alignments = {}
             self.alignments.update(self._load_stub_alignments(self.train_ds))
@@ -77,18 +77,35 @@ class AlignedAudioDatasetGenerator:
 
     @staticmethod
     def _load_mfa_alignment(alignment_file_path: Path, use_phone: bool) -> Tuple[str, AlignedTranscription]:
+        """Helper function which loads single file of MFA alignment
+
+        Args:
+            alignment_file_path: MFA alignment file (TextGrid)
+            use_phone: True to load phone-based alignment
+
+        Returns:
+            audio_id and AlignedTranscription instance
+        """
         converter = MfaTextGridConverter(use_phones=use_phone)
         text_grid = TextGrid(str(alignment_file_path.absolute()))
         audio_id = alignment_file_path.stem
         alignment = converter.convert(text_grid)
         return audio_id, alignment
 
-    def _load_mfa_alignments(self, alignment_path: Path, token_type: TokenType):
+    def _load_mfa_alignments(self, alignments_path: Path, token_type: TokenType) -> Dict[str, AlignedTranscription]:
+        """Loads all the MFA alignments in memory
 
+        Args:
+            alignments_path: directory that contains all the alignment file (TextGrid)
+            token_type: type of alignment to load
+
+        Returns:
+            Mapping from audio id to alignments
+        """
         num_processes = max(multiprocessing.cpu_count() // 2, 4)
         pool = multiprocessing.Pool(processes=num_processes)
 
-        alignment_file_paths = list(alignment_path.glob("**/*.TextGrid"))
+        alignment_file_paths = list(alignments_path.glob("**/*.TextGrid"))
         alignment_pair_list = tqdm(
             pool.imap(
                 functools.partial(
@@ -96,7 +113,7 @@ class AlignedAudioDatasetGenerator:
                 ),
                 alignment_file_paths,
             ),
-            desc=f"loading alignments from {alignment_path}",
+            desc=f"loading alignments from {alignments_path}",
             total=(len(alignment_file_paths)),
         )
 
@@ -108,11 +125,28 @@ class AlignedAudioDatasetGenerator:
 
     @staticmethod
     def _load_stub_alignment(metadata: AudioClipMetadata, sample_rate: int, mono: bool):
+        """Helper function which Generate STUB alignments for each sample
+
+        Args:
+            metadata: Metadata of the audio sample which STUB alignment will be generated for
+            sample_rate: Sample rate of the audio data
+            mono: True to load only mono-channel of audio data
+
+        Returns:
+            audio_id and AlignedTranscription instance
+        """
         sample = RawAudioDataset.load_sample(metadata, sample_rate, mono)
         return sample.metadata.audio_id, StubAligner().align(sample)
 
     def _load_stub_alignments(self, raw_audio_dataset: RawAudioDataset):
+        """Loads STUB alignments for the given raw audio dataset
 
+        Args:
+            raw_audio_dataset: Raw audio dataset which the STUB alignments will be generated for
+
+        Returns:
+            Mapping from audio id to alignments
+        """
         num_processes = max(multiprocessing.cpu_count() // 2, 4)
         pool = multiprocessing.Pool(processes=num_processes)
 
@@ -139,6 +173,16 @@ class AlignedAudioDatasetGenerator:
     def _generate_metadata_with_alignment(
         metadata: AudioClipMetadata, alignments: Dict[str, AlignedTranscription], logger: logging.Logger
     ):
+        """Helper function which attaches alignment to the given sample
+
+        Args:
+            metadata: Metadata of the audio sample which alignment will be attached to
+            alignments: Map of alignments
+            logger: logger
+
+        Returns:
+            AudioClipMetadata with alignment
+        """
         if metadata.audio_id not in alignments:
             logger.warning(f"Alignments for audio file {metadata.audio_id} does not exist")
             return None

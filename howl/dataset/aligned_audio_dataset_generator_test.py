@@ -19,7 +19,7 @@ class AlignedAudioDatasetGeneratorTest(unittest.TestCase):
         temp_dir = tempfile.TemporaryDirectory()
         dataset_path = Path(temp_dir.name) / "the" / dataset_type
         filesystem_utils.copytree(test_utils.raw_audio_datasets_path() / "the" / dataset_type, dataset_path)
-        alignment_path = dataset_path / "alignment"
+        alignments_path = dataset_path / "alignment"
 
         aligned_metadata_paths = dataset_path.glob(f"{AlignedAudioDatasetGenerator.ALIGNED_METADATA_PREFIX}*")
         for aligned_metadata_path in aligned_metadata_paths:
@@ -27,19 +27,19 @@ class AlignedAudioDatasetGeneratorTest(unittest.TestCase):
             os.rename(aligned_metadata_path, gt_aligned_metadata_path)
 
         try:
-            yield dataset_path, alignment_path
+            yield dataset_path, alignments_path
         finally:
             temp_dir.cleanup()
 
     def test_aligned_dataset_generation_for_word_from_mfa_alignment(self):
         """Test aligned metadata generation using mfa alignments"""
-        with self._setup_test_env("positive") as (dataset_path, alignment_path):
+        with self._setup_test_env("positive") as (dataset_path, alignments_path):
 
             SETTINGS.training.vocab = ["The"]
             token_type = TokenType.WORD
             alignment_type = AlignmentType.MFA
             aligned_dataset_generator = AlignedAudioDatasetGenerator(
-                dataset_path, alignment_type, alignment_path, token_type=token_type
+                dataset_path, alignment_type, alignments_path, token_type=token_type
             )
 
             self.assertEqual(len(aligned_dataset_generator.train_ds), 2)
