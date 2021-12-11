@@ -15,7 +15,7 @@ class RawAudioDatasetGeneratorTest(unittest.TestCase):
 
     @contextmanager
     def _setup_test_env(self):
-        """prepare an environment for ml-pipeline test cases by creating necessary folders"""
+        """prepare an environment for raw audio dataset generator test cases by creating necessary folders"""
         temp_dir = tempfile.TemporaryDirectory()
         temp_dir_path = Path(temp_dir.name)
         dataset_path = temp_dir_path / "dataset/common-voice"

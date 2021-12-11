@@ -16,17 +16,28 @@ def test_data_path():
 
 def common_voice_dataset_path():
     """Test common voice dataset folder path"""
-    return test_data_path() / "dataset/common-voice"
+    return test_data_path() / "datasets/common-voice"
 
 
 def raw_audio_datasets_path():
     """Test raw audio dataset folder path"""
-    return test_data_path() / "dataset/raw_audio_datasets"
+    return test_data_path() / "datasets/raw_audio_datasets"
 
 
 def get_num_of_lines(file_path: Path):
     """Get number of lines in the given file path"""
-    return sum(1 for _ in open(file_path))
+    with open(file_path) as file:
+        lines = len(file.readlines())
+    return lines
+
+
+def compare_files(file_path_1: Path, file_path_2: Path):
+    """Return True if the two files have same contents"""
+    with open(file_path_1) as file_1:
+        with open(file_path_2) as file_2:
+            if file_1.readline() != file_2.readline():
+                return False
+    return True
 
 
 class TestDataset(AudioDataset[AudioClipMetadata]):

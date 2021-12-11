@@ -13,11 +13,13 @@ class RawAudioDataset(AudioDataset[AudioClipMetadata]):
 
     METADATA_FILE_NAME_TEMPLATE = "metadata-{dataset_split}.jsonl"
 
+    @classmethod
+    def load_sample(cls, metadata: AudioClipMetadata, sample_rate: int, mono: bool):
+        """Generate audio sample from the metadata"""
+        audio_data = silent_load(str(metadata.path), sample_rate, mono)
+        return AudioClipExample(metadata=metadata, audio_data=torch.from_numpy(audio_data), sample_rate=sample_rate,)
+
     @lru_cache(maxsize=SETTINGS.cache.cache_size)
     def __getitem__(self, idx) -> AudioClipExample:
         """Get sample for the given idx"""
-        metadata = self.metadata_list[idx]
-        audio_data = silent_load(str(metadata.path), self.sample_rate, self.mono)
-        return AudioClipExample(
-            metadata=metadata, audio_data=torch.from_numpy(audio_data), sample_rate=self.sample_rate,
-        )
+        return RawAudioDataset.load_sample(self.metadata_list[idx], sample_rate=self.sample_rate, mono=self.mono)
