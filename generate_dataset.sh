@@ -57,11 +57,18 @@ time yes n | ./bin/mfa_align --verbose --clean --num_jobs 12 "../${POS_DATASET_P
 popd
 
 printf "\n\n>>> attaching the MFA alignment to the positive dataset\n"
-time DATASET_PATH=${POS_DATASET_PATH} python -m training.run.attach_alignment --align-type mfa -i "${POS_DATASET_ALIGNMENT}"
+time python -m training.run.attach_alignment \
+  --input-raw-audio-dataset "${POS_DATASET_PATH}" \
+  --token-type word \
+  --alignment-type mfa \
+  --alignments-path "${POS_DATASET_ALIGNMENT}"
 
 if [ ${SKIP_NEG_DATASET} != "true" ]; then
     printf "\n\n>>> attaching mock alignment to the negative dataset\n"
-    time DATASET_PATH=${NEG_DATASET_PATH} python -m training.run.attach_alignment --align-type stub
+    time python -m training.run.attach_alignment \
+      --alignment-type stub \
+      --input-raw-audio-dataset "${NEG_DATASET_PATH}" \
+      --token-type word
 fi
 
 STITCHED_DATASET="${DATASET_FOLDER}/stitched"

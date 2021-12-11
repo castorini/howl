@@ -1,69 +1,58 @@
-import argparse
-from itertools import chain
 from pathlib import Path
 
-from textgrids import TextGrid
-from tqdm import tqdm
-
-from howl.data.common.metadata import AudioClipMetadata
-from howl.data.dataset.dataset_loader import AudioClipDatasetLoader
-from howl.data.dataset.dataset_writer import AudioDatasetMetadataWriter
-from howl.settings import SETTINGS
-from training.align import MfaTextGridConverter, StubAligner
+from howl.data.common.tokenizer import TokenType
+from howl.dataset.aligned_audio_dataset_generator import AlignedAudioDatasetGenerator, AlignmentType
+from training.run.args import ArgumentParserBuilder, opt
 
 
-def main():
-    """Attach alignment to the raw audio dataset"""
+def main(
+    input_raw_audio_dataset_path: Path, token_type: TokenType, alignment_type: AlignmentType, alignments_path: Path,
+):
+    """Attach alignments to the raw audio dataset and generate aligned-metadata
 
-    def load_mfa_align():
-        """Load alignment using montreal forced aligner"""
-        converter = MfaTextGridConverter(use_phones=SETTINGS.training.token_type == "phone")
-        id_align_map = {}
+    Args:
+        input_raw_audio_dataset_path: raw audio dataset of which alignments will be attached to
+        alignment_type: type of alignment (MFA or STUB)
+        token_type: type of token (WORD or PHONE)
+        alignments_path (Optional): path of the dir which the MFA alignments are saved
 
-        for tg_path in args.align_folder.glob("**/*.TextGrid"):
-            text_grid = TextGrid(str(tg_path.absolute()))
-            audio_id = tg_path.name.split(".", 1)[0]
-            id_align_map[audio_id] = converter.convert(text_grid)
-        return id_align_map
+    """
+    aligned_dataset_generator = AlignedAudioDatasetGenerator(
+        input_raw_audio_dataset_path, alignment_type, alignments_path, token_type=token_type
+    )
 
-    def load_stub_align():
-        """Load alignment for stub"""
-        id_align_map = {}
-        for ex in tqdm(chain(train_ds, dev_ds, test_ds), total=sum(map(len, (train_ds, dev_ds, test_ds))),):
-            id_align_map[ex.metadata.audio_id] = StubAligner().align(ex)
-        return id_align_map
+    aligned_dataset_generator.generate_datasets()
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--mfa-folder", "-i", dest="align_folder", type=Path)
-    parser.add_argument("--align-type", type=str, default="mfa", choices=("mfa", "stub"))
-    args = parser.parse_args()
 
-    ds_kwargs = dict(sample_rate=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono)
-    ds_path = Path(SETTINGS.dataset.dataset_path)
-    train_ds, dev_ds, test_ds = AudioClipDatasetLoader().load_splits(ds_path, **ds_kwargs)
+def setup():
+    """Parse the arguments"""
 
-    if args.align_type == "mfa":
-        id_align_map = load_mfa_align()
-    elif args.align_type == "stub":
-        id_align_map = load_stub_align()
-    else:
-        raise ValueError
+    apb = ArgumentParserBuilder()
+    apb.add_options(
+        opt("--input-raw-audio-dataset-path", "-i", type=str, help="location of the input raw audio dataset",),
+        opt("--token-type", type=str, choices=[e.value for e in TokenType], help="type of token (word or phone)",),
+        opt(
+            "--alignment-type",
+            type=str,
+            choices=[e.value for e in AlignmentType],
+            help="type of alignment of the alignments",
+        ),
+        opt("--alignments-path", type=str, help="location of the alignment files",),
+    )
+    raw_args = apb.parser.parse_args()
 
-    for dataset in (train_ds, dev_ds, test_ds):
-        with AudioDatasetMetadataWriter(ds_path, dataset.set_type, "aligned-") as writer:
-            for ex in tqdm(dataset, total=len(dataset)):
-                try:
-                    transcription = id_align_map[ex.metadata.audio_id]
-                    writer.write(
-                        AudioClipMetadata(
-                            path=ex.metadata.path,
-                            transcription=transcription.transcription,
-                            end_timestamps=transcription.end_timestamps,
-                        )
-                    )
-                except KeyError:
-                    pass
+    if raw_args.alignment_type == AlignmentType.MFA and raw_args.alignments_path is None:
+        raise ValueError("For MFA alignment type, alignments path must be provided")
+
+    return raw_args
 
 
 if __name__ == "__main__":
-    main()
+    args = setup()
+
+    main(
+        Path(args.input_raw_audio_dataset_path),
+        TokenType(args.token_type),
+        AlignmentType(args.alignment_type),
+        Path(args.alignments_path) if args.alignments_path is not None else None,
+    )

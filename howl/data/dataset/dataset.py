@@ -81,6 +81,9 @@ class AudioDataset(tud.Dataset, Generic[GenericTypeT]):
         self.mono = mono
         self.dataset_split = dataset_split
 
+    def __repr__(self):
+        return repr(f"{self.dataset_split}-dataset")
+
     @property
     def is_training(self):
         """Return True if the dataset is for training"""

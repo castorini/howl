@@ -132,19 +132,26 @@ VOCAB='["hey","snips"]' INFERENCE_SEQUENCE=[0,1] DATASET_PATH=datasets/hey-snips
 3. Generate some mock alignment for the dataset, where we don't care about alignment:
 
 ```bash
-DATASET_PATH=datasets/hey-snips python -m training.run.attach_alignment --align-type stub
+python -m training.run.attach_alignment \
+  --input-raw-audio-dataset datasets/hey-snips \
+  --token-type word \
+  --alignment-type stub
 ```
 
 4. Use MFA to generate alignment for the dataset set:
 
 ```bash
-mfa_align datasets/hey-snips/audio eng.dict pretrained_models/english.zip output-folder
+mfa_align datasets/hey-snips/audio eng.dict pretrained_models/english.zip datasets/hey-snips/alignments
 ```
 
 5. Attach the MFA alignment to the dataset:
 
 ```bash
-DATASET_PATH=datasets/hey-snips python -m training.run.attach_alignment --align-type mfa -i output-folder
+python -m training.run.attach_alignment \
+  --input-raw-audio-dataset datasets/hey-snips \
+  --token-type word \
+  --alignment-type mfa \
+  --alignments-path datasets/hey-snips/alignments
 ```
 
 6. Source the appropriate environment variables: `source envs/res8.env`

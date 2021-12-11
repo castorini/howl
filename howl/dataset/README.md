@@ -79,19 +79,32 @@ intervals [4]:
 ...
 ```
 
-5. Generate some mock alignment for the negative set, where we don't care about alignment:
+5. Use MFA to generate alignment for the positive set:
 
 ```bash
-DATASET_PATH=datasets/fire/negative python -m training.run.attach_alignment --align-type stub
+mfa_align datasets/fire/positive/audio eng.dict pretrained_models/english.zip datasets/fire/positive/alignment
 ```
 
-6. Use MFA to generate alignment for the positive set:
+6. Attach MFA alignments to the positive datasets:
 
 ```bash
-mfa_align datasets/fire/positive/audio eng.dict pretrained_models/english.zip output-folder
+python -m training.run.attach_alignment \
+  --input-raw-audio-dataset datasets/fire/positive \
+  --token-type word \
+  --alignment-type mfa \
+  --alignments-path datasets/fire/positive/alignment
 ```
 
-7. (Optional) Stitch vocab samples of aligned dataset to generate wakeword samples
+7. Generate some mock alignment for the negative set, where we don't care about alignment:
+
+```bash
+python -m training.run.attach_alignment \
+  --input-raw-audio-dataset datasets/fire/negative \
+  --token-type word \
+  --alignment-type stub
+```
+
+8. (Optional) Stitch vocab samples of aligned dataset to generate wakeword samples
 
 ```bash
 VOCAB='["fire"]' INFERENCE_SEQUENCE=[0] python -m training.run.stitch_vocab_samples --aligned-dataset "datasets/fire/positive" --stitched-dataset "data/fire-stitched"
