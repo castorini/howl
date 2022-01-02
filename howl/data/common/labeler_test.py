@@ -1,18 +1,21 @@
 import unittest
-from pathlib import Path
 
 from howl.data.common.labeler import PhoneticFrameLabeler, WordFrameLabeler
 from howl.data.common.metadata import AudioClipMetadata
 from howl.data.common.phone import PhonePhrase, PronunciationDictionary
 from howl.data.common.vocab import Vocab
+from howl.utils import test_utils
 
 
 class TestPhoneticFrameLabeler(unittest.TestCase):
+    """Test case for PhoneticFrameLabeler class"""
+
     def test_phonetic_frame_labeler(self):
+        """test compute_frame_label"""
 
         vocab = ["hey", "fire", "fox"]
 
-        phone_dict_file = Path("test/test_data/pronounciation_dictionary.txt")
+        phone_dict_file = test_utils.test_data_path() / "pronounciation_dictionary.txt"
         pronounce_dict = PronunciationDictionary.from_file(phone_dict_file)
 
         adjusted_vocab = []
@@ -34,10 +37,10 @@ class TestPhoneticFrameLabeler(unittest.TestCase):
         frame_label_data = labeler.compute_frame_labels(metadata)
         print(frame_label_data)
 
-        self.assertTrue(True)
-
 
 class TestWordFrameLabeler(unittest.TestCase):
+    """Test case for WordFrameLabeler class"""
+
     def test_word_frame_labeler(self):
         """test compute_frame_label"""
 

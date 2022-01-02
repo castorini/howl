@@ -1,7 +1,7 @@
 import string
 from typing import List
 
-from howl.data.common.frame import FrameLabelData
+from howl.data.common.label import FrameLabelData
 from howl.data.common.metadata import AudioClipMetadata
 from howl.data.common.phone import PhoneEnum, PhonePhrase, PronunciationDictionary
 from howl.data.common.vocab import Vocab
@@ -10,11 +10,23 @@ __all__ = ["FrameLabeler", "WordFrameLabeler", "PhoneticFrameLabeler"]
 
 
 class FrameLabeler:
+    """Interface class for frame-based labeller"""
+
     def compute_frame_labels(self, metadata: AudioClipMetadata) -> FrameLabelData:
+        """Process metadata to compute labels FrameLabelData which will be used for training
+
+        Args:
+            metadata (AudioClipMetadata): information about the sample
+
+        Returns:
+            FrameLabelData: labels for the current sample with respect to frame
+        """
         raise NotImplementedError
 
 
 class PhoneticFrameLabeler(FrameLabeler):
+    """Generates phoneme-level frame labels for a given sample"""
+
     def __init__(self, pronounce_dict: PronunciationDictionary, phrases: List[PhonePhrase]):
         self.pronounce_dict = pronounce_dict
         self.phrases = phrases
@@ -58,16 +70,13 @@ class PhoneticFrameLabeler(FrameLabeler):
                 # TODO:: we currently use single representation for simplicity
                 phrase = self.pronounce_dict.encode(word[:idx])[0]
                 phrases.extend(phrase)
-            except ValueError:
+            except ValueError as invalid_phoneme_error:
                 if word == "<unk>":
                     phrase = PhonePhrase.from_string(PhoneEnum.SPEECH_UNKNOWN.value)
                     idx = -1
                     phrases.extend(phrase)
-                    continue
                 else:
-                    raise ValueError(
-                        f"word {word} ({original_word}) does not have corresponding phoneme representation"
-                    )
+                    raise ValueError(invalid_phoneme_error) from invalid_phoneme_error
 
             word = word[idx:]
             idx = len(word)
@@ -120,7 +129,7 @@ class PhoneticFrameLabeler(FrameLabeler):
                     break
 
                 # TDOO: metadata.end_timestamps contains when the given character in the transcript finishes
-                #       in order to label the the phonemes right, we need a mapping from characters to phonemes
+                #       in order to label the phonemes right, we need a mapping from characters to phonemes
                 # # compute where the phrase located in the transcript
                 # start = phonetic_transcription.all_idx_to_transcript_idx(
                 #     phonetic_transcription.audible_idx_to_all_idx(start)
@@ -141,6 +150,8 @@ class PhoneticFrameLabeler(FrameLabeler):
 
 
 class WordFrameLabeler(FrameLabeler):
+    """Generates word-level frame labels for a given sample"""
+
     def __init__(self, vocab: Vocab):
         self.vocab = vocab
 
