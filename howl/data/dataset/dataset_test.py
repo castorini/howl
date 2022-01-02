@@ -27,13 +27,13 @@ class TestAudioDataset(unittest.TestCase):
         # without word_searcher, compute_length=True
         stat = audio_dataset.compute_statistics()
         self.assertEqual(stat.num_examples, num_samples)
-        self.assertEqual(stat.audio_length_seconds, total_audio_length)
+        self.assertAlmostEqual(stat.audio_length_seconds, total_audio_length, 1)
         self.assertFalse(stat.vocab_counts)
 
         # with word_searcher, compute_length=True
         stat = audio_dataset.compute_statistics(word_searcher=searcher)
         self.assertEqual(stat.num_examples, num_samples)
-        self.assertEqual(stat.audio_length_seconds, total_audio_length)
+        self.assertAlmostEqual(stat.audio_length_seconds, total_audio_length, 1)
         self.assertEqual(len(stat.vocab_counts), len(vocab))
         self.assertEqual(stat.vocab_counts["the"], 4)
         self.assertEqual(stat.vocab_counts["and"], 2)
