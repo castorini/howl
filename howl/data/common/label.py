@@ -6,6 +6,8 @@ __all__ = ["FrameLabelData"]
 
 @dataclass
 class FrameLabelData:
+    """Frame-level labels"""
+
     # Map of timestamp of which the word finishes and word label
     timestamp_label_map: Dict[float, int]
     # Array of (word label, timestamp of which the word starts)
