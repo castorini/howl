@@ -13,3 +13,8 @@ def root_path():
 def datasets_path():
     """datasets directory located at the root of the project"""
     return root_path() / "datasets"
+
+
+def configs_path():
+    """configs directory located at the root of the project"""
+    return root_path() / "configs"

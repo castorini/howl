@@ -1,0 +1,28 @@
+{
+  "batch_size": 16,
+  "learning_rate": 0.01,
+  "num_epochs": 10,
+  "lr_decay": 0.955,
+  "weight_decay": 0.00001,
+  "use_noise_dataset": false,
+  "noise_datasets": [
+    {
+      "path": "/data/MS-SNSD"
+    }
+  ],
+  "train_datasets": [
+    {
+      "path": "/data/speaker-id-split-medium"
+    }
+  ],
+  "val_datasets": [
+    {
+      "path": "/data/speaker-id-split-medium"
+    }
+  ],
+  "test_datasets": [
+    {
+      "path": "/data/speaker-id-split-medium"
+    }
+  ]
+}
