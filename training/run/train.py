@@ -16,7 +16,7 @@ from howl.data.transform.batchifier import AudioSequenceBatchifier, WakeWordFram
 from howl.data.transform.operator import ZmuvTransform, batchify, compose
 from howl.data.transform.transform import DatasetMixer, NoiseTransform, StandardAudioTransform
 from howl.model import ConfusionMatrix, ConvertedStaticModel, RegisteredModel, Workspace
-from howl.model.inference import FrameInferenceEngine, SequenceInferenceEngine
+from howl.model.inference import FrameInferenceEngine, InferenceEngine
 from howl.settings import SETTINGS
 from howl.utils import hash_utils, logging_utils, random
 from training.run.deprecated.create_raw_dataset import print_stats
@@ -51,7 +51,7 @@ def main():
                 ctx,
             )
         else:
-            engine = SequenceInferenceEngine(model, zmuv_transform, ctx)
+            engine = InferenceEngine(model, zmuv_transform, ctx)
         model.eval()
         conf_matrix = ConfusionMatrix()
         pbar = tqdm(dataset, desc=prefix)

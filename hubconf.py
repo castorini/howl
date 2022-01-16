@@ -14,11 +14,7 @@ import torch
 import howl.data.transform as transform
 import howl.model as howl_model
 from howl.context import InferenceContext
-from howl.model.inference import (
-    FrameInferenceEngine,
-    InferenceEngine,
-    SequenceInferenceEngine,
-)
+from howl.model.inference import FrameInferenceEngine, InferenceEngine
 
 dependencies = ["howl", "torch"]
 
@@ -51,10 +47,10 @@ def _load_model(
     reload_models = kwargs.pop("reload_models", False)
     cached_folder = _download_howl_models(reload_models)
     workspace_path = pathlib.Path(cached_folder) / workspace_path
-    ws = howl_model.Workspace(workspace_path, delete_existing=False)
+    workspace = howl_model.Workspace(workspace_path, delete_existing=False)
 
     # Load model settings
-    settings = ws.load_settings()
+    settings = workspace.load_settings()
 
     # Set up context
     use_frame = settings.training.objective == "frame"
@@ -66,8 +62,10 @@ def _load_model(
 
     # Load pretrained weights
     if pretrained:
-        zmuv_transform.load_state_dict(torch.load(str(ws.path / "zmuv.pt.bin"), map_location=torch.device(device)))
-        ws.load_model(model, best=True)
+        zmuv_transform.load_state_dict(
+            torch.load(str(workspace.path / "zmuv.pt.bin"), map_location=torch.device(device))
+        )
+        workspace.load_model(model, best=True)
 
     # Load engine
     model.streaming()
@@ -80,7 +78,7 @@ def _load_model(
             ctx,
         )
     else:
-        engine = SequenceInferenceEngine(model, zmuv_transform, ctx)
+        engine = InferenceEngine(model, zmuv_transform, ctx)
 
     return engine, ctx
 
