@@ -19,7 +19,7 @@ from howl.data.common.labeler import FrameLabeler
 from howl.data.common.metadata import NEGATIVE_CLASS, AudioClipMetadata
 from howl.data.common.searcher import WordTranscriptSearcher
 from howl.settings import SETTINGS
-from howl.utils.audio import silent_load
+from howl.utils.audio_utils import silent_load
 
 __all__ = [
     "DatasetType",
