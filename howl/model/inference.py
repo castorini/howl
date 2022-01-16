@@ -1,4 +1,3 @@
-import abc
 import itertools
 import logging
 import time
@@ -14,11 +13,11 @@ from howl.model import RegisteredModel
 from howl.settings import SETTINGS
 from howl.utils import audio_utils
 
-__all__ = ["FrameInferenceEngine", "InferenceEngine", "SequenceInferenceEngine"]
+__all__ = ["FrameInferenceEngine", "InferenceEngine"]
 
 
-class InferenceEngine(abc.ABC):
-    """Base class of which handles inference using the trained model and context"""
+class InferenceEngine:
+    """Class of which handles inference using the trained model and context"""
 
     def __init__(
         self, model: RegisteredModel, zmuv_transform: ZmuvTransform, context: InferenceContext, time_provider=time.time
@@ -56,6 +55,7 @@ class InferenceEngine(abc.ABC):
         self.smoothing_window_ms = self.settings.smoothing_window_ms
         self.tolerance_window_ms = self.settings.tolerance_window_ms
         self.sequence = self.settings.inference_sequence
+        self.blank_idx = self.context.blank_label
         self.time_provider = time_provider
 
         self.curr_time = 0
@@ -174,27 +174,6 @@ class InferenceEngine(abc.ABC):
             curr_time = self.time_provider() * 1000
         self.pred_history.append((curr_time, prediction))
         return self._get_prediction(curr_time)
-
-    @abc.abstractmethod
-    def infer(self, audio_data: torch.Tensor) -> bool:
-        """Checks if wake word is present in the given audio data
-
-        Args:
-            audio_data (torch.Tensor): audio data of which the wake word will be searched within
-
-        Returns:
-            return True if wake word presents in the last window
-        """
-        raise NotImplementedError
-
-
-class SequenceInferenceEngine(InferenceEngine):
-    """InferenceEngine that evaluates the given audio data at once by feeding the whole audio data as a batch"""
-
-    def __init__(self, *args):
-        """Initialize SequenceInferenceEngine"""
-        super().__init__(*args)
-        self.blank_idx = self.context.blank_label
 
     @torch.no_grad()
     def infer(self, audio_data: torch.Tensor) -> bool:
