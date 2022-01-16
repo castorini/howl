@@ -11,7 +11,7 @@ from tqdm import tqdm
 from howl.data.common.metadata import AudioClipMetadata
 from howl.data.dataset.dataset import AudioClipDataset, DatasetType
 from howl.utils import logging_utils
-from howl.utils.audio import silent_load
+from howl.utils.audio_utils import silent_load
 
 
 class AudioDatasetMetadataWriter:

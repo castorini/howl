@@ -6,7 +6,12 @@ import howl
 from howl.data.common.example import AudioClipExample
 from howl.data.common.metadata import AudioClipMetadata
 from howl.data.dataset.dataset import AudioDataset
-from howl.utils.audio import silent_load
+from howl.utils.audio_utils import silent_load
+
+
+def test_audio_file_path():
+    """Path of a single audio file"""
+    return common_voice_dataset_path() / "clips/common_voice_en_20005954.mp3"
 
 
 def test_data_path():
