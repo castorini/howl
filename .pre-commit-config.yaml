@@ -30,6 +30,7 @@ repos:
     hooks:
     -   id: flake8
         args: ['--max-line-length=120', '--extend-ignore=E203']
+        exclude: __init__.py$
 -   repo: https://github.com/pre-commit/mirrors-pylint
     rev: v2.6.0
     hooks:

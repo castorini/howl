@@ -5,9 +5,10 @@ import torch
 from howl.client import HowlClient
 from howl.context import InferenceContext
 from howl.data.transform.operator import ZmuvTransform
-from howl.model import RegisteredModel, Workspace
+from howl.model import RegisteredModel
 from howl.model.inference import FrameInferenceEngine, InferenceEngine
 from howl.utils.logging_utils import setup_logger
+from howl.workspace import Workspace
 
 from .args import ArgumentParserBuilder, opt
 

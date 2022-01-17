@@ -15,6 +15,7 @@ import howl.data.transform as transform
 import howl.model as howl_model
 from howl.context import InferenceContext
 from howl.model.inference import FrameInferenceEngine, InferenceEngine
+from howl.workspace import Workspace
 
 dependencies = ["howl", "torch"]
 
@@ -47,7 +48,7 @@ def _load_model(
     reload_models = kwargs.pop("reload_models", False)
     cached_folder = _download_howl_models(reload_models)
     workspace_path = pathlib.Path(cached_folder) / workspace_path
-    workspace = howl_model.Workspace(workspace_path, delete_existing=False)
+    workspace = Workspace(workspace_path, delete_existing=False)
 
     # Load model settings
     settings = workspace.load_settings()
