@@ -2,10 +2,11 @@ import json
 from pathlib import Path
 
 import howl
-from howl.refactored_settings import TrainingSettings
+from howl.config import TrainingConfig
+from howl.trainer import Trainer
 from training.run.args import ArgumentParserBuilder, opt
 
-# from devtools import debug
+# WIP; please use train.py
 
 
 def main(
@@ -17,13 +18,15 @@ def main(
         training_config_path (Path): location of the training yaml config
         num_gpus (int): number of gpus to use
     """
-    training_settings = TrainingSettings.parse_file(training_config_path)
-    print(json.dumps(training_settings.dict(), indent=4), num_gpus)
+    training_cfg = TrainingConfig.parse_file(training_config_path)
+    print(json.dumps(training_cfg.dict(), indent=4), num_gpus)
+
+    Trainer(training_cfg)
 
 
 def setup():
     """Parse the arguments"""
-    training_config_path = str(howl.configs_path() / "res8.json")
+    training_config_path = str(howl.configs_path() / "wip_hey_fire_fox_res8.json")
     num_gpus = 1
 
     apb = ArgumentParserBuilder()

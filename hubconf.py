@@ -54,7 +54,9 @@ def _load_model(
 
     # Set up context
     use_frame = settings.training.objective == "frame"
-    ctx = InferenceContext(settings.training.vocab, token_type=settings.training.token_type, use_blank=not use_frame)
+    ctx = InferenceContext(
+        vocab=settings.training.vocab, token_type=settings.training.token_type, use_blank=not use_frame
+    )
 
     # Load models
     zmuv_transform = transform.ZmuvTransform()

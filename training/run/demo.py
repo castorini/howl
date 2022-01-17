@@ -26,7 +26,9 @@ def main():
     settings = workspace.load_settings()
 
     use_frame = settings.training.objective == "frame"
-    ctx = InferenceContext(settings.training.vocab, token_type=settings.training.token_type, use_blank=not use_frame)
+    ctx = InferenceContext(
+        vocab=settings.training.vocab, token_type=settings.training.token_type, use_blank=not use_frame
+    )
 
     device = torch.device(settings.training.device)
     zmuv_transform = ZmuvTransform().to(device)

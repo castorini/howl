@@ -8,7 +8,7 @@ import torch
 
 from howl.context import InferenceContext
 from howl.model.inference import InferenceEngine
-from howl.utils.logging_utils import setup_logger
+from howl.utils import logging_utils
 
 
 class HowlClient:
@@ -41,7 +41,7 @@ class HowlClient:
         """
         self.logger = logger
         if self.logger is None:
-            self.logger = setup_logger(self.__class__.__name__)
+            self.logger = logging_utils.setup_logger(self.__class__.__name__)
 
         self.listeners = []
         self.chunk_size = chunk_size
@@ -49,6 +49,10 @@ class HowlClient:
 
         self.engine: InferenceEngine = engine
         self.ctx: InferenceContext = context
+        # PyAudio instance which gets created upon start call
+        self._audio = None
+        # PyAudio Stream instance which gets created by self._audio upon start call
+        self._stream = None
 
         self._audio_buf = []
         self._audio_buf_len = 16
@@ -61,7 +65,20 @@ class HowlClient:
         """Show a list of available pretrained models"""
         print(torch.hub.list("castorini/howl", force_reload=force_reload))
 
-    def _on_audio(self, in_data, frame_count, time_info, status):
+    def _on_audio(self, in_data, frame_count, time_info, status_flags):
+        """triggered when a new frame of data is available
+        details: http://portaudio.com/docs/v19-doxydocs/portaudio_8h.html#a8a60fb2a5ec9cbade3f54a9c978e2710
+
+        Args:
+            in_data: recorded data if input=True; else None
+            frame_count: number of frames
+            time_info: dictionary
+            status_flags: PaCallbackFlags
+
+        Returns:
+            (in_data, pyaudio.paContinue)
+        """
+        # pylint: disable=unused-argument
         data_ok = (in_data, pyaudio.paContinue)
         self.last_data = in_data
         self._audio_buf.append(in_data)
@@ -75,7 +92,7 @@ class HowlClient:
 
         # Inference from input sequence
         if self.engine.infer(inp):
-            # Check if inference has already occured for this sequence to prevent
+            # Check if inference has already occurred for this sequence to prevent
             # duplicate callback execution
             if self._infer_detected:
                 return data_ok
@@ -118,14 +135,14 @@ class HowlClient:
             frames_per_buffer=self.chunk_size,
             stream_callback=self._on_audio,
         )
-        self.stream = stream
+        self._stream = stream
         self.logger.info("Starting Howl inference client...")
         stream.start_stream()
         return self
 
     def join(self):
         """Block while the audio inference stream is active"""
-        while self.stream.is_active():
+        while self._stream.is_active():
             time.sleep(0.1)
 
     def from_pretrained(self, name: str, force_reload: bool = False):
