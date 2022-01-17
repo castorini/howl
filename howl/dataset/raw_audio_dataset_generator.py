@@ -40,7 +40,7 @@ class RawAudioDatasetGenerator:
 
         self.dataset_loader_type = dataset_loader_type
         self.dataset_loader = get_dataset_loader(dataset_loader_type, Path(input_dataset_path), self.logger)
-        self.inference_ctx = InferenceContext(SETTINGS.training.vocab, token_type=SETTINGS.training.token_type)
+        self.inference_ctx = InferenceContext(vocab=SETTINGS.training.vocab, token_type=SETTINGS.training.token_type)
 
         ds_kwargs = dict(sample_rate=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono)
         self.train_ds, self.dev_ds, self.test_ds = self.dataset_loader.load_splits(**ds_kwargs)

@@ -64,7 +64,9 @@ def main():
         print("generating symlink files")
 
     use_frame = SETTINGS.training.objective == "frame"
-    ctx = InferenceContext(SETTINGS.training.vocab, token_type=SETTINGS.training.token_type, use_blank=not use_frame,)
+    ctx = InferenceContext(
+        vocab=SETTINGS.training.vocab, token_type=SETTINGS.training.token_type, use_blank=not use_frame,
+    )
 
     loader = WakeWordDatasetLoader()
     ds_kwargs = dict(sample_rate=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono, frame_labeler=ctx.labeler,)

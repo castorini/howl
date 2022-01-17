@@ -15,6 +15,11 @@ def datasets_path():
     return root_path() / "datasets"
 
 
+def workspaces_path():
+    """workspaces directory located at the root of the project"""
+    return root_path() / "workspaces"
+
+
 def configs_path():
     """configs directory located at the root of the project"""
     return root_path() / "configs"

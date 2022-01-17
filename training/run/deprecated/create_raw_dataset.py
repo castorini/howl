@@ -81,9 +81,6 @@ def main():
         ),
     )
     args = apb.parser.parse_args()
-    if args.input_audio_dataset_path is None:
-        args.input_audio_dataset_path = SETTINGS.raw_dataset.common_voice_dataset_path
-
     logger = logging_utils.setup_logger(os.path.basename(__file__))
 
     dataset_loader_type = DatasetLoaderType(args.dataset_loader_type)
@@ -91,7 +88,7 @@ def main():
     ds_kwargs = dict(sample_rate=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono)
     train_ds, dev_ds, test_ds = dataset_loader.load_splits(**ds_kwargs)
 
-    ctx = InferenceContext(SETTINGS.training.vocab, token_type=SETTINGS.training.token_type)
+    ctx = InferenceContext(vocab=SETTINGS.training.vocab, token_type=SETTINGS.training.token_type)
     if dataset_loader_type == DatasetLoaderType.COMMON_VOICE_DATASET_LOADER:
         train_ds = train_ds.filter(filter_fn)
         dev_ds = dev_ds.filter(filter_fn)
