@@ -15,10 +15,11 @@ from howl.data.dataset.dataset_loader import RecursiveNoiseDatasetLoader, WakeWo
 from howl.data.transform.batchifier import AudioSequenceBatchifier, WakeWordFrameBatchifier
 from howl.data.transform.operator import ZmuvTransform, batchify, compose
 from howl.data.transform.transform import DatasetMixer, NoiseTransform, StandardAudioTransform
-from howl.model import ConfusionMatrix, ConvertedStaticModel, RegisteredModel, Workspace
+from howl.model import ConfusionMatrix, ConvertedStaticModel, RegisteredModel
 from howl.model.inference import FrameInferenceEngine, InferenceEngine
 from howl.settings import SETTINGS
 from howl.utils import hash_utils, logging_utils, random
+from howl.workspace import Workspace
 from training.run.deprecated.create_raw_dataset import print_stats
 
 from .args import ArgumentParserBuilder, opt
