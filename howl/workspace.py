@@ -16,7 +16,7 @@ class Workspace:
     """A package that consists all the training-relevant files"""
 
     path: Path
-    best_quality: float = -10000.0
+    best_quality: float = float("-inf")
     delete_existing: bool = True
 
     def __post_init__(self):

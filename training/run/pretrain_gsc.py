@@ -12,9 +12,10 @@ from howl.data.dataloader import StandardAudioDataLoaderBuilder
 from howl.data.dataset.gsc_dataset_loader import GoogleSpeechCommandsDatasetLoader
 from howl.data.transform.operator import ZmuvTransform, batchify, compose, truncate_length
 from howl.data.transform.transform import NoiseTransform, StandardAudioTransform, TimeshiftTransform
-from howl.model import RegisteredModel, Workspace
+from howl.model import RegisteredModel
 from howl.settings import SETTINGS
 from howl.utils.random import set_seed
+from howl.workspace import Workspace
 
 from .args import ArgumentParserBuilder, opt
 
