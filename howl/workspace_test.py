@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 import torch
 
+from howl.settings import AudioSettings, DatasetSettings, HowlSettings
 from howl.utils import test_utils
 from howl.workspace import Workspace
 from training.run.args import ArgumentParserBuilder, opt
@@ -62,7 +63,7 @@ class WorkspaceTest(unittest.TestCase):
                 self.assertFalse(torch.allclose(state_value, loaded_net.state_dict()[state_key]))
 
             workspace.save_model(original_net, best=False)
-            self.assertEqual(workspace.model_path(), str(workspace.path / "model.pt.bin"))
+            self.assertTrue(Path(workspace.model_path()).exists())
 
             workspace.load_model(loaded_net, best=False)
             for state_key, state_value in original_net.state_dict().items():
@@ -76,7 +77,8 @@ class WorkspaceTest(unittest.TestCase):
                 self.assertFalse(torch.allclose(state_value, loaded_net.state_dict()[state_key]))
 
             workspace.save_model(best_net, best=True)
-            self.assertEqual(workspace.model_path(), str(workspace.path / "model.pt.bin"))
+            self.assertTrue(Path(workspace.model_path()).exists())
+            self.assertTrue(Path(workspace.model_path(best=True)).exists())
 
             workspace.load_model(loaded_net, best=False)
             for state_key, state_value in best_net.state_dict().items():
@@ -85,3 +87,67 @@ class WorkspaceTest(unittest.TestCase):
             workspace.load_model(loaded_net, best=True)
             for state_key, state_value in best_net.state_dict().items():
                 self.assertTrue(torch.allclose(state_value, loaded_net.state_dict()[state_key]))
+
+    def test_increment_model(self):
+        """Test incrementing and loading model"""
+
+        with self._setup_test_env() as workspace:
+            original_net = test_utils.TestNet()
+            loaded_net = test_utils.TestNet()
+            for state_key, state_value in original_net.state_dict().items():
+                self.assertFalse(torch.allclose(state_value, loaded_net.state_dict()[state_key]))
+
+            workspace.increment_model(original_net, quality=100)
+            self.assertTrue(Path(workspace.model_path()).exists())
+            self.assertTrue(Path(workspace.model_path(best=True)).exists())
+
+            workspace.load_model(loaded_net, best=False)
+            for state_key, state_value in original_net.state_dict().items():
+                self.assertTrue(torch.allclose(state_value, loaded_net.state_dict()[state_key]))
+
+            workspace.load_model(loaded_net, best=True)
+            for state_key, state_value in original_net.state_dict().items():
+                self.assertTrue(torch.allclose(state_value, loaded_net.state_dict()[state_key]))
+
+            worse_net = test_utils.TestNet()
+            for state_key, state_value in worse_net.state_dict().items():
+                self.assertFalse(torch.allclose(state_value, loaded_net.state_dict()[state_key]))
+
+            workspace.increment_model(worse_net, quality=50)
+            self.assertTrue(Path(workspace.model_path()).exists())
+            self.assertTrue(Path(workspace.model_path(best=True)).exists())
+
+            workspace.load_model(loaded_net, best=False)
+            for state_key, state_value in worse_net.state_dict().items():
+                self.assertTrue(torch.allclose(state_value, loaded_net.state_dict()[state_key]))
+
+            workspace.load_model(loaded_net, best=True)
+            for state_key, state_value in worse_net.state_dict().items():
+                self.assertFalse(torch.allclose(state_value, loaded_net.state_dict()[state_key]))
+
+    def test_save_load_settings(self):
+        """Test saving and loading settings"""
+
+        with self._setup_test_env() as workspace:
+            original_settings = HowlSettings()
+            original_settings.audio.sample_rate = 1000
+            self.assertIsInstance(original_settings.audio, AudioSettings)
+            original_settings.dataset.dataset_path = "abc"
+            self.assertIsInstance(original_settings.dataset, DatasetSettings)
+            workspace.save_settings(original_settings)
+
+            json_file_path = workspace.path / "settings.json"
+            self.assertTrue(json_file_path.exists())
+
+            with open(json_file_path, "r") as file:
+                saved_args = json.load(file)
+
+            self.assertIn("_audio", saved_args)
+            self.assertNotIn("_dataset", saved_args)
+
+            loaded_settings = workspace.load_settings()
+            self.assertNotEqual(original_settings, loaded_settings)
+
+            # audio setting gets saved but dataset setting doesn't get saved
+            self.assertEqual(original_settings.audio, loaded_settings.audio)
+            self.assertNotEqual(original_settings.dataset, loaded_settings.dataset)

@@ -223,7 +223,7 @@ def main():
 
     # region train model
     workspace.write_args(args)
-    workspace.write_settings(SETTINGS)
+    workspace.save_settings(SETTINGS)
     writer.add_scalar("Meta/Parameters", sum(p.numel() for p in params))
     for epoch_idx in trange(SETTINGS.training.num_epochs, position=0, leave=True):
         model.train()

@@ -65,8 +65,8 @@ class Workspace:
         """Loads saved model"""
         model.load_state_dict(torch.load(self.model_path(best=best), lambda s, l: s))
 
-    def write_settings(self, settings: HowlSettings = SETTINGS):
-        """Write settings object into JSON file"""
+    def save_settings(self, settings: HowlSettings = SETTINGS):
+        """Saves settings object into JSON file"""
         with (self.path / "settings.json").open("w") as file:
             keys_to_ignore = ["_dataset", "_raw_dataset"]
             json.dump(gather_dict(settings, keys_to_ignore), file, indent=2)
