@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 import torch
 
+from howl.config import TrainingConfig
 from howl.settings import AudioSettings, DatasetSettings, HowlSettings
 from howl.utils import test_utils
 from howl.workspace import Workspace
@@ -151,3 +152,25 @@ class WorkspaceTest(unittest.TestCase):
             # audio setting gets saved but dataset setting doesn't get saved
             self.assertEqual(original_settings.audio, loaded_settings.audio)
             self.assertNotEqual(original_settings.dataset, loaded_settings.dataset)
+
+    def test_save_load_config(self):
+        """Test saving and loading config"""
+
+        with self._setup_test_env() as workspace:
+            training_config = TrainingConfig()
+            training_config.num_epochs = 20
+            workspace.save_config(training_config)
+
+            json_file_path = workspace.path / "training_config.json"
+            self.assertTrue(json_file_path.exists())
+
+            with open(json_file_path, "r") as file:
+                saved_args = json.load(file)
+
+            self.assertIn("inference_engine_config", saved_args)
+            self.assertEqual(saved_args["num_epochs"], 20)
+            self.assertEqual(saved_args["workspace_path"], str(workspace.path))
+
+            loaded_config = workspace.load_config()
+            self.assertNotEqual(id(training_config), id(loaded_config))
+            self.assertEqual(training_config, loaded_config)
