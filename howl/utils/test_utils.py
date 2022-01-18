@@ -83,3 +83,26 @@ class TestDataset(AudioDataset[AudioClipMetadata]):
 
     def __getitem__(self, idx) -> AudioClipExample:
         return self.samples[idx]
+
+
+class TestNet(torch.nn.Module):
+    """Two layer DNN for test case"""
+
+    def __init__(self, input_dim=3, hidden_dim=3, output_dim=3):
+        """
+        In the constructor we instantiate two nn.Linear modules and assign them as
+        member variables.
+        """
+        super().__init__()
+        self.linear1 = torch.nn.Linear(input_dim, hidden_dim)
+        self.linear2 = torch.nn.Linear(hidden_dim, output_dim)
+
+    def forward(self, input_tensor):
+        """
+        In the forward function we accept a Tensor of input data and we must return
+        a Tensor of output data. We can use Modules defined in the constructor as
+        well as arbitrary operators on Tensors.
+        """
+        h_relu = self.linear1(input_tensor).clamp(min=0)
+        y_pred = self.linear2(h_relu)
+        return y_pred
