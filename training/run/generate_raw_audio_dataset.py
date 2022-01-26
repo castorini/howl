@@ -6,7 +6,7 @@ from howl.dataset.raw_audio_dataset_generator import RawAudioDatasetGenerator, S
 from howl.dataset_loader.dataset_loader_factory import DatasetLoaderType
 from howl.settings import SETTINGS
 from howl.utils import logging_utils
-from training.run.args import ArgumentParserBuilder, opt
+from howl.utils.args_utils import ArgOption, ArgumentParserBuilder
 
 
 def main(
@@ -74,34 +74,34 @@ def setup():
 
     apb = ArgumentParserBuilder()
     apb.add_options(
-        opt(
+        ArgOption(
             "--input-audio-dataset-path",
             "-i",
             type=str,
             default=input_audio_dataset_path,
             help="location of the input audio dataset (default: /data/common-voice)",
         ),
-        opt(
+        ArgOption(
             "--dataset-loader-type",
             type=str,
             default=dataset_loader_type,
             choices=[e.value for e in DatasetLoaderType],
             help="type of dataset loader to use",
         ),
-        opt(
+        ArgOption(
             "--datasets-dir-path",
             "-o",
             type=str,
             default=datasets_dir_path,
             help="path of the dir which the generated howl datasets are stored (default: dataset)",
         ),
-        opt(
+        ArgOption(
             "--positive-pct",
             type=int,
             default=positive_pct,
             help="The percentage of the dataset to process for positive samples [0, 100]",
         ),
-        opt(
+        ArgOption(
             "--negative-pct",
             type=int,
             default=negative_pct,

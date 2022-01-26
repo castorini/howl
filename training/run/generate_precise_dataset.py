@@ -11,10 +11,9 @@ from howl.data.dataset.dataset import DatasetType, WakeWordDataset
 from howl.data.dataset.dataset_loader import RecursiveNoiseDatasetLoader, WakeWordDatasetLoader
 from howl.data.transform.transform import DatasetMixer
 from howl.settings import SETTINGS
+from howl.utils.args_utils import ArgOption, ArgumentParserBuilder
 from howl.utils.hash_utils import Sha256Splitter
 from training.run.deprecated.create_raw_dataset import print_stats
-
-from .args import ArgumentParserBuilder, opt
 
 
 def main():
@@ -52,9 +51,9 @@ def main():
 
     apb = ArgumentParserBuilder()
     apb.add_options(
-        opt("--dataset-paths", "-i", type=str, nargs="+", default=[SETTINGS.dataset.dataset_path],),
-        opt("--output-paths", "-o", type=str, default="data/precise"),
-        opt("--deep-copy", action="store_true"),
+        ArgOption("--dataset-paths", "-i", type=str, nargs="+", default=[SETTINGS.dataset.dataset_path],),
+        ArgOption("--output-paths", "-o", type=str, default="data/precise"),
+        ArgOption("--deep-copy", action="store_true"),
     )
     args = apb.parser.parse_args()
 

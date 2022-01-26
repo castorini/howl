@@ -2,7 +2,7 @@ from pathlib import Path
 
 from howl.data.common.tokenizer import TokenType
 from howl.dataset.aligned_audio_dataset_generator import AlignedAudioDatasetGenerator, AlignmentType
-from training.run.args import ArgumentParserBuilder, opt
+from howl.utils.args_utils import ArgOption, ArgumentParserBuilder
 
 
 def main(
@@ -29,15 +29,17 @@ def setup():
 
     apb = ArgumentParserBuilder()
     apb.add_options(
-        opt("--input-raw-audio-dataset-path", "-i", type=str, help="location of the input raw audio dataset",),
-        opt("--token-type", type=str, choices=[e.value for e in TokenType], help="type of token (word or phone)",),
-        opt(
+        ArgOption("--input-raw-audio-dataset-path", "-i", type=str, help="location of the input raw audio dataset",),
+        ArgOption(
+            "--token-type", type=str, choices=[e.value for e in TokenType], help="type of token (word or phone)",
+        ),
+        ArgOption(
             "--alignment-type",
             type=str,
             choices=[e.value for e in AlignmentType],
             help="type of alignment of the alignments",
         ),
-        opt("--alignments-path", type=str, help="location of the alignment files",),
+        ArgOption("--alignments-path", type=str, help="location of the alignment files",),
     )
     raw_args = apb.parser.parse_args()
 

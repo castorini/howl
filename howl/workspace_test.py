@@ -10,8 +10,8 @@ import torch
 from howl.config import TrainingConfig
 from howl.settings import AudioSettings, DatasetSettings, HowlSettings
 from howl.utils import test_utils
+from howl.utils.args_utils import ArgOption, ArgumentParserBuilder
 from howl.workspace import Workspace
-from training.run.args import ArgumentParserBuilder, opt
 
 
 class WorkspaceTest(unittest.TestCase):
@@ -42,7 +42,7 @@ class WorkspaceTest(unittest.TestCase):
             arg_key = "key"
             arg_value = "value"
             apb = ArgumentParserBuilder()
-            apb.add_options(opt(f"--{arg_key}", type=str, default=arg_value))
+            apb.add_options(ArgOption(f"--{arg_key}", type=str, default=arg_value))
             args = apb.parser.parse_args()
             workspace.write_args(args)
 

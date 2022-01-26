@@ -11,10 +11,9 @@ from tqdm import tqdm, trange
 
 from howl.model import RegisteredModel
 from howl.settings import SETTINGS
+from howl.utils.args_utils import ArgOption, ArgumentParserBuilder
 from howl.utils.random import set_seed
 from howl.workspace import Workspace
-
-from .args import ArgumentParserBuilder, opt
 
 
 def expand(tensor):
@@ -46,9 +45,9 @@ def main():
 
     apb = ArgumentParserBuilder()
     apb.add_options(
-        opt("--model", type=str, choices=RegisteredModel.registered_names(), default="las"),
-        opt("--workspace", type=str, default=str(Path("workspaces") / "default")),
-        opt("--load-weights", action="store_true"),
+        ArgOption("--model", type=str, choices=RegisteredModel.registered_names(), default="las"),
+        ArgOption("--workspace", type=str, default=str(Path("workspaces") / "default")),
+        ArgOption("--load-weights", action="store_true"),
     )
     args = apb.parser.parse_args()
 
