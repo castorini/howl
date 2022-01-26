@@ -19,10 +19,9 @@ from howl.model import ConfusionMatrix, ConvertedStaticModel, RegisteredModel
 from howl.model.inference import FrameInferenceEngine, InferenceEngine
 from howl.settings import SETTINGS
 from howl.utils import hash_utils, logging_utils, random
+from howl.utils.args_utils import ArgOption, ArgumentParserBuilder
 from howl.workspace import Workspace
 from training.run.deprecated.create_raw_dataset import print_stats
-
-from .args import ArgumentParserBuilder, opt
 
 
 def main():
@@ -105,13 +104,13 @@ def main():
 
     apb = ArgumentParserBuilder()
     apb.add_options(
-        opt("--model", type=str, choices=RegisteredModel.registered_names(), default="las",),
-        opt("--workspace", type=str, default=str(Path("workspaces") / "default")),
-        opt("--load-weights", action="store_true"),
-        opt("--load-last", action="store_true"),
-        opt("--no-dev-per-epoch", action="store_false", dest="dev_per_epoch"),
-        opt("--dataset-paths", "-i", type=str, nargs="+", default=[SETTINGS.dataset.dataset_path],),
-        opt("--eval", action="store_true"),
+        ArgOption("--model", type=str, choices=RegisteredModel.registered_names(), default="las",),
+        ArgOption("--workspace", type=str, default=str(Path("workspaces") / "default")),
+        ArgOption("--load-weights", action="store_true"),
+        ArgOption("--load-last", action="store_true"),
+        ArgOption("--no-dev-per-epoch", action="store_false", dest="dev_per_epoch"),
+        ArgOption("--dataset-paths", "-i", type=str, nargs="+", default=[SETTINGS.dataset.dataset_path],),
+        ArgOption("--eval", action="store_true"),
     )
     args = apb.parser.parse_args()
 
@@ -223,7 +222,7 @@ def main():
 
     # region train model
     workspace.write_args(args)
-    workspace.write_settings(SETTINGS)
+    workspace.save_settings(SETTINGS)
     writer.add_scalar("Meta/Parameters", sum(p.numel() for p in params))
     for epoch_idx in trange(SETTINGS.training.num_epochs, position=0, leave=True):
         model.train()

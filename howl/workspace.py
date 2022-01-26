@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
 
+from howl.config import TrainingConfig
 from howl.settings import KEY_TO_SETTINGS_CLASS, SETTINGS, HowlSettings
 from howl.utils.dataclass import gather_dict
 
@@ -65,8 +66,8 @@ class Workspace:
         """Loads saved model"""
         model.load_state_dict(torch.load(self.model_path(best=best), lambda s, l: s))
 
-    def write_settings(self, settings: HowlSettings = SETTINGS):
-        """Write settings object into JSON file"""
+    def save_settings(self, settings: HowlSettings = SETTINGS):
+        """Saves settings object into JSON file"""
         with (self.path / "settings.json").open("w") as file:
             keys_to_ignore = ["_dataset", "_raw_dataset"]
             json.dump(gather_dict(settings, keys_to_ignore), file, indent=2)
@@ -78,3 +79,32 @@ class Workspace:
             for key, value in json_settings.items():
                 setattr(settings, key, KEY_TO_SETTINGS_CLASS[key](**value))
         return settings
+
+    def save_config(self, training_config: TrainingConfig, training_config_path: Path = None):
+        """Saves training config into JSON file (training_config.json)
+
+        Args:
+            training_config (TrainingConfig): training config to save
+            training_config_path (Path): explicit training config path which the config will be saved to
+
+        """
+        if training_config_path is None:
+            training_config_path = self.path / "training_config.json"
+
+        training_config.workspace_path = str(self.path)
+        with training_config_path.open("w") as file:
+            json.dump(training_config.dict(), file, indent=4)
+
+    def load_config(self, training_config_path: Path = None) -> TrainingConfig:
+        """Load training config from JSON file into TrainingConfig object
+
+        Args:
+            training_config_path (Path): explicit training config path which the config will be loaded from
+
+        Returns:
+            TrainingConfig loaded from the json file
+        """
+        if training_config_path is None:
+            training_config_path = self.path / "training_config.json"
+
+        return TrainingConfig.parse_file(training_config_path)

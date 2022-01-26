@@ -9,7 +9,7 @@ from howl.data.dataset.dataset_writer import AudioDatasetWriter
 from howl.dataset_loader.dataset_loader_factory import DatasetLoaderType, get_dataset_loader
 from howl.settings import SETTINGS
 from howl.utils import hash_utils, logging_utils
-from training.run.args import ArgumentParserBuilder, opt
+from howl.utils.args_utils import ArgOption, ArgumentParserBuilder
 
 
 # TODO: to be replaced to dataset.print_stats
@@ -62,17 +62,17 @@ def main():
 
     apb = ArgumentParserBuilder()
     apb.add_options(
-        opt(
+        ArgOption(
             "--negative-pct", type=int, default=1, help="The percentage of the dataset to check for negative examples.",
         ),
-        opt(
+        ArgOption(
             "--positive-pct",
             type=int,
             default=100,
             help="The percentage of the dataset to check for positive examples.",
         ),
-        opt("--input-audio-dataset-path", "-i", type=str, help="location of the input audio dataset",),
-        opt(
+        ArgOption("--input-audio-dataset-path", "-i", type=str, help="location of the input audio dataset",),
+        ArgOption(
             "--dataset-loader-type",
             type=str,
             default=DatasetLoaderType.COMMON_VOICE_DATASET_LOADER.value,

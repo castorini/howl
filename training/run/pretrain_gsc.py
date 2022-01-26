@@ -14,10 +14,9 @@ from howl.data.transform.operator import ZmuvTransform, batchify, compose, trunc
 from howl.data.transform.transform import NoiseTransform, StandardAudioTransform, TimeshiftTransform
 from howl.model import RegisteredModel
 from howl.settings import SETTINGS
+from howl.utils.args_utils import ArgOption, ArgumentParserBuilder
 from howl.utils.random import set_seed
 from howl.workspace import Workspace
-
-from .args import ArgumentParserBuilder, opt
 
 
 def main():
@@ -58,10 +57,10 @@ def main():
 
     apb = ArgumentParserBuilder()
     apb.add_options(
-        opt("--model", type=str, choices=RegisteredModel.registered_names(), default="las",),
-        opt("--workspace", type=str, default=str(Path("workspaces") / "default")),
-        opt("--load-weights", action="store_true"),
-        opt("--eval", action="store_true"),
+        ArgOption("--model", type=str, choices=RegisteredModel.registered_names(), default="las",),
+        ArgOption("--workspace", type=str, default=str(Path("workspaces") / "default")),
+        ArgOption("--load-weights", action="store_true"),
+        ArgOption("--eval", action="store_true"),
     )
     args = apb.parser.parse_args()
 
@@ -115,7 +114,7 @@ def main():
         return
 
     workspace.write_args(args)
-    workspace.write_settings(SETTINGS)
+    workspace.save_settings(SETTINGS)
     writer.add_scalar("Meta/Parameters", sum(p.numel() for p in params))
     dev_acc = 0
     for epoch_idx in trange(SETTINGS.training.num_epochs, position=0, leave=True):

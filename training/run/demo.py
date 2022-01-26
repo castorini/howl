@@ -7,18 +7,17 @@ from howl.context import InferenceContext
 from howl.data.transform.operator import ZmuvTransform
 from howl.model import RegisteredModel
 from howl.model.inference import FrameInferenceEngine, InferenceEngine
+from howl.utils.args_utils import ArgOption, ArgumentParserBuilder
 from howl.utils.logging_utils import setup_logger
 from howl.workspace import Workspace
-
-from .args import ArgumentParserBuilder, opt
 
 
 def main():
     """Link live stream of audio with the trained model within given workspace to demonstrate wake word detection"""
     apb = ArgumentParserBuilder()
     apb.add_options(
-        opt("--model", type=str, choices=RegisteredModel.registered_names(), default="las"),
-        opt("--workspace", type=str, default=str(Path("workspaces") / "default")),
+        ArgOption("--model", type=str, choices=RegisteredModel.registered_names(), default="las"),
+        ArgOption("--workspace", type=str, default=str(Path("workspaces") / "default")),
     )
     args = apb.parser.parse_args()
 

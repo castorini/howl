@@ -4,7 +4,7 @@ from pathlib import Path
 import howl
 from howl.config import TrainingConfig
 from howl.trainer import Trainer
-from training.run.args import ArgumentParserBuilder, opt
+from howl.utils.args_utils import ArgOption, ArgumentParserBuilder
 
 # WIP; please use train.py
 
@@ -31,13 +31,13 @@ def setup():
 
     apb = ArgumentParserBuilder()
     apb.add_options(
-        opt(
+        ArgOption(
             "--training-config-path",
             type=str,
             default=training_config_path,
             help="location of the training yaml config",
         ),
-        opt("--num-gpus", type=int, default=num_gpus, help="number of gpus to use"),
+        ArgOption("--num-gpus", type=int, default=num_gpus, help="number of gpus to use"),
     )
     raw_args = apb.parser.parse_args()
 
