@@ -84,6 +84,11 @@ intervals [4]:
 ```bash
 mfa_align datasets/fire/positive/audio eng.dict pretrained_models/english.zip datasets/fire/positive/alignment
 ```
+If this process is raising an error, you can take a look at `~/Documents/MFA/audio/train/mfcc/log/make_mfcc.0.log`
+
+It's often due to missing openblas or fortran packages
+
+If openblas is installed and the error message is coming from missing `raw_mfcc.0.scp` file, you can take a look at [this issue](https://github.com/MontrealCorpusTools/Montreal-Forced-Aligner/issues/149#issuecomment-621165857)
 
 6. Attach MFA alignments to the positive datasets:
 

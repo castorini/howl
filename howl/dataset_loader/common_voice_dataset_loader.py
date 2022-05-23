@@ -1,4 +1,3 @@
-import logging
 from pathlib import Path
 
 import pandas as pd
@@ -23,14 +22,13 @@ class CommonVoiceDatasetLoader(AudioDatasetLoader):
         DatasetSplit.TEST: "test.tsv",
     }
 
-    def __init__(self, dataset_path: Path, logger: logging.Logger = None):
+    def __init__(self, dataset_path: Path):
         """initialize CommonVoiceDatasetLoader for the given path
 
         Args:
             dataset_path: location of the dataset
-            logger: logger
         """
-        super().__init__(self.NAME, dataset_path=dataset_path, logger=logger)
+        super().__init__(self.NAME, dataset_path=dataset_path)
 
     def _load_dataset(self, dataset_split: DatasetSplit, **dataset_kwargs) -> AudioDataset:
         """Load dataset of given dataset_split

@@ -1,5 +1,4 @@
 import functools
-import logging
 import multiprocessing
 import shutil
 from copy import deepcopy
@@ -10,8 +9,8 @@ from tqdm import tqdm
 
 from howl.data.common.metadata import AudioClipMetadata
 from howl.data.dataset.dataset import AudioClipDataset, DatasetType
-from howl.utils import logging_utils
 from howl.utils.audio_utils import silent_load
+from howl.utils.logger import Logger
 
 
 class AudioDatasetMetadataWriter:
@@ -45,19 +44,13 @@ class AudioDatasetMetadataWriter:
 class AudioDatasetWriter:
     """Saves audio dataset to the disk"""
 
-    def __init__(self, dataset: AudioClipDataset, prefix: str = "", logger: logging.Logger = None):
+    def __init__(self, dataset: AudioClipDataset, prefix: str = ""):
         """Initialize AudioDatasetWriter for the given dataset type"""
         self.dataset = dataset
         self.prefix = prefix
 
-        self.logger = logger
-        if self.logger is None:
-            self.logger = logging_utils.setup_logger(self.__class__.__name__)
-
     @staticmethod
-    def _save_audio_file(
-        metadata: AudioClipMetadata, audio_dir_path: Path, sample_rate: int, mono: bool, logger: logging.Logger
-    ):
+    def _save_audio_file(metadata: AudioClipMetadata, audio_dir_path: Path, sample_rate: int, mono: bool):
         """Generate audio file for the given sample under the folder specified
 
         Args:
@@ -65,7 +58,6 @@ class AudioDatasetWriter:
             audio_dir_path: folder of which the audio files will be saved
             sample_rate: sample rate of which the original audio file will be loaded with
             mono: if True, the original audio will be loaded as mono channel
-            logger: logger
 
         Returns:
             metadata with updated path
@@ -78,7 +70,7 @@ class AudioDatasetWriter:
             audio_data = silent_load(str(metadata.path), sample_rate, mono)
             soundfile.write(str(new_audio_file_path), audio_data, sample_rate)
         except Exception as exception:
-            logger.warning(f"Failed to load/write {metadata.path}, the sample will be skipped: {exception}")
+            Logger.warning(f"Failed to load/write {metadata.path}, the sample will be skipped: {exception}")
             return None
 
         if not new_audio_file_path.exists():
@@ -94,7 +86,7 @@ class AudioDatasetWriter:
             dataset_path: dataset path of which the metadata and audio files will be generated
         """
 
-        self.logger.info(f"Writing flat dataset to {dataset_path}...")
+        Logger.info(f"Writing flat dataset to {dataset_path}...")
         dataset_path.mkdir(exist_ok=True)
         audio_dir_path = dataset_path / "audio"
         audio_dir_path.mkdir(exist_ok=True)
@@ -109,13 +101,13 @@ class AudioDatasetWriter:
                     audio_dir_path=audio_dir_path,
                     sample_rate=self.dataset.sample_rate,
                     mono=self.dataset.mono,
-                    logger=self.logger,
                 ),
                 self.dataset.metadata_list,
             ),
             desc=f"Generate {self.dataset.dataset_split} datasets",
             total=(len(self.dataset)),
         )
+
         self.dataset.metadata_list = list(filter(None, metadata_list))  # remove None entries
 
         with AudioDatasetMetadataWriter(

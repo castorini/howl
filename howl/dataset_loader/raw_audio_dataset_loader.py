@@ -1,5 +1,4 @@
 import json
-import logging
 from pathlib import Path
 
 from tqdm import tqdm
@@ -16,14 +15,13 @@ class RawAudioDatasetLoader(AudioDatasetLoader):
     # unique name which this dataset loader will be referred to
     NAME = "raw"
 
-    def __init__(self, dataset_path: Path, logger: logging.Logger = None):
+    def __init__(self, dataset_path: Path):
         """Initialize RawAudioDatasetLoader for the given path.
 
         Args:
             dataset_path: location of the dataset
-            logger = logger
         """
-        super().__init__(self.NAME, dataset_path=dataset_path, logger=logger)
+        super().__init__(self.NAME, dataset_path=dataset_path)
 
     def _load_dataset(self, dataset_split: DatasetSplit, **dataset_kwargs) -> AudioDataset:
         """Load raw audio dataset of given dataset_split

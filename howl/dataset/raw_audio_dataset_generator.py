@@ -39,7 +39,7 @@ class RawAudioDatasetGenerator:
             self.logger = logging_utils.setup_logger(self.__class__.__name__)
 
         self.dataset_loader_type = dataset_loader_type
-        self.dataset_loader = get_dataset_loader(dataset_loader_type, Path(input_dataset_path), self.logger)
+        self.dataset_loader = get_dataset_loader(dataset_loader_type, Path(input_dataset_path))
         self.inference_ctx = InferenceContext(vocab=SETTINGS.training.vocab, token_type=SETTINGS.training.token_type)
 
         ds_kwargs = dict(sample_rate=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono)
@@ -99,4 +99,4 @@ class RawAudioDatasetGenerator:
             if print_statistics:
                 dataset.print_stats(self.logger, word_searcher=word_searcher, compute_length=True)
             self.logger.info(f"Generating {dataset.dataset_split.value} dataset")
-            AudioDatasetWriter(dataset, logger=self.logger).write(dataset_path)
+            AudioDatasetWriter(dataset).write(dataset_path)
