@@ -1,7 +1,6 @@
 from enum import Enum, unique
 from pathlib import Path
 
-from howl.dataset_loader.aligned_audio_dataset_loader import AlignedAudioDatasetLoader
 from howl.dataset_loader.common_voice_dataset_loader import CommonVoiceDatasetLoader
 from howl.dataset_loader.dataset_loader import AudioDatasetLoader
 from howl.dataset_loader.raw_audio_dataset_loader import RawAudioDatasetLoader
@@ -13,7 +12,6 @@ class DatasetLoaderType(str, Enum):
 
     COMMON_VOICE_DATASET_LOADER = CommonVoiceDatasetLoader.NAME
     RAW_AUDIO_DATASET_LOADER = RawAudioDatasetLoader.NAME
-    ALIGNED_AUDIO_DATASET_LOADER = AlignedAudioDatasetLoader.NAME
 
 
 def get_dataset_loader(dataset_loader_type: DatasetLoaderType, dataset_path: Path) -> AudioDatasetLoader:
