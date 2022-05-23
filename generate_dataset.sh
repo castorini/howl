@@ -39,7 +39,7 @@ fi
 
 printf "\n\n>>> generating raw audio dataset\n"
 mkdir -p "${DATASET_FOLDER}"
-time VOCAB=${VOCAB} INFERENCE_SEQUENCE=${INFERENCE_SEQUENCE} python -m training.run.generate_raw_audio_dataset -i ${COMMON_VOICE_DATASET_PATH} --positive-pct 100 --negative-pct ${NEGATIVE_PCT}
+time VOCAB=${VOCAB} INFERENCE_SEQUENCE=${INFERENCE_SEQUENCE} python -m training.run.generate_raw_audio_dataset -i ${COMMON_VOICE_DATASET_PATH} --positive-pct 100 --negative-pct ${NEGATIVE_PCT} --overwrite true
 
 NEG_DATASET_PATH="${DATASET_FOLDER}/${DATASET_NAME}/negative"
 POS_DATASET_PATH="${DATASET_FOLDER}/${DATASET_NAME}/positive"
@@ -51,8 +51,6 @@ MFA_FOLDER="./montreal-forced-aligner"
 pushd ${MFA_FOLDER}
 # yes n for "There were words not found in the dictionary. Would you like to abort to fix them? (Y/N)"
 # if process fails, check ~/Documents/MFA/audio/train/mfcc/log/make_mfcc.0.log
-# it's often due to missing openblas or fortran packages
-# if this is the case, simply install them using apt
 time yes n | ./bin/mfa_align --verbose --clean --num_jobs 12 "../${POS_DATASET_PATH}/audio" librispeech-lexicon.txt pretrained_models/english.zip "../${POS_DATASET_ALIGNMENT}"
 popd
 

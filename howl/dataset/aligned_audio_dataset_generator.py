@@ -1,5 +1,4 @@
 import functools
-import logging
 import multiprocessing
 from enum import Enum, unique
 from pathlib import Path
@@ -14,7 +13,7 @@ from howl.data.dataset.dataset_writer import AudioDatasetMetadataWriter
 from howl.dataset.raw_audio_dataset import RawAudioDataset
 from howl.dataset_loader.raw_audio_dataset_loader import RawAudioDatasetLoader
 from howl.settings import SETTINGS
-from howl.utils import logging_utils
+from howl.utils.logger import Logger
 from training.align import MfaTextGridConverter, StubAligner
 from training.align.base import AlignedTranscription
 
@@ -40,7 +39,6 @@ class AlignedAudioDatasetGenerator:
         sample_rate: int = SETTINGS.audio.sample_rate,
         mono: bool = SETTINGS.audio.use_mono,
         token_type: TokenType = TokenType(SETTINGS.training.token_type),
-        logger: logging.Logger = None,
     ):
         """initialize AlignedAudioDatasetGenerator by loading dataset from the given path
 
@@ -50,18 +48,13 @@ class AlignedAudioDatasetGenerator:
             alignments_path: location of the alignments
             mono: if True, the audio file will be loaded assuming the data is mono channel
             sample_rate: sample rate of the audio file
-            logger: logger
         """
-
-        self.logger = logger
-        if self.logger is None:
-            self.logger = logging_utils.setup_logger(self.__class__.__name__)
 
         self.raw_audio_dataset_path = raw_audio_dataset_path
         if not self.raw_audio_dataset_path.exists():
             raise FileNotFoundError(f"Dataset path is invalid: {self.raw_audio_dataset_path}")
 
-        raw_audio_dataset = RawAudioDatasetLoader(self.raw_audio_dataset_path, self.logger)
+        raw_audio_dataset = RawAudioDatasetLoader(self.raw_audio_dataset_path)
         ds_kwargs = dict(sample_rate=sample_rate, mono=mono)
         self.train_ds, self.dev_ds, self.test_ds = raw_audio_dataset.load_splits(**ds_kwargs)
 
@@ -170,21 +163,18 @@ class AlignedAudioDatasetGenerator:
         return alignments
 
     @staticmethod
-    def _generate_metadata_with_alignment(
-        metadata: AudioClipMetadata, alignments: Dict[str, AlignedTranscription], logger: logging.Logger
-    ):
+    def _generate_metadata_with_alignment(metadata: AudioClipMetadata, alignments: Dict[str, AlignedTranscription]):
         """Helper function which attaches alignment to the given sample
 
         Args:
             metadata: Metadata of the audio sample which alignment will be attached to
             alignments: Map of alignments
-            logger: logger
 
         Returns:
             AudioClipMetadata with alignment
         """
         if metadata.audio_id not in alignments:
-            logger.warning(f"Alignments for audio file {metadata.audio_id} does not exist")
+            Logger.warning(f"Alignments for audio file {metadata.audio_id} does not exist")
             return None
         aligned_transcription = alignments[metadata.audio_id]
         return AudioClipMetadata(
@@ -205,9 +195,7 @@ class AlignedAudioDatasetGenerator:
         metadata_list = tqdm(
             pool.imap(
                 functools.partial(
-                    AlignedAudioDatasetGenerator._generate_metadata_with_alignment,
-                    alignments=self.alignments,
-                    logger=self.logger,
+                    AlignedAudioDatasetGenerator._generate_metadata_with_alignment, alignments=self.alignments,
                 ),
                 raw_audio_dataset.metadata_list,
             ),

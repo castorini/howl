@@ -1,15 +1,14 @@
-import logging
 from pathlib import Path
 from typing import Tuple
 
 from howl.data.dataset.dataset import AudioDataset, DatasetSplit
-from howl.utils import logging_utils
+from howl.utils.logger import Logger
 
 
 class AudioDatasetLoader:
     """Load and create dataset instances from local files."""
 
-    def __init__(self, name: str, dataset_path: Path, logger: logging.Logger = None):
+    def __init__(self, name: str, dataset_path: Path):
         """Initialize AudioDatasetLoader for the given path.
 
         Args:
@@ -22,10 +21,6 @@ class AudioDatasetLoader:
         if not self.dataset_path.exists():
             raise FileNotFoundError(f"Dataset path for {self.name} is invalid: {self.dataset_path}")
 
-        self.logger = logger
-        if self.logger is None:
-            self.logger = logging_utils.setup_logger(f"DatasetLoader-{self.name}")
-
     def _load_dataset(self, dataset_split: DatasetSplit, **dataset_kwargs) -> AudioDataset:
         """Load dataset of given dataset_split.
 
@@ -37,7 +32,7 @@ class AudioDatasetLoader:
             dataset for the given dataset_split
         """
         # pylint: disable=unused-argument
-        self.logger.info(f"Loading {dataset_split.value} split")
+        Logger.info(f"Loading {dataset_split.value} split")
         raise NotImplementedError("Not yet implemented for {}".format(self.__class__.__name__))
 
     def load_splits(self, **dataset_kwargs) -> Tuple[AudioDataset, AudioDataset, AudioDataset]:

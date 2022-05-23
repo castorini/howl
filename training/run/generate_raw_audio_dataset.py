@@ -1,11 +1,12 @@
 import os
+import shutil
 from pathlib import Path
 
 import howl
 from howl.dataset.raw_audio_dataset_generator import RawAudioDatasetGenerator, SampleType
 from howl.dataset_loader.dataset_loader_factory import DatasetLoaderType
 from howl.settings import SETTINGS
-from howl.utils import logging_utils
+from howl.utils import logging_utils, str_utils
 from howl.utils.args_utils import ArgOption, ArgumentParserBuilder
 
 
@@ -15,17 +16,19 @@ def main(
     datasets_dir_path: Path,
     positive_pct: int,
     negative_pct: int,
+    overwrite: bool,
 ):
     """Generate audio dataset for howl from the given audio dataset
-    one dataset will be generated for positive samples and another dataset will be generated for negative samples
-    they can be found under datasets_dir_path as <wakeword>-positive and <wakeword>-negative
+    One dataset will be generated for positive samples and another dataset will be generated for negative samples
+    They can be found under datasets_dir_path as <wakeword>-positive and <wakeword>-negative
 
     Args:
-        input_audio_dataset_path: original audio dataset of which howl dataset will be created from
-        dataset_loader_type: type of the dataset loader to use
-        datasets_dir_path: path of the dir which the generated howl datasets are stored
-        positive_pct: the percentage of the dataset to process for positive samples
-        negative_pct: the percentage of the dataset to process for negative samples
+        input_audio_dataset_path: Original audio dataset of which howl dataset will be created from
+        dataset_loader_type: Type of the dataset loader to use
+        datasets_dir_path: Path of the dir which the generated howl datasets are stored
+        positive_pct: The percentage of the dataset to process for positive samples
+        negative_pct: The percentage of the dataset to process for negative samples
+        overwrite: If True, existing dataset will be overwritten
     """
     logger = logging_utils.setup_logger(os.path.basename(__file__))
 
@@ -40,6 +43,9 @@ def main(
 
     logger.info(f"Generating raw audio dataset for {wakeword} from {input_audio_dataset_path}")
     wakeword_dataset_path = datasets_dir_path / wakeword
+    if os.path.exists(wakeword_dataset_path) and overwrite:
+        logger.warning(f"Wakeword dataset already exists and will be overwritten: {wakeword_dataset_path}")
+        shutil.rmtree(wakeword_dataset_path)
     wakeword_dataset_path.mkdir()
 
     if positive_pct > 0:
@@ -66,11 +72,12 @@ def main(
 def setup():
     """Parse the arguments"""
 
-    input_audio_dataset_path = "/data/common-voice"
+    input_audio_dataset_path = "~/data/common-voice"
     dataset_loader_type = DatasetLoaderType.COMMON_VOICE_DATASET_LOADER.value
     datasets_dir_path = str(howl.datasets_path())
     positive_pct = 100
     negative_pct = 100
+    overwrite = True
 
     apb = ArgumentParserBuilder()
     apb.add_options(
@@ -79,21 +86,21 @@ def setup():
             "-i",
             type=str,
             default=input_audio_dataset_path,
-            help="location of the input audio dataset (default: /data/common-voice)",
+            help="Location of the input audio dataset (default: ~/data/common-voice)",
         ),
         ArgOption(
             "--dataset-loader-type",
             type=str,
             default=dataset_loader_type,
             choices=[e.value for e in DatasetLoaderType],
-            help="type of dataset loader to use",
+            help="Type of dataset loader to use",
         ),
         ArgOption(
             "--datasets-dir-path",
             "-o",
             type=str,
             default=datasets_dir_path,
-            help="path of the dir which the generated howl datasets are stored (default: dataset)",
+            help="Path of the dir which the generated howl datasets are stored (default: dataset)",
         ),
         ArgOption(
             "--positive-pct",
@@ -106,6 +113,12 @@ def setup():
             type=int,
             default=negative_pct,
             help="The percentage of the dataset to process for negative samples [0, 100]",
+        ),
+        ArgOption(
+            "--overwrite",
+            default=overwrite,
+            type=str_utils.strtobool,
+            help="If True, existing dataset will be overwritten",
         ),
     )
     raw_args = apb.parser.parse_args()
@@ -128,4 +141,5 @@ if __name__ == "__main__":
         Path(args.datasets_dir_path),
         args.positive_pct,
         args.negative_pct,
+        args.overwrite,
     )
