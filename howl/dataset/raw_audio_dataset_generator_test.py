@@ -14,8 +14,8 @@ class RawAudioDatasetGeneratorTest(unittest.TestCase):
     """Test case for RawAudioDatasetGenerator"""
 
     @contextmanager
-    def _setup_test_env(self):
-        """prepare an environment for raw audio dataset generator test cases by creating necessary folders"""
+    def _setup_common_voice_test_env(self):
+        """prepare an environment for raw audio dataset generator test cases with common-voice dataset"""
         temp_dir = tempfile.TemporaryDirectory()
         temp_dir_path = Path(temp_dir.name)
         dataset_path = temp_dir_path / "dataset/common-voice"
@@ -27,8 +27,8 @@ class RawAudioDatasetGeneratorTest(unittest.TestCase):
             temp_dir.cleanup()
 
     def test_generate_datasets(self):
-        """Test generate datasets"""
-        with self._setup_test_env() as (temp_dir_path, input_dataset_path):
+        """Test generate datasets from common-voice dataset"""
+        with self._setup_common_voice_test_env() as (temp_dir_path, input_dataset_path):
             dataset_loader_type = DatasetLoaderType.COMMON_VOICE_DATASET_LOADER
 
             SETTINGS.training.vocab = ["The"]
@@ -63,3 +63,25 @@ class RawAudioDatasetGeneratorTest(unittest.TestCase):
             self.assertEqual(test_utils.get_num_of_lines(negative_dataset / "metadata-training.jsonl"), 1)
             self.assertEqual(test_utils.get_num_of_lines(negative_dataset / "metadata-dev.jsonl"), 1)
             self.assertEqual(test_utils.get_num_of_lines(negative_dataset / "metadata-test.jsonl"), 2)
+
+    @contextmanager
+    def _setup_google_speech_commands_test_env(self):
+        """prepare an environment for raw audio dataset generator test cases with google speech commands dataset"""
+        temp_dir = tempfile.TemporaryDirectory()
+        temp_dir_path = Path(temp_dir.name)
+        dataset_path = temp_dir_path / "dataset/google-speech-commands"
+        filesystem_utils.copytree(test_utils.common_voice_dataset_path(), dataset_path)
+
+        try:
+            yield temp_dir_path, dataset_path
+        finally:
+            temp_dir.cleanup()
+
+    # TODO: fill in the test case
+    # def test_generate_datasets(self):
+    #     """Test generate datasets from google speech commands dataset"""
+    #     with self._setup_common_voice_test_env() as (temp_dir_path, input_dataset_path):
+    #         dataset_loader_type = DatasetLoaderType.COMMON_VOICE_DATASET_LOADER
+    #         # VOCAB='["fire"]' INFERENCE_SEQUENCE=[0] python -m training.run.generate_raw_audio_dataset
+    #         # -i ~/data/kws/common-voice/common-voice-6.1/cv-corpus-6.1-2020-12-11/en/
+    #         # --positive-pct 100 --negative-pct 5

@@ -29,6 +29,11 @@ def raw_audio_datasets_path():
     return test_data_path() / "datasets/raw_audio_datasets"
 
 
+def aligned_audio_datasets_path():
+    """Test aligned audio dataset folder path"""
+    return test_data_path() / "datasets/aligned_audio_datasets"
+
+
 def get_num_of_lines(file_path: Path):
     """Get number of lines in the given file path"""
     with open(file_path) as file:
