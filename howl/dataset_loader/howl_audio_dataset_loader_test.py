@@ -17,7 +17,7 @@ class HowlAudioDatasetLoaderTest(unittest.TestCase):
 
     @contextmanager
     def _setup_dataset(self):
-        """prepare an environment for raw audio dataset loader test cases by creating necessary folders"""
+        """prepare an environment for howl audio dataset loader test cases by creating necessary folders"""
         temp_dir = tempfile.TemporaryDirectory()
         dataset_path = Path(temp_dir.name) / "the" / SampleType.POSITIVE.value
         filesystem_utils.copytree(

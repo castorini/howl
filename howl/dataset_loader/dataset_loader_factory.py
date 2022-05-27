@@ -23,6 +23,6 @@ def get_dataset_loader(dataset_type: AudioDatasetType, dataset_path: Path) -> Au
     elif dataset_type == AudioDatasetType.ALIGNED:
         dataset_loader = HowlAudioDatasetLoader(AudioDatasetType.ALIGNED, dataset_path)
     else:
-        raise RuntimeError(f"Given dataset loader type is invalid: {dataset_type}")
+        raise RuntimeError(f"Given dataset type is invalid: {dataset_type}")
 
     return dataset_loader
