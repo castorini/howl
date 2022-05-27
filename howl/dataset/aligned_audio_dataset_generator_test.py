@@ -18,7 +18,7 @@ class AlignedAudioDatasetGeneratorTest(unittest.TestCase):
         """prepare raw audio dataset with alignment for aligned audio dataset generator test cases"""
         temp_dir = tempfile.TemporaryDirectory()
         dataset_path = Path(temp_dir.name) / "the" / dataset_type
-        filesystem_utils.copytree(test_utils.raw_audio_datasets_path() / "the" / dataset_type, dataset_path)
+        filesystem_utils.copytree(test_utils.howl_audio_datasets_path() / "the" / dataset_type, dataset_path)
         alignments_path = dataset_path / "alignment"
 
         aligned_metadata_paths = dataset_path.glob(f"{AlignedAudioDatasetGenerator.ALIGNED_METADATA_PREFIX}*")

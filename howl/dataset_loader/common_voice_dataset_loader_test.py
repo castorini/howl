@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from howl.data.dataset.dataset import DatasetSplit
+from howl.dataset.audio_dataset_constants import AudioDatasetType
 from howl.dataset_loader.common_voice_dataset_loader import CommonVoiceDatasetLoader
 from howl.utils import filesystem_utils, test_utils
 
@@ -30,7 +31,7 @@ class CommonVoiceDatasetLoaderTest(unittest.TestCase):
         """Test success case of load_splits"""
         with self._setup_test_env() as dataset_path:
             dataset_loader = CommonVoiceDatasetLoader(dataset_path)
-            self.assertEqual(dataset_loader.name, "mozilla-cv")
+            self.assertEqual(dataset_loader.name, AudioDatasetType.COMMON_VOICE.value)
             self.assertEqual(dataset_loader.dataset_path, dataset_path)
 
             sample_rate = 1000
@@ -64,7 +65,7 @@ class CommonVoiceDatasetLoaderTest(unittest.TestCase):
             os.remove(dataset_path / "test.tsv")
 
             dataset_loader = CommonVoiceDatasetLoader(dataset_path)
-            self.assertEqual(dataset_loader.name, "mozilla-cv")
+            self.assertEqual(dataset_loader.name, AudioDatasetType.COMMON_VOICE.value)
             self.assertEqual(dataset_loader.dataset_path, dataset_path)
 
             with pytest.raises(FileNotFoundError):

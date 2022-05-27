@@ -5,8 +5,8 @@ from tqdm import tqdm
 
 from howl.data.common.metadata import AudioClipMetadata
 from howl.data.dataset.dataset import AudioDataset, DatasetSplit
-from howl.dataset.aligned_audio_dataset import AlignedAudioDataset
 from howl.dataset.audio_dataset_constants import METADATA_FILE_NAME_TEMPLATES, AudioDatasetType
+from howl.dataset.howl_audio_dataset import HowlAudioDataset
 from howl.dataset_loader.dataset_loader import AudioDatasetLoader
 
 
@@ -45,4 +45,4 @@ class HowlAudioDatasetLoader(AudioDatasetLoader):
                 metadata.path = self.dataset_path / "audio" / metadata.path
                 metadata_list.append(metadata)
 
-        return AlignedAudioDataset(metadata_list=metadata_list, dataset_split=dataset_split, **dataset_kwargs)
+        return HowlAudioDataset(metadata_list=metadata_list, dataset_split=dataset_split, **dataset_kwargs)

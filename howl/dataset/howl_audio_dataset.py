@@ -9,13 +9,13 @@ from howl.settings import SETTINGS
 from howl.utils.audio_utils import silent_load
 
 
-class AlignedAudioDataset(AudioDataset[AudioClipMetadata]):
-    """audio dataset"""
+class HowlAudioDataset(AudioDataset[AudioClipMetadata]):
+    """Audio dataset for Howl"""
 
-    # TODO: AlignedAudioDataset class and AudioDataset should be combined into a single class
+    # TODO: HowlAudioDataset class and AudioDataset should be combined into a single class
 
     def __init__(self, *args, labeler: FrameLabeler = None, **kwargs):
-        """Initialize AudioDataset
+        """Initialize HowlAudioDataset
 
         Args:
             labeler (FrameLabeler): if specified, sample instance will have frame-level
@@ -50,6 +50,6 @@ class AlignedAudioDataset(AudioDataset[AudioClipMetadata]):
     @lru_cache(maxsize=SETTINGS.cache.cache_size)
     def __getitem__(self, idx) -> Sample:
         """Get sample for the given idx"""
-        return AlignedAudioDataset.load_sample(
+        return HowlAudioDataset.load_sample(
             self.metadata_list[idx], sample_rate=self.sample_rate, mono=self.mono, labeler=self.labeler
         )
