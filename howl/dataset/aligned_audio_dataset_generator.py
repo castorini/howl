@@ -10,7 +10,7 @@ from tqdm import tqdm
 from howl.data.common.metadata import AudioClipMetadata
 from howl.data.common.tokenizer import TokenType
 from howl.data.dataset.dataset_writer import AudioDatasetMetadataWriter
-from howl.dataset.raw_audio_dataset import RawAudioDataset
+from howl.dataset.aligned_audio_dataset import AlignedAudioDataset
 from howl.dataset_loader.raw_audio_dataset_loader import RawAudioDatasetLoader
 from howl.settings import SETTINGS
 from howl.utils.logger import Logger
@@ -128,10 +128,10 @@ class AlignedAudioDatasetGenerator:
         Returns:
             audio_id and AlignedTranscription instance
         """
-        sample = RawAudioDataset.load_sample(metadata, sample_rate, mono)
+        sample = AlignedAudioDataset.load_sample(metadata, sample_rate, mono)
         return sample.metadata.audio_id, StubAligner().align(sample)
 
-    def _load_stub_alignments(self, raw_audio_dataset: RawAudioDataset):
+    def _load_stub_alignments(self, raw_audio_dataset: AlignedAudioDataset):
         """Loads STUB alignments for the given raw audio dataset
 
         Args:
@@ -183,7 +183,7 @@ class AlignedAudioDatasetGenerator:
             end_timestamps=aligned_transcription.end_timestamps,
         )
 
-    def _generate_dataset(self, raw_audio_dataset: RawAudioDataset):
+    def _generate_dataset(self, raw_audio_dataset: AlignedAudioDataset):
         """Transform given raw audio dataset into aligned audio dataset by generating aligned metadata file
 
         Args:

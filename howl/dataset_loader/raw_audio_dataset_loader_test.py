@@ -12,7 +12,7 @@ from howl.utils import filesystem_utils, test_utils
 
 
 class RawAudioDatasetLoaderTest(unittest.TestCase):
-    """Test case for RawAudioDataset"""
+    """Test case for RawAudioDatasetLoader"""
 
     @contextmanager
     def _setup_test_env(self):
