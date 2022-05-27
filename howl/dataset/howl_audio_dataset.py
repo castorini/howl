@@ -12,8 +12,6 @@ from howl.utils.audio_utils import silent_load
 class HowlAudioDataset(AudioDataset[AudioClipMetadata]):
     """Audio dataset for Howl"""
 
-    # TODO: HowlAudioDataset class and AudioDataset should be combined into a single class
-
     def __init__(self, *args, labeler: FrameLabeler = None, **kwargs):
         """Initialize HowlAudioDataset
 

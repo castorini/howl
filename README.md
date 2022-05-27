@@ -126,7 +126,7 @@ First, follow the installation instructions in the quickstart guide.
 2. Process the dataset to a format howl can load
 
 ```bash
-VOCAB='["hey","snips"]' INFERENCE_SEQUENCE=[0,1] DATASET_PATH=datasets/hey-snips python -m training.run.deprecated.create_raw_dataset --dataset-loader-type 'hey-snips' -i ~/path/to/hey_snips_dataset
+VOCAB='["hey","snips"]' INFERENCE_SEQUENCE=[0,1] DATASET_PATH=datasets/hey-snips python -m training.run.deprecated.create_raw_dataset --dataset-type 'hey-snips' -i ~/path/to/hey_snips_dataset
 ```
 
 3. Generate some mock alignment for the dataset, where we don't care about alignment:
