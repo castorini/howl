@@ -13,7 +13,7 @@ from howl.utils import hash_utils, logging_utils
 
 @unique
 class SampleType(str, Enum):
-    """String based Enum for positive/negative sample type"""
+    """String based Enum for positive/negative sample types"""
 
     POSITIVE = "positive"
     NEGATIVE = "negative"

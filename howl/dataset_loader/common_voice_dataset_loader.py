@@ -5,7 +5,7 @@ from tqdm import tqdm
 
 from howl.data.common.metadata import AudioClipMetadata
 from howl.data.dataset.dataset import AudioDataset, DatasetSplit
-from howl.dataset.raw_audio_dataset import RawAudioDataset
+from howl.dataset.aligned_audio_dataset import AlignedAudioDataset
 from howl.dataset_loader.dataset_loader import AudioDatasetLoader
 
 
@@ -50,4 +50,4 @@ class CommonVoiceDatasetLoader(AudioDatasetLoader):
             metadata_list.append(
                 AudioClipMetadata(path=(self.dataset_path / "clips" / tup.path).absolute(), transcription=tup.sentence,)
             )
-        return RawAudioDataset(metadata_list=metadata_list, dataset_split=dataset_split, **dataset_kwargs)
+        return AlignedAudioDataset(metadata_list=metadata_list, dataset_split=dataset_split, **dataset_kwargs)
