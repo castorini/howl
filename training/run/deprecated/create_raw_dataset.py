@@ -6,7 +6,8 @@ from howl.context import InferenceContext
 from howl.data.common.metadata import AudioClipMetadata
 from howl.data.dataset.dataset import AudioDataset
 from howl.data.dataset.dataset_writer import AudioDatasetWriter
-from howl.dataset_loader.dataset_loader_factory import DatasetLoaderType, get_dataset_loader
+from howl.dataset.audio_dataset_constants import AudioDatasetType
+from howl.dataset_loader.dataset_loader_factory import get_dataset_loader
 from howl.settings import SETTINGS
 from howl.utils import hash_utils, logging_utils
 from howl.utils.args_utils import ArgOption, ArgumentParserBuilder
@@ -37,7 +38,7 @@ def main():
 
     sample command:
     VOCAB='["fire"]' INFERENCE_SEQUENCE=[0] DATASET_PATH=data/fire-positive \
-    python -m training.run.create_raw_dataset -i ~/path/to/common-voice --dataset-loader-type mozilla-cv \
+    python -m training.run.create_raw_dataset -i ~/path/to/common-voice --dataset-type common-voice \
     --positive-pct 100 --negative-pct 0
     """
 
@@ -73,23 +74,23 @@ def main():
         ),
         ArgOption("--input-audio-dataset-path", "-i", type=str, help="location of the input audio dataset",),
         ArgOption(
-            "--dataset-loader-type",
+            "--dataset-type",
             type=str,
-            default=DatasetLoaderType.COMMON_VOICE_DATASET_LOADER.value,
-            choices=[e.value for e in DatasetLoaderType],
-            help="type of dataset loader to use",
+            default=AudioDatasetType.COMMON_VOICE.value,
+            choices=[e.value for e in AudioDatasetType],
+            help="type of dataset to use",
         ),
     )
     args = apb.parser.parse_args()
     logger = logging_utils.setup_logger(os.path.basename(__file__))
 
-    dataset_loader_type = DatasetLoaderType(args.dataset_loader_type)
-    dataset_loader = get_dataset_loader(dataset_loader_type, Path(args.input_audio_dataset_path))
+    dataset_type = AudioDatasetType(args.dataset_type)
+    dataset_loader = get_dataset_loader(dataset_type, Path(args.input_audio_dataset_path))
     ds_kwargs = dict(sample_rate=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono)
     train_ds, dev_ds, test_ds = dataset_loader.load_splits(**ds_kwargs)
 
     ctx = InferenceContext(vocab=SETTINGS.training.vocab, token_type=SETTINGS.training.token_type)
-    if dataset_loader_type == DatasetLoaderType.COMMON_VOICE_DATASET_LOADER:
+    if dataset_type == AudioDatasetType.COMMON_VOICE:
         train_ds = train_ds.filter(filter_fn)
         dev_ds = dev_ds.filter(filter_fn)
         test_ds = test_ds.filter(filter_fn)

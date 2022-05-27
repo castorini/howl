@@ -5,8 +5,8 @@ from pathlib import Path
 from howl.context import InferenceContext
 from howl.data.common.metadata import AudioClipMetadata
 from howl.data.dataset.dataset_writer import AudioDatasetWriter
-from howl.dataset.audio_dataset_constants import SampleType
-from howl.dataset_loader.dataset_loader_factory import DatasetLoaderType, get_dataset_loader
+from howl.dataset.audio_dataset_constants import AudioDatasetType, SampleType
+from howl.dataset_loader.dataset_loader_factory import get_dataset_loader
 from howl.settings import SETTINGS
 from howl.utils import hash_utils, logging_utils
 
@@ -14,12 +14,12 @@ from howl.utils import hash_utils, logging_utils
 class RawAudioDatasetGenerator:
     """Generate audio dataset"""
 
-    def __init__(self, input_dataset_path: Path, dataset_loader_type: DatasetLoaderType, logger: logging.Logger = None):
+    def __init__(self, input_dataset_path: Path, dataset_type: AudioDatasetType, logger: logging.Logger = None):
         """initialize RawAudioDatasetGenerator by loading dataset from the given path
 
         Args:
             input_dataset_path: location of the dataset
-            dataset_loader_type: type of dataset loader to use
+            dataset_type: type of dataset to use
             logger: logger
         """
         self.input_dataset_path = input_dataset_path
@@ -30,8 +30,8 @@ class RawAudioDatasetGenerator:
         if self.logger is None:
             self.logger = logging_utils.setup_logger(self.__class__.__name__)
 
-        self.dataset_loader_type = dataset_loader_type
-        self.dataset_loader = get_dataset_loader(dataset_loader_type, Path(input_dataset_path))
+        self.dataset_type = dataset_type
+        self.dataset_loader = get_dataset_loader(dataset_type, Path(input_dataset_path))
         self.inference_ctx = InferenceContext(vocab=SETTINGS.training.vocab, token_type=SETTINGS.training.token_type)
 
         ds_kwargs = dict(sample_rate=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono)
@@ -77,7 +77,7 @@ class RawAudioDatasetGenerator:
 
         self.logger.info(f"Generating {sample_type.value} dataset using {percentage}% of the data")
 
-        if self.dataset_loader_type == DatasetLoaderType.COMMON_VOICE_DATASET_LOADER:
+        if self.dataset_type == AudioDatasetType.COMMON_VOICE:
             predicate_fn_kwargs = dict(sample_type=sample_type, percentage=percentage)
             train_ds = deepcopy(self.train_ds).filter(self.filter_fn, **predicate_fn_kwargs)
             dev_ds = deepcopy(self.dev_ds).filter(self.filter_fn, **predicate_fn_kwargs)

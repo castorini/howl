@@ -11,7 +11,8 @@ from howl.data.common.metadata import AudioClipMetadata
 from howl.data.common.tokenizer import TokenType
 from howl.data.dataset.dataset_writer import AudioDatasetMetadataWriter
 from howl.dataset.aligned_audio_dataset import AlignedAudioDataset
-from howl.dataset_loader.raw_audio_dataset_loader import RawAudioDatasetLoader
+from howl.dataset.audio_dataset_constants import AudioDatasetType
+from howl.dataset_loader.howl_audio_dataset_loader import HowlAudioDatasetLoader
 from howl.settings import SETTINGS
 from howl.utils.logger import Logger
 from training.align import MfaTextGridConverter, StubAligner
@@ -54,7 +55,7 @@ class AlignedAudioDatasetGenerator:
         if not self.raw_audio_dataset_path.exists():
             raise FileNotFoundError(f"Dataset path is invalid: {self.raw_audio_dataset_path}")
 
-        raw_audio_dataset = RawAudioDatasetLoader(self.raw_audio_dataset_path)
+        raw_audio_dataset = HowlAudioDatasetLoader(AudioDatasetType.RAW, self.raw_audio_dataset_path)
         ds_kwargs = dict(sample_rate=sample_rate, mono=mono)
         self.train_ds, self.dev_ds, self.test_ds = raw_audio_dataset.load_splits(**ds_kwargs)
 
