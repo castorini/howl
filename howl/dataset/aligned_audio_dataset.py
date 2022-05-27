@@ -1,4 +1,3 @@
-from enum import Enum, unique
 from functools import lru_cache
 
 import torch
@@ -10,23 +9,10 @@ from howl.settings import SETTINGS
 from howl.utils.audio_utils import silent_load
 
 
-@unique
-class AudioDatasetType(str, Enum):
-    """String based Enum for audio dataset types"""
-
-    RAW = "raw"
-    ALIGNED = "aligned"
-
-
 class AlignedAudioDataset(AudioDataset[AudioClipMetadata]):
     """audio dataset"""
 
     # TODO: AlignedAudioDataset class and AudioDataset should be combined into a single class
-
-    METADATA_FILE_NAME_TEMPLATES = {
-        AudioDatasetType.RAW: "metadata-{dataset_split}.jsonl",
-        AudioDatasetType.ALIGNED: "aligned-metadata-{dataset_split}.jsonl",
-    }
 
     def __init__(self, *args, labeler: FrameLabeler = None, **kwargs):
         """Initialize AudioDataset

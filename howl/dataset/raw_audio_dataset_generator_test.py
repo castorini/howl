@@ -4,7 +4,8 @@ import unittest
 from contextlib import contextmanager
 from pathlib import Path
 
-from howl.dataset.raw_audio_dataset_generator import RawAudioDatasetGenerator, SampleType
+from howl.dataset.audio_dataset_constants import SampleType
+from howl.dataset.raw_audio_dataset_generator import RawAudioDatasetGenerator
 from howl.dataset_loader.dataset_loader_factory import DatasetLoaderType
 from howl.settings import SETTINGS
 from howl.utils import filesystem_utils, test_utils
@@ -40,7 +41,7 @@ class RawAudioDatasetGeneratorTest(unittest.TestCase):
             self.assertEqual(raw_dataset_generator.dataset_loader_type, dataset_loader_type)
             self.assertEqual(raw_dataset_generator.inference_ctx.token_type, SETTINGS.training.token_type)
 
-            positive_dataset = temp_dir_path / "positive"
+            positive_dataset = temp_dir_path / SampleType.POSITIVE.value
             raw_dataset_generator.generate_datasets(positive_dataset, SampleType.POSITIVE)
             lab_file_paths = glob.glob(str(positive_dataset / "audio/*.lab"))
             self.assertGreater(len(lab_file_paths), 0)
@@ -52,7 +53,7 @@ class RawAudioDatasetGeneratorTest(unittest.TestCase):
             self.assertEqual(test_utils.get_num_of_lines(positive_dataset / "metadata-dev.jsonl"), 1)
             self.assertEqual(test_utils.get_num_of_lines(positive_dataset / "metadata-test.jsonl"), 0)
 
-            negative_dataset = temp_dir_path / "negative"
+            negative_dataset = temp_dir_path / SampleType.NEGATIVE.value
             raw_dataset_generator.generate_datasets(negative_dataset, SampleType.NEGATIVE)
             lab_file_paths = glob.glob(str(negative_dataset / "audio/*.lab"))
             self.assertGreater(len(lab_file_paths), 0)
