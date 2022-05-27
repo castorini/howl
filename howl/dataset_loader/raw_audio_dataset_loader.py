@@ -5,7 +5,8 @@ from tqdm import tqdm
 
 from howl.data.common.metadata import AudioClipMetadata
 from howl.data.dataset.dataset import AudioDataset, DatasetSplit
-from howl.dataset.aligned_audio_dataset import AlignedAudioDataset, AudioDatasetType
+from howl.dataset.aligned_audio_dataset import AlignedAudioDataset
+from howl.dataset.audio_dataset_constants import METADATA_FILE_NAME_TEMPLATES, AudioDatasetType
 from howl.dataset_loader.dataset_loader import AudioDatasetLoader
 
 
@@ -33,9 +34,9 @@ class RawAudioDatasetLoader(AudioDatasetLoader):
         Returns:
             raw audio dataset for the given dataset_split
         """
-        metadata_file_path = self.dataset_path / AlignedAudioDataset.METADATA_FILE_NAME_TEMPLATES[
-            AudioDatasetType.RAW
-        ].format(dataset_split=dataset_split.value)
+        metadata_file_path = self.dataset_path / METADATA_FILE_NAME_TEMPLATES[AudioDatasetType.RAW].format(
+            dataset_split=dataset_split.value
+        )
         if not metadata_file_path.exists():
             raise FileNotFoundError(f"Metafile path for {dataset_split.value} is missing: {metadata_file_path}")
 

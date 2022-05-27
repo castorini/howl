@@ -3,7 +3,8 @@ import shutil
 from pathlib import Path
 
 import howl
-from howl.dataset.raw_audio_dataset_generator import RawAudioDatasetGenerator, SampleType
+from howl.dataset.audio_dataset_constants import SampleType
+from howl.dataset.raw_audio_dataset_generator import RawAudioDatasetGenerator
 from howl.dataset_loader.dataset_loader_factory import DatasetLoaderType
 from howl.settings import SETTINGS
 from howl.utils import logging_utils, str_utils

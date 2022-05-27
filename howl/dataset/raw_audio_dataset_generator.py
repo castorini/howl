@@ -1,22 +1,14 @@
 import logging
 from copy import deepcopy
-from enum import Enum, unique
 from pathlib import Path
 
 from howl.context import InferenceContext
 from howl.data.common.metadata import AudioClipMetadata
 from howl.data.dataset.dataset_writer import AudioDatasetWriter
+from howl.dataset.audio_dataset_constants import SampleType
 from howl.dataset_loader.dataset_loader_factory import DatasetLoaderType, get_dataset_loader
 from howl.settings import SETTINGS
 from howl.utils import hash_utils, logging_utils
-
-
-@unique
-class SampleType(str, Enum):
-    """String based Enum for positive/negative sample types"""
-
-    POSITIVE = "positive"
-    NEGATIVE = "negative"
 
 
 class RawAudioDatasetGenerator:
