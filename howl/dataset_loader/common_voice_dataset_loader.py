@@ -5,15 +5,13 @@ from tqdm import tqdm
 
 from howl.data.common.metadata import AudioClipMetadata
 from howl.data.dataset.dataset import AudioDataset, DatasetSplit
-from howl.dataset.aligned_audio_dataset import AlignedAudioDataset
+from howl.dataset.audio_dataset_constants import AudioDatasetType
+from howl.dataset.howl_audio_dataset import HowlAudioDataset
 from howl.dataset_loader.dataset_loader import AudioDatasetLoader
 
 
 class CommonVoiceDatasetLoader(AudioDatasetLoader):
     """DatasetLoader for mozilla common-voice dataset"""
-
-    # unique name which this dataset loader will be referred to
-    NAME = "mozilla-cv"
 
     # name of the metafiles for each split
     METAFILE_MAPPING = {
@@ -28,7 +26,7 @@ class CommonVoiceDatasetLoader(AudioDatasetLoader):
         Args:
             dataset_path: location of the dataset
         """
-        super().__init__(self.NAME, dataset_path=dataset_path)
+        super().__init__(AudioDatasetType.COMMON_VOICE.value, dataset_path=dataset_path)
 
     def _load_dataset(self, dataset_split: DatasetSplit, **dataset_kwargs) -> AudioDataset:
         """Load dataset of given dataset_split
@@ -50,4 +48,4 @@ class CommonVoiceDatasetLoader(AudioDatasetLoader):
             metadata_list.append(
                 AudioClipMetadata(path=(self.dataset_path / "clips" / tup.path).absolute(), transcription=tup.sentence,)
             )
-        return AlignedAudioDataset(metadata_list=metadata_list, dataset_split=dataset_split, **dataset_kwargs)
+        return HowlAudioDataset(metadata_list=metadata_list, dataset_split=dataset_split, **dataset_kwargs)

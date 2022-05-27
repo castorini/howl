@@ -24,14 +24,9 @@ def common_voice_dataset_path():
     return test_data_path() / "datasets/common-voice"
 
 
-def raw_audio_datasets_path():
+def howl_audio_datasets_path():
     """Test raw audio dataset folder path"""
-    return test_data_path() / "datasets/raw_audio_datasets"
-
-
-def aligned_audio_datasets_path():
-    """Test aligned audio dataset folder path"""
-    return test_data_path() / "datasets/aligned_audio_datasets"
+    return test_data_path() / "datasets/howl_audio_datasets"
 
 
 def get_num_of_lines(file_path: Path):
