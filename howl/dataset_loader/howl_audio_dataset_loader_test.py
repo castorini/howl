@@ -7,12 +7,13 @@ from pathlib import Path
 import pytest
 
 from howl.data.dataset.dataset import DatasetSplit
-from howl.dataset_loader.raw_audio_dataset_loader import RawAudioDatasetLoader
+from howl.dataset.audio_dataset_constants import AudioDatasetType
+from howl.dataset_loader.howl_audio_dataset_loader import HowlAudioDatasetLoader
 from howl.utils import filesystem_utils, test_utils
 
 
-class RawAudioDatasetLoaderTest(unittest.TestCase):
-    """Test case for RawAudioDatasetLoader"""
+class HowlAudioDatasetLoaderTest(unittest.TestCase):
+    """Test case for HowlAudioDatasetLoader"""
 
     @contextmanager
     def _setup_test_env(self):
@@ -29,8 +30,8 @@ class RawAudioDatasetLoaderTest(unittest.TestCase):
     def test_load_splits(self):
         """Test success case of load_splits"""
         with self._setup_test_env() as dataset_path:
-            dataset_loader = RawAudioDatasetLoader(dataset_path)
-            self.assertEqual(dataset_loader.name, "raw")
+            dataset_loader = HowlAudioDatasetLoader(AudioDatasetType.RAW, dataset_path)
+            self.assertEqual(dataset_loader.name, AudioDatasetType.RAW.value)
             self.assertEqual(dataset_loader.dataset_path, dataset_path)
 
             sample_rate = 1000
@@ -53,7 +54,7 @@ class RawAudioDatasetLoaderTest(unittest.TestCase):
         invalid_dataset_path = Path(temp_dir.name) / "empty_dir"
 
         with pytest.raises(FileNotFoundError):
-            RawAudioDatasetLoader(invalid_dataset_path)
+            HowlAudioDatasetLoader(AudioDatasetType.RAW, invalid_dataset_path)
 
         temp_dir.cleanup()
 
@@ -63,8 +64,8 @@ class RawAudioDatasetLoaderTest(unittest.TestCase):
             # delete one of the metadata file
             os.remove(dataset_path / "metadata-training.jsonl")
 
-            dataset_loader = RawAudioDatasetLoader(dataset_path)
-            self.assertEqual(dataset_loader.name, "raw")
+            dataset_loader = HowlAudioDatasetLoader(AudioDatasetType.RAW, dataset_path)
+            self.assertEqual(dataset_loader.name, AudioDatasetType.RAW.value)
             self.assertEqual(dataset_loader.dataset_path, dataset_path)
 
             with pytest.raises(FileNotFoundError):

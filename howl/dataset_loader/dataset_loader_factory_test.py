@@ -2,10 +2,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from howl.dataset_loader.aligned_audio_dataset_loader import AlignedAudioDatasetLoader
+from howl.dataset.audio_dataset_constants import AudioDatasetType
 from howl.dataset_loader.common_voice_dataset_loader import CommonVoiceDatasetLoader
-from howl.dataset_loader.dataset_loader_factory import DatasetLoaderType, get_dataset_loader
-from howl.dataset_loader.raw_audio_dataset_loader import RawAudioDatasetLoader
+from howl.dataset_loader.dataset_loader_factory import get_dataset_loader
+from howl.dataset_loader.howl_audio_dataset_loader import HowlAudioDatasetLoader
 
 
 class DatasetLoaderFactoryTest(unittest.TestCase):
@@ -17,11 +17,11 @@ class DatasetLoaderFactoryTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             dataset_path = Path(temp_dir)
 
-            cv_dataset_loader = get_dataset_loader(DatasetLoaderType.COMMON_VOICE_DATASET_LOADER, dataset_path)
+            cv_dataset_loader = get_dataset_loader(AudioDatasetType.COMMON_VOICE, dataset_path)
             self.assertIsInstance(cv_dataset_loader, CommonVoiceDatasetLoader)
 
-            cv_dataset_loader = get_dataset_loader(DatasetLoaderType.RAW_AUDIO_DATASET_LOADER, dataset_path)
-            self.assertIsInstance(cv_dataset_loader, RawAudioDatasetLoader)
+            cv_dataset_loader = get_dataset_loader(AudioDatasetType.RAW, dataset_path)
+            self.assertIsInstance(cv_dataset_loader, HowlAudioDatasetLoader)
 
-            cv_dataset_loader = get_dataset_loader(DatasetLoaderType.ALIGNED_AUDIO_DATASET_LOADER, dataset_path)
-            self.assertIsInstance(cv_dataset_loader, AlignedAudioDatasetLoader)
+            cv_dataset_loader = get_dataset_loader(AudioDatasetType.ALIGNED, dataset_path)
+            self.assertIsInstance(cv_dataset_loader, HowlAudioDatasetLoader)

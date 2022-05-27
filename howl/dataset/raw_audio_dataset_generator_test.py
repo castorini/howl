@@ -4,9 +4,8 @@ import unittest
 from contextlib import contextmanager
 from pathlib import Path
 
-from howl.dataset.audio_dataset_constants import SampleType
+from howl.dataset.audio_dataset_constants import AudioDatasetType, SampleType
 from howl.dataset.raw_audio_dataset_generator import RawAudioDatasetGenerator
-from howl.dataset_loader.dataset_loader_factory import DatasetLoaderType
 from howl.settings import SETTINGS
 from howl.utils import filesystem_utils, test_utils
 
@@ -30,15 +29,15 @@ class RawAudioDatasetGeneratorTest(unittest.TestCase):
     def test_generate_datasets(self):
         """Test generate datasets from common-voice dataset"""
         with self._setup_common_voice_test_env() as (temp_dir_path, input_dataset_path):
-            dataset_loader_type = DatasetLoaderType.COMMON_VOICE_DATASET_LOADER
+            dataset_type = AudioDatasetType.COMMON_VOICE
 
             SETTINGS.training.vocab = ["The"]
             SETTINGS.training.token_type = "word"
 
-            raw_dataset_generator = RawAudioDatasetGenerator(input_dataset_path, dataset_loader_type,)
+            raw_dataset_generator = RawAudioDatasetGenerator(input_dataset_path, dataset_type,)
 
             self.assertEqual(raw_dataset_generator.input_dataset_path, input_dataset_path)
-            self.assertEqual(raw_dataset_generator.dataset_loader_type, dataset_loader_type)
+            self.assertEqual(raw_dataset_generator.dataset_type, dataset_type)
             self.assertEqual(raw_dataset_generator.inference_ctx.token_type, SETTINGS.training.token_type)
 
             positive_dataset = temp_dir_path / SampleType.POSITIVE.value
@@ -82,7 +81,7 @@ class RawAudioDatasetGeneratorTest(unittest.TestCase):
     # def test_generate_datasets(self):
     #     """Test generate datasets from google speech commands dataset"""
     #     with self._setup_common_voice_test_env() as (temp_dir_path, input_dataset_path):
-    #         dataset_loader_type = DatasetLoaderType.COMMON_VOICE_DATASET_LOADER
+    #         dataset_type = AudioDatasetType.COMMON_VOICE
     #         # VOCAB='["fire"]' INFERENCE_SEQUENCE=[0] python -m training.run.generate_raw_audio_dataset
     #         # -i ~/data/kws/common-voice/common-voice-6.1/cv-corpus-6.1-2020-12-11/en/
     #         # --positive-pct 100 --negative-pct 5

@@ -13,6 +13,7 @@ class SampleType(str, Enum):
 class AudioDatasetType(str, Enum):
     """String based Enum for audio dataset types"""
 
+    COMMON_VOICE = "common-voice"
     RAW = "raw"
     ALIGNED = "aligned"
 
