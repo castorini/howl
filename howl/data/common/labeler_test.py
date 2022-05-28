@@ -2,7 +2,7 @@ import unittest
 
 from howl.data.common.labeler import PhoneticFrameLabeler, WordFrameLabeler
 from howl.data.common.metadata import AudioClipMetadata
-from howl.data.common.phone import PhonePhrase, PronunciationDictionary
+from howl.data.common.phone import PhonePhrase
 from howl.data.common.vocab import Vocab
 from howl.utils import test_utils
 
@@ -15,8 +15,7 @@ class TestPhoneticFrameLabeler(unittest.TestCase):
 
         vocab = ["hey", "fire", "fox"]
 
-        phone_dict_file = test_utils.test_data_path() / "pronounciation_dictionary.txt"
-        pronounce_dict = PronunciationDictionary.from_file(phone_dict_file)
+        pronounce_dict = test_utils.pronounce_dict()
 
         adjusted_vocab = []
         for word in vocab:
@@ -25,7 +24,7 @@ class TestPhoneticFrameLabeler(unittest.TestCase):
             adjusted_vocab.extend(list(str(phone) for phone in phone_phrase.phones))
 
         phone_phrases = [PhonePhrase.from_string(x) for x in adjusted_vocab]
-        labeler = PhoneticFrameLabeler(pronounce_dict, phone_phrases)
+        labeler = PhoneticFrameLabeler(phone_phrases, pronounce_dict)
 
         transcription = "hey firefox"
         timestamps = list(range(len(transcription)))  # [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]

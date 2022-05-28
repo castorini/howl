@@ -6,6 +6,7 @@ from pathlib import Path
 
 from howl.data.common.tokenizer import TokenType
 from howl.dataset.aligned_audio_dataset_generator import AlignedAudioDatasetGenerator, AlignmentType
+from howl.dataset.howl_audio_dataset import HowlAudioDataset
 from howl.settings import SETTINGS
 from howl.utils import filesystem_utils, test_utils
 
@@ -17,9 +18,11 @@ class AlignedAudioDatasetGeneratorTest(unittest.TestCase):
     def _setup_test_env(self, dataset_type: str):
         """prepare raw audio dataset with alignment for aligned audio dataset generator test cases"""
         temp_dir = tempfile.TemporaryDirectory()
-        dataset_path = Path(temp_dir.name) / "the" / dataset_type
-        filesystem_utils.copytree(test_utils.howl_audio_datasets_path() / "the" / dataset_type, dataset_path)
-        alignments_path = dataset_path / "alignment"
+        dataset_path = Path(temp_dir.name) / test_utils.WAKEWORD / dataset_type
+        filesystem_utils.copytree(
+            test_utils.howl_audio_datasets_path() / test_utils.WAKEWORD / dataset_type, dataset_path
+        )
+        alignments_path = dataset_path / HowlAudioDataset.DIR_ALIGNMENT
 
         aligned_metadata_paths = dataset_path.glob(f"{AlignedAudioDatasetGenerator.ALIGNED_METADATA_PREFIX}*")
         for aligned_metadata_path in aligned_metadata_paths:

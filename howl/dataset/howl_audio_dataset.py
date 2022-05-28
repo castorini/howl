@@ -12,6 +12,9 @@ from howl.utils.audio_utils import silent_load
 class HowlAudioDataset(AudioDataset[AudioClipMetadata]):
     """Audio dataset for Howl"""
 
+    DIR_ALIGNMENT = "alignment"
+    DIR_AUDIO = "audio"
+
     def __init__(self, *args, labeler: FrameLabeler = None, **kwargs):
         """Initialize HowlAudioDataset
 

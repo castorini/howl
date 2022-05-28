@@ -11,6 +11,7 @@ from howl.data.common.example import AudioClipExample
 from howl.data.common.metadata import AudioClipMetadata
 from howl.data.common.vocab import Vocab
 from howl.data.dataset.dataset import AudioClipDataset, AudioDataset, DatasetType
+from howl.dataset.howl_audio_dataset import HowlAudioDataset
 from howl.settings import SETTINGS
 from howl.utils.sphinx_keyword_detector import SphinxKeywordDetector
 
@@ -117,7 +118,7 @@ class WordStitcher(Stitcher):
                         )
                     )
 
-        audio_dir = stitched_dataset_dir / "audio"
+        audio_dir = stitched_dataset_dir / HowlAudioDataset.DIR_AUDIO
         audio_dir.mkdir(exist_ok=True)
 
         # reorganize and make sure there are enough samples for each vocab

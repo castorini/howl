@@ -9,6 +9,7 @@ from tqdm import tqdm
 
 from howl.data.common.metadata import AudioClipMetadata
 from howl.data.dataset.dataset import AudioClipDataset, DatasetType
+from howl.dataset.howl_audio_dataset import HowlAudioDataset
 from howl.utils.audio_utils import silent_load
 from howl.utils.logger import Logger
 
@@ -88,7 +89,7 @@ class AudioDatasetWriter:
 
         Logger.info(f"Writing flat dataset to {dataset_path}...")
         dataset_path.mkdir(exist_ok=True)
-        audio_dir_path = dataset_path / "audio"
+        audio_dir_path = dataset_path / HowlAudioDataset.DIR_AUDIO
         audio_dir_path.mkdir(exist_ok=True)
 
         num_processes = max(multiprocessing.cpu_count() // 2, 4)
