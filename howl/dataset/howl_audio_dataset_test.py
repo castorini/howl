@@ -10,7 +10,7 @@ class HowlAudioDatasetTest(unittest.TestCase):
     """Test case for HowlAudioDataset"""
 
     def _load_sample(self, dataset_type: AudioDatasetType):
-        """Load a sample of given type and split"""
+        """Load a sample from the given type of audio dataset"""
 
         # region load datasets
         dataset_path = test_utils.howl_audio_datasets_path() / test_utils.WAKEWORD / SampleType.POSITIVE.value
@@ -24,7 +24,7 @@ class HowlAudioDatasetTest(unittest.TestCase):
         return dataset[0]
 
     def test_raw_audio_dataset(self):
-        """Validate the logic for loading a raw sample from howl audio dataset"""
+        """Validate the logic for loading an aligned sample from howl audio dataset"""
         sample = self._load_sample(AudioDatasetType.RAW)
         self.assertGreater(len(sample.audio_data), 0)
         self.assertIsNone(sample.label)
