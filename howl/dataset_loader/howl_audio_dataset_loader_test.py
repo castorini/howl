@@ -19,9 +19,9 @@ class HowlAudioDatasetLoaderTest(unittest.TestCase):
     def _setup_dataset(self):
         """prepare an environment for howl audio dataset loader test cases by creating necessary folders"""
         temp_dir = tempfile.TemporaryDirectory()
-        dataset_path = Path(temp_dir.name) / "the" / SampleType.POSITIVE.value
+        dataset_path = Path(temp_dir.name) / test_utils.WAKEWORD / SampleType.POSITIVE.value
         filesystem_utils.copytree(
-            test_utils.howl_audio_datasets_path() / "the" / SampleType.POSITIVE.value, dataset_path
+            test_utils.howl_audio_datasets_path() / test_utils.WAKEWORD / SampleType.POSITIVE.value, dataset_path
         )
 
         try:

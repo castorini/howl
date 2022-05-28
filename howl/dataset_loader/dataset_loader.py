@@ -46,3 +46,12 @@ class AudioDatasetLoader:
             self._load_dataset(DatasetSplit.DEV, **dataset_kwargs),
             self._load_dataset(DatasetSplit.TEST, **dataset_kwargs),
         )
+
+    def load_split(self, dataset_split: DatasetSplit, **dataset_kwargs) -> AudioDataset:
+        """Load audio datasets of given split
+
+        Args:
+            dataset_split: dataset split to load
+            dataset_kwargs: other arguments passed to individual dataset
+        """
+        return self._load_dataset(dataset_split, **dataset_kwargs)

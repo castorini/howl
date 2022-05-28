@@ -42,7 +42,7 @@ class HowlAudioDatasetLoader(AudioDatasetLoader):
         with open(metadata_file_path) as metadata_file:
             for json_str in tqdm(iter(metadata_file.readline, ""), desc=f"loading {metadata_file_path}"):
                 metadata = AudioClipMetadata(**json.loads(json_str))
-                metadata.path = self.dataset_path / "audio" / metadata.path
+                metadata.path = self.dataset_path / HowlAudioDataset.DIR_AUDIO / metadata.path
                 metadata_list.append(metadata)
 
         return HowlAudioDataset(metadata_list=metadata_list, dataset_split=dataset_split, **dataset_kwargs)

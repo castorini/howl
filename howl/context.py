@@ -74,7 +74,7 @@ class InferenceContext:
         # initialize labeler; make sure this is located before adding other labels
         if token_type == "phone":
             phone_phrases = [PhonePhrase.from_string(x) for x in self.adjusted_vocab]
-            self.labeler = PhoneticFrameLabeler(self.pronounce_dict, phone_phrases)
+            self.labeler = PhoneticFrameLabeler(phone_phrases, self.pronounce_dict)
         elif token_type == "word":
             self.labeler = WordFrameLabeler(self.vocab)
 

@@ -1,12 +1,18 @@
 from pathlib import Path
+from typing import List
 
 import torch
 
 import howl
 from howl.data.common.example import AudioClipExample
+from howl.data.common.labeler import PhoneticFrameLabeler
 from howl.data.common.metadata import AudioClipMetadata
+from howl.data.common.phone import PhonePhrase, PronunciationDictionary
 from howl.data.dataset.dataset import AudioDataset
 from howl.utils.audio_utils import silent_load
+
+WAKEWORD = "the"
+VOCAB = [WAKEWORD]
 
 
 def test_audio_file_path():
@@ -43,6 +49,24 @@ def compare_files(file_path_1: Path, file_path_2: Path):
             if file_1.readline() != file_2.readline():
                 return False
     return True
+
+
+def pronounce_dict():
+    """Test pronounce dictionary"""
+    phone_dict_file = test_data_path() / "pronounciation_dictionary.txt"
+    return PronunciationDictionary.from_file(phone_dict_file)
+
+
+def frame_labeller(vocab: List[str]):
+    """Test FrameLabeller loaded for the given vocab"""
+    test_pronounce_dict = pronounce_dict()
+    adjusted_vocab = []
+    for word in vocab:
+        phone_phrase = test_pronounce_dict.encode(word)[0]
+        adjusted_vocab.extend(list(str(phone) for phone in phone_phrase.phones))
+
+    phone_phrases = [PhonePhrase.from_string(x) for x in adjusted_vocab]
+    return PhoneticFrameLabeler(phone_phrases, test_pronounce_dict)
 
 
 class TestDataset(AudioDataset[AudioClipMetadata]):

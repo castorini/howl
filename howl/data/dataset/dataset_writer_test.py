@@ -6,6 +6,7 @@ from pathlib import Path
 
 from howl.data.dataset.dataset import DatasetType
 from howl.data.dataset.dataset_writer import AudioDatasetWriter
+from howl.dataset.howl_audio_dataset import HowlAudioDataset
 from howl.utils import test_utils
 
 
@@ -23,7 +24,7 @@ class DatasetWriterTest(unittest.TestCase):
 
             self.assertTrue(dataset_path.exists())
 
-            audio_dir_path = dataset_path / "audio"
+            audio_dir_path = dataset_path / HowlAudioDataset.DIR_AUDIO
             self.assertTrue(audio_dir_path.exists())
 
             metadata_json_file_path = dataset_path / "metadata-training.jsonl"

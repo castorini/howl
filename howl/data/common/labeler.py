@@ -1,10 +1,12 @@
 import string
+from pathlib import Path
 from typing import List
 
 from howl.data.common.label import FrameLabelData
 from howl.data.common.metadata import AudioClipMetadata
 from howl.data.common.phone import PhoneEnum, PhonePhrase, PronunciationDictionary
 from howl.data.common.vocab import Vocab
+from howl.settings import SETTINGS
 
 __all__ = ["FrameLabeler", "WordFrameLabeler", "PhoneticFrameLabeler"]
 
@@ -27,9 +29,11 @@ class FrameLabeler:
 class PhoneticFrameLabeler(FrameLabeler):
     """Generates phoneme-level frame labels for a given sample"""
 
-    def __init__(self, pronounce_dict: PronunciationDictionary, phrases: List[PhonePhrase]):
-        self.pronounce_dict = pronounce_dict
+    def __init__(self, phrases: List[PhonePhrase], pronounce_dict: PronunciationDictionary = None):
         self.phrases = phrases
+        self.pronounce_dict = pronounce_dict
+        if self.pronounce_dict is None:
+            self.pronounce_dict = PronunciationDictionary.from_file(Path(SETTINGS.training.phone_dictionary))
         punctuation_to_replace = str.maketrans(
             {"‘": "'", "’": "'", "”": '"', "“": '"', "—": "-", "ä": "a", "ö": "o", "ō": "o", "é": "e", "à": "a"}
         )
