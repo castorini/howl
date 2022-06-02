@@ -18,7 +18,6 @@ from howl.dataset_loader.howl_audio_dataset_loader import HowlAudioDatasetLoader
 from howl.utils import filesystem_utils, test_utils
 
 
-# TODO: to be refactored to use StitchedAudioDatasetGenerator
 class StitchedAudioDatasetGeneratorTest(test_utils.HowlTest, unittest.TestCase):
     """Test case for StitchedAudioDatasetGenerator"""
 

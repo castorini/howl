@@ -12,6 +12,7 @@ from howl.data.stitcher import WordStitcher
 from howl.settings import SETTINGS
 
 
+# TODO: to be refactored to use StitchedAudioDatasetGenerator
 def main():
     """Using aligned dataset, generate wakeword samples by stitching vocab samples
 
