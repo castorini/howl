@@ -69,7 +69,7 @@ if [ ${SKIP_NEG_DATASET} != "true" ]; then
       --token-type word
 fi
 
-STITCHED_DATASET="${DATASET_FOLDER}/stitched"
+STITCHED_DATASET="${DATASET_FOLDER}/${DATASET_NAME}/stitched"
 printf "\n\n>>> stitching vocab samples to generate a dataset made up of stitched wakeword samples: ${STITCHED_DATASET}\n"
 time VOCAB=${VOCAB} INFERENCE_SEQUENCE=${INFERENCE_SEQUENCE} python -m training.run.stitch_vocab_samples --aligned-dataset "${POS_DATASET_PATH}" --stitched-dataset "${STITCHED_DATASET}"
 

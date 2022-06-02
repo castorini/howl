@@ -4,8 +4,11 @@ from pathlib import Path
 from howl.data.common.labeler import WordFrameLabeler
 from howl.data.common.vocab import Vocab
 from howl.data.dataset.dataset_loader import WakeWordDatasetLoader
-from howl.data.dataset.dataset_writer import AudioDatasetWriter
+
+# from howl.data.dataset.dataset_writer import AudioDatasetWriter
 from howl.data.stitcher import WordStitcher
+
+# from howl.dataset.audio_dataset_constants import AudioDatasetType
 from howl.settings import SETTINGS
 
 
@@ -63,17 +66,17 @@ def main():
 
     # stitch vocab samples
     stitcher = WordStitcher(vocab=vocab, detect_keyword=args.disable_detect_keyword)
-    stitcher.stitch(args.num_stitched_samples, stitched_ds_path, train_ds, dev_ds, test_ds)
+    stitcher.generate_stitched_audio_samples(args.num_stitched_samples, stitched_ds_path, train_ds, dev_ds, test_ds)
 
-    # split the stitched samples
-    stitched_train_ds, stitched_dev_ds, stitched_test_ds = stitcher.load_splits(*args.stitched_dataset_pct)
-
-    # save metadata
-    for dataset in stitched_train_ds, stitched_dev_ds, stitched_test_ds:
-        try:
-            AudioDatasetWriter(dataset, prefix="aligned-").write(stitched_ds_path)
-        except KeyboardInterrupt:
-            print("Skipping...")
+    # # split the stitched samples
+    # stitched_train_ds, stitched_dev_ds, stitched_test_ds = stitcher.load_splits(*args.stitched_dataset_pct)
+    #
+    # # save metadata
+    # for dataset in stitched_train_ds, stitched_dev_ds, stitched_test_ds:
+    #     try:
+    #         AudioDatasetWriter(dataset, AudioDatasetType.ALIGNED).write(stitched_ds_path)
+    #     except KeyboardInterrupt:
+    #         print("Skipping...")
 
 
 if __name__ == "__main__":

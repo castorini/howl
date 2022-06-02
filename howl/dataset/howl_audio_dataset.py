@@ -12,6 +12,7 @@ from howl.utils.audio_utils import silent_load
 class HowlAudioDataset(AudioDataset[AudioClipMetadata]):
     """Audio dataset for Howl"""
 
+    DIR_STITCHED_TEMPLATE = "stitched-{dataset_split}"
     DIR_ALIGNMENT = "alignment"
     DIR_AUDIO = "audio"
 

@@ -18,7 +18,7 @@ from howl.data.transform.transform import DatasetMixer, NoiseTransform, Standard
 from howl.model import ConfusionMatrix, ConvertedStaticModel, RegisteredModel
 from howl.model.inference import FrameInferenceEngine, InferenceEngine
 from howl.settings import SETTINGS
-from howl.utils import hash_utils, logging_utils, random
+from howl.utils import hash_utils, logging_utils, random_utils
 from howl.utils.args_utils import ArgOption, ArgumentParserBuilder
 from howl.workspace import Workspace
 from training.run.deprecated.create_raw_dataset import print_stats
@@ -115,7 +115,7 @@ def main():
     args = apb.parser.parse_args()
 
     # region prepare training environment
-    random.set_seed(SETTINGS.training.seed)
+    random_utils.set_random_seed(SETTINGS.training.seed)
     logger = logging_utils.setup_logger(os.path.basename(__file__))
     use_frame = SETTINGS.training.objective == "frame"
     workspace = Workspace(Path(args.workspace), delete_existing=not args.eval)

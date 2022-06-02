@@ -15,7 +15,7 @@ from howl.data.transform.transform import NoiseTransform, StandardAudioTransform
 from howl.model import RegisteredModel
 from howl.settings import SETTINGS
 from howl.utils.args_utils import ArgOption, ArgumentParserBuilder
-from howl.utils.random import set_seed
+from howl.utils.random_utils import set_random_seed
 from howl.workspace import Workspace
 
 
@@ -66,7 +66,7 @@ def main():
 
     workspace = Workspace(Path(args.workspace), delete_existing=not args.eval)
     writer = workspace.summary_writer
-    set_seed(SETTINGS.training.seed)
+    set_random_seed(SETTINGS.training.seed)
     loader = GoogleSpeechCommandsDatasetLoader(SETTINGS.training.vocab)
     sample_rate = SETTINGS.audio.sample_rate
     ds_kwargs = dict(sample_rate=sample_rate, mono=SETTINGS.audio.use_mono)

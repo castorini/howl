@@ -1,18 +1,53 @@
+from abc import ABC
 from pathlib import Path
 from typing import List
 
+import numpy as np
 import torch
 
 import howl
 from howl.data.common.example import AudioClipExample
-from howl.data.common.labeler import PhoneticFrameLabeler
+from howl.data.common.labeler import PhoneticFrameLabeler, WordFrameLabeler
 from howl.data.common.metadata import AudioClipMetadata
 from howl.data.common.phone import PhonePhrase, PronunciationDictionary
+from howl.data.common.tokenizer import TokenType
 from howl.data.dataset.dataset import AudioDataset
+from howl.utils import audio_utils, logging_utils, random_utils
 from howl.utils.audio_utils import silent_load
 
 WAKEWORD = "the"
 VOCAB = [WAKEWORD]
+
+
+class HowlTest(ABC):
+    """Base test class handling global test initialization and termination"""
+
+    # pylint: disable=C0103,W0107
+
+    def setUp(self):
+        """Global test initialization"""
+        random_utils.set_random_seed()
+        self.logger = logging_utils.setup_logger(self.__class__.__name__)
+        self._setup()
+
+    def _setup(self):
+        """Test-specific initialization"""
+        pass
+
+    def tearDown(self):
+        """Global test termination"""
+        self._teardown()
+
+    def _teardown(self):
+        """Test-specific termination"""
+        pass
+
+    def validate_audio_file(self, audio_file_path: Path, gt_audio_file_path: Path):
+        """Returns true if the two audio files contain the same data"""
+        audio_data = audio_utils.silent_load(audio_file_path)
+        gt_audio_data = audio_utils.silent_load(gt_audio_file_path)
+
+        return np.allclose(audio_data, gt_audio_data)
 
 
 def test_audio_file_path():
@@ -57,16 +92,24 @@ def pronounce_dict():
     return PronunciationDictionary.from_file(phone_dict_file)
 
 
-def frame_labeller(vocab: List[str]):
+def frame_labeller(vocab: List[str], token_type: TokenType = TokenType.PHONE):
     """Test FrameLabeller loaded for the given vocab"""
-    test_pronounce_dict = pronounce_dict()
-    adjusted_vocab = []
-    for word in vocab:
-        phone_phrase = test_pronounce_dict.encode(word)[0]
-        adjusted_vocab.extend(list(str(phone) for phone in phone_phrase.phones))
 
-    phone_phrases = [PhonePhrase.from_string(x) for x in adjusted_vocab]
-    return PhoneticFrameLabeler(phone_phrases, test_pronounce_dict)
+    if token_type == TokenType.PHONE:
+        test_pronounce_dict = pronounce_dict()
+        adjusted_vocab = []
+        for word in vocab:
+            phone_phrase = test_pronounce_dict.encode(word)[0]
+            adjusted_vocab.extend(list(str(phone) for phone in phone_phrase.phones))
+
+        phone_phrases = [PhonePhrase.from_string(x) for x in adjusted_vocab]
+        labeller = PhoneticFrameLabeler(phone_phrases, test_pronounce_dict)
+    elif token_type == TokenType.WORD:
+        labeller = WordFrameLabeler(vocab)
+    else:
+        raise RuntimeError(f"Invalid token type: {token_type}")
+
+    return labeller
 
 
 class TestDataset(AudioDataset[AudioClipMetadata]):

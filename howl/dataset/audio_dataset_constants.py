@@ -16,9 +16,17 @@ class AudioDatasetType(str, Enum):
     COMMON_VOICE = "common-voice"
     RAW = "raw"
     ALIGNED = "aligned"
+    STITCHED = "stitched"
 
+
+METADATA_FILE_PREFIX = {
+    AudioDatasetType.RAW: "",
+    AudioDatasetType.ALIGNED: "aligned-",
+    AudioDatasetType.STITCHED: "stitched-",
+}
 
 METADATA_FILE_NAME_TEMPLATES = {
     AudioDatasetType.RAW: "metadata-{dataset_split}.jsonl",
     AudioDatasetType.ALIGNED: "aligned-metadata-{dataset_split}.jsonl",
+    AudioDatasetType.STITCHED: "stitched-metadata-{dataset_split}.jsonl",
 }

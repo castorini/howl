@@ -35,6 +35,7 @@ def main(
     raw_dataset_generator = RawAudioDatasetGenerator(input_audio_dataset_path, dataset_type, logger)
     datasets_dir_path.mkdir(exist_ok=True)
 
+    # TODO: make use of Vocab.wakeword
     wakeword = ""
     for idx, sequence in enumerate(SETTINGS.inference_engine.inference_sequence):
         wakeword += SETTINGS.training.vocab[sequence]

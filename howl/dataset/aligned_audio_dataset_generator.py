@@ -30,8 +30,6 @@ class AlignmentType(str, Enum):
 class AlignedAudioDatasetGenerator:
     """Using raw audio dataset and the alignment generated with MFA, generate new set of json metadata json files"""
 
-    ALIGNED_METADATA_PREFIX = "aligned-"
-
     def __init__(
         self,
         raw_audio_dataset_path: Path,
@@ -47,8 +45,9 @@ class AlignedAudioDatasetGenerator:
             raw_audio_dataset_path: location of the dataset
             alignment_type: type of the alignment
             alignments_path: location of the alignments
-            mono: if True, the audio file will be loaded assuming the data is mono channel
             sample_rate: sample rate of the audio file
+            mono: if True, the audio file will be loaded assuming the data is mono channel
+            token_type: type of alignment
         """
 
         self.raw_audio_dataset_path = raw_audio_dataset_path
@@ -207,7 +206,7 @@ class AlignedAudioDatasetGenerator:
         metadata_list = list(filter(None, metadata_list))  # remove None entries
 
         with AudioDatasetMetadataWriter(
-            self.raw_audio_dataset_path, raw_audio_dataset.dataset_split, prefix=self.ALIGNED_METADATA_PREFIX
+            self.raw_audio_dataset_path, AudioDatasetType.ALIGNED, raw_audio_dataset.dataset_split
         ) as metadata_writer:
             for metadata in metadata_list:
                 metadata_writer.write(metadata)
