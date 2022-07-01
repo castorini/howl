@@ -7,7 +7,6 @@ from howl.data.common.vocab import Vocab
 from howl.data.dataset.dataset import DatasetSplit
 from howl.data.stitcher import WordStitcher
 from howl.dataset.audio_dataset_constants import AudioDatasetType, SampleType
-from howl.dataset.howl_audio_dataset import HowlAudioDataset
 from howl.dataset_loader.howl_audio_dataset_loader import HowlAudioDatasetLoader
 from howl.settings import SETTINGS
 from howl.utils import test_utils
@@ -36,16 +35,16 @@ class StitcherTest(test_utils.HowlTest, unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as stitched_dataset_path:
             num_samples = 2
-            stitcher.generate_stitched_audio_samples(num_samples, Path(stitched_dataset_path), aligned_dataset)
+            stitcher.generate_stitched_audio_samples(
+                num_samples,
+                Path(stitched_dataset_path),
+                aligned_dataset,
+                audio_sample_filename_template="test_{sample_idx}",
+            )
 
             for audio_idx in range(num_samples):
-                audio_file_name = f"{audio_idx}.wav"
+                audio_file_name = f"test_{audio_idx}.wav"
                 audio_file_path = Path(stitched_dataset_path) / audio_file_name
-                gt_audio_file_path = (
-                    test_utils.test_data_path()
-                    / "stitcher"
-                    / HowlAudioDataset.DIR_STITCHED_TEMPLATE.format(dataset_split=dataset_split)
-                    / audio_file_name
-                )
+                gt_audio_file_path = test_utils.test_data_path() / "stitcher/stitched-training" / audio_file_name
 
                 self.assertTrue(self.validate_audio_file(audio_file_path, gt_audio_file_path))

@@ -72,11 +72,16 @@ class StitchedAudioDatasetGenerator:
 
         stitcher = WordStitcher(vocab=self.vocab, validate_stitched_sample=self.validate_stitched_sample)
 
-        audio_dir = self.aligned_audio_dataset_path / HowlAudioDataset.DIR_STITCHED_TEMPLATE.format(
-            dataset_split=dataset_split
+        audio_dir = self.aligned_audio_dataset_path / HowlAudioDataset.DIR_AUDIO
+        audio_dir.mkdir(exist_ok=True)
+        audio_sample_filename_template = dataset_split.value
+        audio_sample_filename_template += "_{sample_idx}"
+        stitcher.generate_stitched_audio_samples(
+            self.max_num_samples[dataset_split],
+            audio_dir,
+            aligned_dataset,
+            audio_sample_filename_template=audio_sample_filename_template,
         )
-        audio_dir.mkdir()
-        stitcher.generate_stitched_audio_samples(self.max_num_samples[dataset_split], audio_dir, aligned_dataset)
 
         with AudioDatasetMetadataWriter(
             self.aligned_audio_dataset_path, AudioDatasetType.STITCHED, dataset_split

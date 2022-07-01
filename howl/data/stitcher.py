@@ -88,7 +88,11 @@ class WordStitcher(Stitcher):
         return concatnated_timestamps[:-1]  # discard last space timestamp
 
     def generate_stitched_audio_samples(
-        self, num_stitched_samples: int, stitched_audio_dir: Path, *datasets: AudioDataset
+        self,
+        num_stitched_samples: int,
+        stitched_audio_dir: Path,
+        *datasets: AudioDataset,
+        audio_sample_filename_template: str = "{sample_idx}",
     ):
         """collect vocab samples from datasets and generate stitched wakeword samples
 
@@ -96,6 +100,7 @@ class WordStitcher(Stitcher):
             num_stitched_samples (int): number of stitched wakeword samples to generate
             stitched_audio_dir (Path): folder which the stitched audio samples will be saved
             datasets (Path): list of datasets to collect vocab samples from
+            audio_sample_filename_template: format string for the audio filename; it must contain {sample_idx}
         """
         sample_set = [[] for _ in range(len(self.vocab))]
 
@@ -162,7 +167,9 @@ class WordStitcher(Stitcher):
                     continue
 
             metatdata = AudioClipMetadata(
-                path=Path(stitched_audio_dir / f"{sample_idx}").with_suffix(".wav"),
+                path=Path(
+                    stitched_audio_dir / audio_sample_filename_template.format(sample_idx=sample_idx)
+                ).with_suffix(".wav"),
                 transcription=self.wakeword,
                 end_timestamps=self.concatenate_end_timestamps(
                     [labelled_data.end_timestamps for labelled_data in sample_set]
