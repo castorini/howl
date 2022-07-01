@@ -114,14 +114,17 @@ class AudioDatasetWriter:
 
         # TODO: to be updated when howl.data.dataset.dataset.DatasetType is replaced
         #       by howl.data.dataset.dataset.DatasetSplit
-        if self.dataset.dataset_split == DatasetType.TRAINING:
-            dataset_split = DatasetSplit.TRAINING
-        elif self.dataset.dataset_split == DatasetType.DEV:
-            dataset_split = DatasetSplit.DEV
-        elif self.dataset.dataset_split == DatasetType.TEST:
-            dataset_split = DatasetSplit.TEST
+        if isinstance(self.dataset.dataset_split, DatasetType):
+            if self.dataset.dataset_split == DatasetType.TRAINING:
+                dataset_split = DatasetSplit.TRAINING
+            elif self.dataset.dataset_split == DatasetType.DEV:
+                dataset_split = DatasetSplit.DEV
+            elif self.dataset.dataset_split == DatasetType.TEST:
+                dataset_split = DatasetSplit.TEST
+            else:
+                dataset_split = DatasetSplit.UNSPECIFIED
         else:
-            dataset_split = DatasetSplit.UNSPECIFIED
+            dataset_split = self.dataset.dataset_split
 
         with AudioDatasetMetadataWriter(dataset_path, self.audio_dataset_type, dataset_split) as metadata_writer:
             for metadata in self.dataset.metadata_list:

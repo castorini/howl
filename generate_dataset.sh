@@ -71,6 +71,8 @@ if [ ${SKIP_NEG_DATASET} != "true" ]; then
 fi
 
 printf "\n\n>>> stitching vocab samples to generate a dataset made up of stitched wakeword samples\n"
-time VOCAB=${VOCAB} INFERENCE_SEQUENCE=${INFERENCE_SEQUENCE} python -m training.run.stitch_vocab_samples --dataset-path "${POS_DATASET_PATH}"
+time VOCAB=${VOCAB} INFERENCE_SEQUENCE=${INFERENCE_SEQUENCE} \
+  python -m training.run.stitch_vocab_samples \
+  --dataset-path "${POS_DATASET_PATH}"
 
 printf "\n\n>>> Dataset is ready for ${VOCAB}\n"
