@@ -10,6 +10,7 @@ from howl.dataset.audio_dataset_constants import AudioDatasetType
 from howl.dataset.howl_audio_dataset import HowlAudioDataset
 from howl.dataset_loader.howl_audio_dataset_loader import HowlAudioDatasetLoader
 from howl.settings import SETTINGS
+from howl.utils.logger import Logger
 
 
 class StitchedAudioDatasetGenerator:
@@ -64,6 +65,10 @@ class StitchedAudioDatasetGenerator:
         ds_kwargs = copy.deepcopy(self.base_ds_kwargs)
         ds_kwargs["dataset_split"] = dataset_split
         aligned_dataset = self.dataset_loader.load_split(**ds_kwargs)
+
+        if len(self.vocab) <= 1:
+            Logger.warning(f"Word stitching require at least two words: {self.vocab}")
+            return
 
         stitcher = WordStitcher(vocab=self.vocab, validate_stitched_sample=self.validate_stitched_sample)
 

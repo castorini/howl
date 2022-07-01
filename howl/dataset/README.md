@@ -112,5 +112,5 @@ python -m training.run.attach_alignment \
 8. (Optional) Stitch vocab samples of aligned dataset to generate wakeword samples
 
 ```bash
-VOCAB='["fire"]' INFERENCE_SEQUENCE=[0] python -m training.run.stitch_vocab_samples --aligned-dataset "datasets/fire/positive" --stitched-dataset "data/fire-stitched"
+VOCAB='["fire"]' INFERENCE_SEQUENCE=[0] python -m training.run.stitch_vocab_samples --dataset-path "datasets/fire/positive"
 ```

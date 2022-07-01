@@ -96,3 +96,7 @@ class Vocab:
     def wakeword(self, sequence: List[int], separator: str = " "):
         """Generate a wakeword str with the given separator"""
         return separator.join([self[i] for i in sequence])
+
+    def __repr__(self):
+        """Prints the words mapping"""
+        return str(self.idx2word)

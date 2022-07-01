@@ -55,7 +55,7 @@ For detailed explanation, please refer to [How to generate a dataset for custom 
 ### Training and Running a Model
 
 1. Source the relevant environment variables for training the `res8` model: `source envs/res8.env`.
-2. Train the model: `python -m training.run.train -i datasets/fire-positive datasets/fire-negative datasets/fire-stitched --model res8 --workspace workspaces/fire-res8`.
+2. Train the model: `python -m training.run.train -i datasets/fire/positive datasets/fire/negative --model res8 --workspace workspaces/fire-res8`.
 3. For the CLI demo, run `python -m training.run.demo --model res8 --workspace workspaces/fire-res8`.
 
 `train_model.sh` is also available which encaspulates individual command into a single bash script
