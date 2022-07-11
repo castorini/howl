@@ -18,7 +18,7 @@ class AudioUtilsTest(test_utils.HowlTest, unittest.TestCase):
         mono = True
         audio_data = audio_utils.silent_load(audio_file_path, sample_rate, mono)
         self.assertEqual(len(audio_data), 112128)
-        self.assertAlmostEqual(audio_data.mean(), 2.36e-05)
+        self.assertAlmostEqual(audio_data.mean(), 2.43e-05)
 
         window_ms = 500
         stride_ms = 250
