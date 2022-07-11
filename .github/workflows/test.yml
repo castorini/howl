@@ -36,5 +36,5 @@ jobs:
       run: |
         pip install --quiet --editable .
         # TODO: test files under test directory must be located along with the file that each of them are designed for
-        pytest --verbose --timeout=30
+        make tests_all
 
