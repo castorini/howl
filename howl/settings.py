@@ -122,6 +122,25 @@ class HowlSettings:
             self._training = TrainingSettings()
         return self._training
 
+    def reset(self):
+        """Reset all the settings to defaults"""
+        for attr_name, setting_cls in KEY_TO_SETTINGS_CLASS.items():
+            setattr(self, attr_name, setting_cls())
+
+    def __repr__(self):
+        """Prints the contents of the settings in human-readable format"""
+        rep = "Howl Settings:\n"
+        for attr_name, settings in self.__dict__.items():
+            rep += f"\t{attr_name}:"
+            if settings is None:
+                rep += " None\n"
+            else:
+                rep += "\n"
+                for key, val in settings.__dict__.items():
+                    rep += f"\t\t{key}: {val}\n"
+
+        return rep
+
 
 KEY_TO_SETTINGS_CLASS = {
     "_audio": AudioSettings,

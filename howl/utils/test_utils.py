@@ -12,8 +12,10 @@ from howl.data.common.metadata import AudioClipMetadata
 from howl.data.common.phone import PhonePhrase, PronunciationDictionary
 from howl.data.common.tokenizer import TokenType
 from howl.data.dataset.dataset import AudioDataset
-from howl.utils import audio_utils, logging_utils, random_utils
+from howl.settings import SETTINGS
+from howl.utils import audio_utils, random_utils
 from howl.utils.audio_utils import silent_load
+from howl.utils.logger import Logger
 
 WAKEWORD = "the"
 VOCAB = [WAKEWORD]
@@ -27,7 +29,14 @@ class HowlTest(ABC):
     def setUp(self):
         """Global test initialization"""
         random_utils.set_random_seed()
-        self.logger = logging_utils.setup_logger(self.__class__.__name__)
+
+        # to be dropped once every file is using Logger directly
+        Logger.init_logger_if_missing()
+        self.logger = Logger.LOGGER
+
+        # reset all the settings
+        SETTINGS.reset()
+
         self._setup()
 
     def _setup(self):
