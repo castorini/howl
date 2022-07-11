@@ -1,8 +1,15 @@
+import multiprocessing
 from typing import List
 
 from pydantic import BaseSettings
 
 __all__ = ["AudioSettings", "DatasetSettings", "SETTINGS"]
+
+
+class ResourceSettings(BaseSettings):
+    """Base settings for computational resources"""
+
+    cpu_count: int = max(multiprocessing.cpu_count() // 2, 1)
 
 
 class CacheSettings(BaseSettings):
@@ -73,12 +80,20 @@ class DatasetSettings(BaseSettings):
 class HowlSettings:
     """Lazy-loaded class containing all required settings"""
 
+    _resource: ResourceSettings = None
     _audio: AudioSettings = None
     _audio_transform: AudioTransformSettings = None
     _inference_engine: InferenceEngineSettings = None
     _dataset: DatasetSettings = None
     _cache: CacheSettings = None
     _training: TrainingSettings = None
+
+    @property
+    def resource(self) -> ResourceSettings:
+        """resource settings"""
+        if self._resource is None:
+            self._resource = ResourceSettings()
+        return self._resource
 
     @property
     def audio(self) -> AudioSettings:
@@ -149,6 +164,7 @@ KEY_TO_SETTINGS_CLASS = {
     "_dataset": DatasetSettings,
     "_cache": CacheSettings,
     "_training": TrainingSettings,
+    "_resource": ResourceSettings,
 }
 
 SETTINGS = HowlSettings()

@@ -183,8 +183,7 @@ class AudioDataset(tud.Dataset, Generic[GenericTypeT]):
             instance of AudioDatasetStatistics
 
         """
-        num_processes = max(multiprocessing.cpu_count() // 2, 4)
-        pool = multiprocessing.Pool(processes=num_processes)
+        pool = multiprocessing.Pool(processes=SETTINGS.resource.cpu_count)
 
         statistics_list = tqdm(
             pool.imap(

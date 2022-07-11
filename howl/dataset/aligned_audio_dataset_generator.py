@@ -95,8 +95,7 @@ class AlignedAudioDatasetGenerator:
         Returns:
             Mapping from audio id to alignments
         """
-        num_processes = max(multiprocessing.cpu_count() // 2, 4)
-        pool = multiprocessing.Pool(processes=num_processes)
+        pool = multiprocessing.Pool(processes=SETTINGS.resource.cpu_count)
 
         alignment_file_paths = list(alignments_path.glob("**/*.TextGrid"))
         alignment_pair_list = tqdm(
@@ -140,8 +139,7 @@ class AlignedAudioDatasetGenerator:
         Returns:
             Mapping from audio id to alignments
         """
-        num_processes = max(multiprocessing.cpu_count() // 2, 4)
-        pool = multiprocessing.Pool(processes=num_processes)
+        pool = multiprocessing.Pool(processes=SETTINGS.resource.cpu_count)
 
         alignment_pair_list = tqdm(
             pool.imap(
@@ -189,8 +187,7 @@ class AlignedAudioDatasetGenerator:
         Args:
             raw_audio_dataset: raw audio dataset to transform
         """
-        num_processes = max(multiprocessing.cpu_count() // 2, 4)
-        pool = multiprocessing.Pool(processes=num_processes)
+        pool = multiprocessing.Pool(processes=SETTINGS.resource.cpu_count)
 
         metadata_list = tqdm(
             pool.imap(
