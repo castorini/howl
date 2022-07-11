@@ -8,8 +8,10 @@ import soundfile
 from tqdm import tqdm
 
 from howl.data.common.metadata import AudioClipMetadata
-from howl.data.dataset.dataset import AudioClipDataset, DatasetType
+from howl.data.dataset.dataset import AudioClipDataset, DatasetSplit, DatasetType
+from howl.dataset.audio_dataset_constants import METADATA_FILE_NAME_TEMPLATES, AudioDatasetType
 from howl.dataset.howl_audio_dataset import HowlAudioDataset
+from howl.settings import SETTINGS
 from howl.utils.audio_utils import silent_load
 from howl.utils.logger import Logger
 
@@ -17,11 +19,11 @@ from howl.utils.logger import Logger
 class AudioDatasetMetadataWriter:
     """Saves audio dataset metadata to the disk"""
 
-    def __init__(self, dataset_path: Path, set_type: DatasetType, prefix: str = ""):
+    def __init__(self, dataset_path: Path, audio_dataset_type: AudioDatasetType, dataset_split: DatasetSplit):
         """Initialize AudioDatasetMetadataWriter for the given dataset type"""
         self.metadata_json_file = None
-        # TODO: make use of template for the file name
-        self.metadata_json_file_path = str(dataset_path / f"{prefix}metadata-{set_type.name.lower()}.jsonl")
+        metadata_file_name = METADATA_FILE_NAME_TEMPLATES[audio_dataset_type].format(dataset_split=dataset_split.value)
+        self.metadata_json_file_path = str(dataset_path / metadata_file_name)
         self.mode = "w"
 
     def __enter__(self):
@@ -45,10 +47,10 @@ class AudioDatasetMetadataWriter:
 class AudioDatasetWriter:
     """Saves audio dataset to the disk"""
 
-    def __init__(self, dataset: AudioClipDataset, prefix: str = ""):
+    def __init__(self, dataset: AudioClipDataset, audio_dataset_type: AudioDatasetType):
         """Initialize AudioDatasetWriter for the given dataset type"""
         self.dataset = dataset
-        self.prefix = prefix
+        self.audio_dataset_type = audio_dataset_type
 
     @staticmethod
     def _save_audio_file(metadata: AudioClipMetadata, audio_dir_path: Path, sample_rate: int, mono: bool):
@@ -92,8 +94,7 @@ class AudioDatasetWriter:
         audio_dir_path = dataset_path / HowlAudioDataset.DIR_AUDIO
         audio_dir_path.mkdir(exist_ok=True)
 
-        num_processes = max(multiprocessing.cpu_count() // 2, 4)
-        pool = multiprocessing.Pool(processes=num_processes)
+        pool = multiprocessing.Pool(processes=SETTINGS.resource.cpu_count)
 
         metadata_list = tqdm(
             pool.imap(
@@ -111,8 +112,20 @@ class AudioDatasetWriter:
 
         self.dataset.metadata_list = list(filter(None, metadata_list))  # remove None entries
 
-        with AudioDatasetMetadataWriter(
-            dataset_path, self.dataset.dataset_split, prefix=self.prefix
-        ) as metadata_writer:
+        # TODO: to be updated when howl.data.dataset.dataset.DatasetType is replaced
+        #       by howl.data.dataset.dataset.DatasetSplit
+        if isinstance(self.dataset.dataset_split, DatasetType):
+            if self.dataset.dataset_split == DatasetType.TRAINING:
+                dataset_split = DatasetSplit.TRAINING
+            elif self.dataset.dataset_split == DatasetType.DEV:
+                dataset_split = DatasetSplit.DEV
+            elif self.dataset.dataset_split == DatasetType.TEST:
+                dataset_split = DatasetSplit.TEST
+            else:
+                dataset_split = DatasetSplit.UNSPECIFIED
+        else:
+            dataset_split = self.dataset.dataset_split
+
+        with AudioDatasetMetadataWriter(dataset_path, self.audio_dataset_type, dataset_split) as metadata_writer:
             for metadata in self.dataset.metadata_list:
                 metadata_writer.write(metadata)

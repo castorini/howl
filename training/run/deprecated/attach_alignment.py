@@ -8,6 +8,7 @@ from tqdm import tqdm
 from howl.data.common.metadata import AudioClipMetadata
 from howl.data.dataset.dataset_loader import AudioClipDatasetLoader
 from howl.data.dataset.dataset_writer import AudioDatasetMetadataWriter
+from howl.dataset.audio_dataset_constants import AudioDatasetType
 from howl.settings import SETTINGS
 from training.align import MfaTextGridConverter, StubAligner
 
@@ -50,7 +51,7 @@ def main():
         raise ValueError
 
     for dataset in (train_ds, dev_ds, test_ds):
-        with AudioDatasetMetadataWriter(ds_path, dataset.set_type, "aligned-") as writer:
+        with AudioDatasetMetadataWriter(ds_path, AudioDatasetType.ALIGNED, dataset.set_type) as writer:
             for ex in tqdm(dataset, total=len(dataset)):
                 try:
                     transcription = id_align_map[ex.metadata.audio_id]

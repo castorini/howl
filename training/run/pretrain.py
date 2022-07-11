@@ -12,7 +12,7 @@ from tqdm import tqdm, trange
 from howl.model import RegisteredModel
 from howl.settings import SETTINGS
 from howl.utils.args_utils import ArgOption, ArgumentParserBuilder
-from howl.utils.random import set_seed
+from howl.utils.random_utils import set_random_seed
 from howl.workspace import Workspace
 
 
@@ -53,7 +53,7 @@ def main():
 
     workspace = Workspace(Path(args.workspace))
     writer = workspace.summary_writer
-    set_seed(SETTINGS.training.seed)
+    set_random_seed(SETTINGS.training.seed)
 
     transform = transforms.Compose(
         [

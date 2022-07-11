@@ -99,7 +99,7 @@ def main():
     for dataset in train_ds, dev_ds, test_ds:
         dataset.print_stats(logger, word_searcher=word_searcher, compute_length=True)
         logger.info(f"Generating {dataset.split.value} dataset")
-        AudioDatasetWriter(dataset).write(Path(SETTINGS.dataset.dataset_path))
+        AudioDatasetWriter(dataset, AudioDatasetType.RAW).write(Path(SETTINGS.dataset.dataset_path))
 
 
 if __name__ == "__main__":

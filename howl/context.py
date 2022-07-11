@@ -111,7 +111,7 @@ class InferenceContext:
     @property
     def wake_word(self):
         """Construct wake word from vocab and sequence"""
-        return " ".join([self.vocab[i] for i in self.sequence])
+        return self.vocab.wakeword(self.sequence)
 
     @staticmethod
     def load_from_config(config: ContextConfig):

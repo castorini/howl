@@ -1,5 +1,6 @@
 #bin/bash
 set -e
+set -v
 
 COMMON_VOICE_DATASET_PATH=${1} # common voice dataset path
 DATASET_NAME=${2} # underscore separated wakeword (e.g. hey_fire_fox)
@@ -15,9 +16,9 @@ else
     SKIP_NEG_DATASET="false"
 fi
 
-printf "COMMON_VOICE_DATASET_PATH: ${COMMON_VOICE_DATASET_PATH}"
-printf "DATASET_NAME: ${DATASET_NAME}"
-printf "INFERENCE_SEQUENCE: ${INFERENCE_SEQUENCE}"
+printf "COMMON_VOICE_DATASET_PATH: ${COMMON_VOICE_DATASET_PATH}\n"
+printf "DATASET_NAME: ${DATASET_NAME}\n"
+printf "INFERENCE_SEQUENCE: ${INFERENCE_SEQUENCE}\n"
 
 VOCAB="["
 IFS='_'
@@ -69,8 +70,9 @@ if [ ${SKIP_NEG_DATASET} != "true" ]; then
       --token-type word
 fi
 
-STITCHED_DATASET="${DATASET_FOLDER}/stitched"
-printf "\n\n>>> stitching vocab samples to generate a dataset made up of stitched wakeword samples: ${STITCHED_DATASET}\n"
-time VOCAB=${VOCAB} INFERENCE_SEQUENCE=${INFERENCE_SEQUENCE} python -m training.run.stitch_vocab_samples --aligned-dataset "${POS_DATASET_PATH}" --stitched-dataset "${STITCHED_DATASET}"
+printf "\n\n>>> stitching vocab samples to generate a dataset made up of stitched wakeword samples\n"
+time VOCAB=${VOCAB} INFERENCE_SEQUENCE=${INFERENCE_SEQUENCE} \
+  python -m training.run.stitch_vocab_samples \
+  --dataset-path "${POS_DATASET_PATH}"
 
 printf "\n\n>>> Dataset is ready for ${VOCAB}\n"
