@@ -1,2 +1,2 @@
-{"path": "0.wav", "phone_strings": null, "words": null, "phone_end_timestamps": null, "end_timestamps": [0.0, 100.0, 200.0], "transcription": "hey"}
-{"path": "1.wav", "phone_strings": null, "words": null, "phone_end_timestamps": null, "end_timestamps": [0.0, 100.0, 200.0], "transcription": "hey"}
+{"path": "training_0.wav", "phone_strings": null, "words": null, "phone_end_timestamps": null, "end_timestamps": [0.0, 100.0, 200.0], "transcription": "hey"}
+{"path": "training_1.wav", "phone_strings": null, "words": null, "phone_end_timestamps": null, "end_timestamps": [0.0, 100.0, 200.0], "transcription": "hey"}

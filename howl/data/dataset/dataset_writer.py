@@ -11,6 +11,7 @@ from howl.data.common.metadata import AudioClipMetadata
 from howl.data.dataset.dataset import AudioClipDataset, DatasetSplit, DatasetType
 from howl.dataset.audio_dataset_constants import METADATA_FILE_NAME_TEMPLATES, AudioDatasetType
 from howl.dataset.howl_audio_dataset import HowlAudioDataset
+from howl.settings import SETTINGS
 from howl.utils.audio_utils import silent_load
 from howl.utils.logger import Logger
 
@@ -93,8 +94,7 @@ class AudioDatasetWriter:
         audio_dir_path = dataset_path / HowlAudioDataset.DIR_AUDIO
         audio_dir_path.mkdir(exist_ok=True)
 
-        num_processes = max(multiprocessing.cpu_count() // 2, 4)
-        pool = multiprocessing.Pool(processes=num_processes)
+        pool = multiprocessing.Pool(processes=SETTINGS.resource.cpu_count)
 
         metadata_list = tqdm(
             pool.imap(

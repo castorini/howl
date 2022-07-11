@@ -69,7 +69,7 @@ class Workspace:
     def save_settings(self, settings: HowlSettings = SETTINGS):
         """Saves settings object into JSON file"""
         with (self.path / "settings.json").open("w") as file:
-            keys_to_ignore = ["_dataset", "_raw_dataset"]
+            keys_to_ignore = ["_dataset", "_raw_dataset", "_resource"]
             json.dump(gather_dict(settings, keys_to_ignore), file, indent=2)
 
     def load_settings(self, settings: HowlSettings = SETTINGS) -> HowlSettings:

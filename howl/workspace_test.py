@@ -14,7 +14,7 @@ from howl.utils.args_utils import ArgOption, ArgumentParserBuilder
 from howl.workspace import Workspace
 
 
-class WorkspaceTest(unittest.TestCase):
+class WorkspaceTest(test_utils.HowlTest, unittest.TestCase):
     """Test case for Workspace class"""
 
     @contextmanager
