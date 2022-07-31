@@ -8,6 +8,7 @@ from howl.data.transform.operator import ZmuvTransform
 from howl.model import RegisteredModel
 from howl.model.inference import FrameInferenceEngine, InferenceEngine
 from howl.utils.args_utils import ArgOption, ArgumentParserBuilder
+from howl.utils.logger import Logger
 from howl.utils.logging_utils import setup_logger
 from howl.workspace import Workspace
 
@@ -24,6 +25,7 @@ def main():
     logger = setup_logger("howl-demo")
     workspace = Workspace(Path(args.workspace), delete_existing=False)
     settings = workspace.load_settings()
+    Logger.info(settings)
 
     use_frame = settings.training.objective == "frame"
     ctx = InferenceContext(

@@ -1,5 +1,4 @@
 import itertools
-import logging
 import time
 
 import numpy as np
@@ -12,6 +11,7 @@ from howl.data.transform.transform import StandardAudioTransform
 from howl.model import RegisteredModel
 from howl.settings import SETTINGS
 from howl.utils import audio_utils
+from howl.utils.logger import Logger
 
 __all__ = ["FrameInferenceEngine", "InferenceEngine"]
 
@@ -199,7 +199,7 @@ class InferenceEngine:
             prediction = prediction.cpu().numpy()
             prediction *= self.inference_weights
             prediction = prediction / prediction.sum()
-            logging.debug(([f"{probability:.3f}" for probability in prediction.tolist()], np.argmax(prediction)))
+            Logger.debug(([f"{probability:.3f}" for probability in prediction.tolist()], np.argmax(prediction)))
             self.curr_time += delta_ms
             if np.argmax(prediction) == self.blank_idx:
                 continue
@@ -262,5 +262,6 @@ class FrameInferenceEngine(InferenceEngine):
 
         prediction *= self.inference_weights
         prediction = prediction / prediction.sum()
+        Logger.debug(([f"{probability:.3f}" for probability in prediction.tolist()], np.argmax(prediction)))
         label = self._append_probability_frame(prediction, curr_time=curr_time)
         return label

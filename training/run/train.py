@@ -263,6 +263,7 @@ def main():
     if args.eval:
         Logger.heading("Model evaluation")
         workspace.load_model(model, best=not args.load_last)
+        Logger.info(SETTINGS)
         do_evaluate()
         return
 
@@ -270,6 +271,7 @@ def main():
     Logger.heading("Model training")
     workspace.write_args(args)
     workspace.save_settings(SETTINGS)
+    Logger.info(SETTINGS)
     writer.add_scalar("Meta/Parameters", sum(p.numel() for p in params))
 
     spectrogram_augmentations = (SpecAugmentTransform().train(),)
