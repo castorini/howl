@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Sequence
 
 import librosa
+import numpy as np
 import torch
 import torch.nn as nn
 from torchaudio.transforms import ComputeDeltas, MelSpectrogram
@@ -12,6 +13,7 @@ from howl.data.common.example import EmplacableExample, WakeWordClipExample
 from howl.data.dataset.dataset import AudioClipDataset
 from howl.data.transform.meyda import MeydaMelSpectrogram
 from howl.settings import SETTINGS
+from howl.utils import random_utils
 
 __all__ = [
     "AugmentationParameter",
@@ -26,8 +28,13 @@ __all__ = [
 ]
 
 
+# pylint: disable=invalid-name
+
+
 @dataclass
 class AugmentationParameter:
+    """AugmentationParameter"""
+
     domain: Sequence[float]
     name: str
     current_value_idx: int = None
@@ -35,41 +42,53 @@ class AugmentationParameter:
     enabled: bool = True
 
     def copy_from(self, op: "AugmentationParameter"):
+        """copy_from"""
         self.current_value_idx = op.current_value_idx
         self.prob = op.prob
         self.enabled = op.enabled
 
     @property
     def magnitude(self):
+        """magnitude"""
         return self.domain[self.current_value_idx]
 
     @classmethod
     def from_dict(cls, data_dict):
+        """from_dict"""
         return cls(data_dict["domain"], data_dict["name"], data_dict["current_value_idx"], data_dict["prob"])
 
 
 class AugmentModule(nn.Module):
+    """Base torch module designed for augmentations"""
+
     def __init__(self, seed: int = None):
+        """__init__"""
         super().__init__()
         self.augment_params = self.default_params
         self.rand = random if seed is None else random.Random(seed)
         self.seed = seed
 
     def reset_random(self):
+        """Reset random number generator"""
         if self.seed is not None:
-            self.rand = random.Random(self.seed)
+            random_utils.set_random_seed(self.seed)
 
     @property
     def default_params(self) -> Sequence[AugmentationParameter]:
+        """Default parameters to use"""
         raise NotImplementedError
 
-    def augment(self, param: AugmentationParameter, x, **kwargs):
+    def augment(self, param: AugmentationParameter, examples, **kwargs):
+        """Applies the augmentation"""
         raise NotImplementedError
 
-    def passthrough(self, x, **kwargs):
-        return x
+    def passthrough(self, examples, **kwargs):
+        """Skips the augmentation"""
+        # pylint: disable=unused-argument
+        return examples
 
     def forward(self, x, **kwargs):
+        """Apply augmentation in training model, otherwise skips the augmentation"""
         for param in self.augment_params:
             if param.enabled and self.rand.random() < param.prob and self.training:
                 x = self.augment(param, x, **kwargs)
@@ -79,12 +98,16 @@ class AugmentModule(nn.Module):
 
 
 class NegativeSampleTransform(AugmentModule):
+    """NegativeSampleTransform"""
+
     @property
     def default_params(self):
+        """default_params"""
         return (AugmentationParameter([0.2, 0.3, 0.4, 0.5], "chunk_size", 1, prob=0.3),)
 
     @torch.no_grad()
     def augment(self, param: AugmentationParameter, examples: Sequence[WakeWordClipExample], **kwargs):
+        """augment"""
         new_examples = []
         for example in examples:
             audio_data = example.audio_data[..., : int(example.audio_data.size(-1) * param.magnitude)]
@@ -95,16 +118,20 @@ class NegativeSampleTransform(AugmentModule):
 
 
 class TimeshiftTransform(AugmentModule):
+    """Time-shift the audio data"""
+
     def __init__(self, sr=16000):
         super().__init__()
         self.sr = sr
 
     @property
     def default_params(self):
+        """Shift magnitude in seconds"""
         return (AugmentationParameter([0.25, 0.5, 0.75, 1], "timeshift", 0),)
 
     @torch.no_grad()
     def augment(self, param: AugmentationParameter, examples: Sequence[EmplacableExample], **kwargs):
+        """Apply time shift on the audio data"""
         new_examples = []
         for example in examples:
             w = min(int(self.rand.random() * param.magnitude * self.sr), int(0.5 * example.audio_data.size(-1)))
@@ -117,23 +144,33 @@ class TimeshiftTransform(AugmentModule):
 
 
 class TimestretchTransform(AugmentModule):
+    """Time-stretch the audio data"""
+
     @property
     def default_params(self):
-        return (AugmentationParameter([0.025, 0.05, 0.15, 0.2, 0.25], "timestretch", 2, prob=0.3),)
+        """Shift magnitude; standard deviation"""
+        return (AugmentationParameter([0.1, 0.2, 0.3], "timestretch", 1, prob=0.8),)
 
     @torch.no_grad()
     def augment(self, param, examples: Sequence[EmplacableExample], **kwargs):
+        """Apply time stretch on the audio data"""
         new_examples = []
         for example in examples:
-            rate = 1.5  # np.clip(np.random.normal(1.1, param.magnitude), 0.8, 2)
-            audio = torch.from_numpy(librosa.effects.time_stretch(example.audio_data.squeeze().cpu().numpy(), rate))
+            # Stretch factor. If rate > 1, then the signal is sped up. If rate < 1, then the signal is slowed down.
+            rate = np.clip(np.random.normal(1.0, param.magnitude), 0.3, 1.7)
+            audio = torch.from_numpy(
+                librosa.effects.time_stretch(example.audio_data.squeeze().cpu().numpy(), rate=rate)
+            )
             new_examples.append(example.update_audio_data(audio, scale=1 / rate))
         return new_examples
 
 
 class NoiseTransform(AugmentModule):
+    """Add synthetic noise to the audio data"""
+
     @property
     def default_params(self):
+        """Noise magnitude"""
         return (
             AugmentationParameter([0.0001, 0.00025, 0.0005, 0.001, 0.002], "white", 3),
             AugmentationParameter([1 / 20000, 1 / 15000, 1 / 10000, 1 / 5000, 1 / 2500], "salt_pepper", 2),
@@ -141,6 +178,7 @@ class NoiseTransform(AugmentModule):
 
     @torch.no_grad()
     def augment(self, param, examples: Sequence[EmplacableExample], **kwargs):
+        """Add synthetic noise to the audio data"""
         new_examples = []
         for example in examples:
             waveform = example.audio_data
@@ -159,6 +197,8 @@ class NoiseTransform(AugmentModule):
 
 
 class DatasetMixer(AugmentModule):
+    """Augmentation by adding background noise"""
+
     def __init__(self, background_noise_dataset: AudioClipDataset, do_replace: bool = False, **kwargs):
         self.do_replace = do_replace
         super().__init__(**kwargs)
@@ -166,6 +206,7 @@ class DatasetMixer(AugmentModule):
 
     @property
     def default_params(self):
+        """Noise magnitude"""
         return (
             AugmentationParameter([0.1, 0.2, 0.3, 0.4, 0.5], "strength", 1),
             AugmentationParameter([0], "replace", 0, prob=0.1 if self.do_replace else 0),
@@ -173,6 +214,7 @@ class DatasetMixer(AugmentModule):
 
     @torch.no_grad()
     def augment(self, param, examples: Sequence[EmplacableExample], **kwargs):
+        """Add background noise to the audio data"""
         new_examples = []
         for example in examples:
             waveform = example.audio_data
@@ -190,7 +232,10 @@ class DatasetMixer(AugmentModule):
 
 
 class StandardAudioTransform(AugmentModule):
+    """Transformation to apply on the audio data"""
+
     def __init__(self):
+        """__init__"""
         super().__init__()
         settings = SETTINGS.audio_transform
         if settings.use_meyda_spectrogram:
@@ -220,10 +265,12 @@ class StandardAudioTransform(AugmentModule):
 
     @property
     def default_params(self) -> Sequence[AugmentationParameter]:
+        """Parameter for vtlp augmentation"""
         return (AugmentationParameter([0], "vtlp", 0),)
 
     @torch.no_grad()
     def _execute_op(self, op, audio, mels_only=False, deltas_only=False):
+        """Apply the transforms"""
         with torch.no_grad():
             log_mels = audio if deltas_only else op(audio).add_(1e-7).log_().contiguous()
             if mels_only:
@@ -232,26 +279,36 @@ class StandardAudioTransform(AugmentModule):
             accels = self.delta_transform(deltas)
             return torch.stack((log_mels, deltas, accels), 1)
 
-    def augment(self, param, audio: torch.Tensor, **kwargs):
-        return self._execute_op(self.vtlp_transform, audio, **kwargs)
+    def augment(self, param, examples: torch.Tensor, **kwargs):
+        """Applies vtlp transform on mel spectrogram"""
+        return self._execute_op(self.vtlp_transform, examples, **kwargs)
 
-    def passthrough(self, audio: torch.Tensor, **kwargs):
-        return self._execute_op(self.spec_transform, audio, **kwargs)
+    def passthrough(self, examples: torch.Tensor, **kwargs):
+        """Return mel spectrogram without applying additional transform"""
+        return self._execute_op(self.spec_transform, examples, **kwargs)
 
     @torch.no_grad()
     def compute_lengths(self, length: torch.Tensor):
-        return ((length - self.spec_transform.win_length) // self.spec_transform.hop_length + 1).long()
+        """compute_lengths"""
+        return (
+            torch.div((length - self.spec_transform.win_length), self.spec_transform.hop_length, rounding_mode="floor")
+            + 1
+        ).long()
 
 
 class SpecAugmentTransform(AugmentModule):
+    """Augmentation designed for spectrogram"""
+
     @property
     def default_params(self) -> Sequence[AugmentationParameter]:
+        """Default parameters for time masking and frequency masking"""
         return (
             AugmentationParameter([2, 5, 10, 20, 25], "sa_freq", 2),
             AugmentationParameter([10, 50, 75, 125, 150], "sa_time", 2),
         )
 
     def tmask(self, x, T):
+        """Time Masking"""
         for idx in range(x.size(0)):
             t = self.rand.randrange(0, T)
             try:
@@ -262,6 +319,7 @@ class SpecAugmentTransform(AugmentModule):
         return x
 
     def fmask(self, x, F):
+        """Frequency Masking"""
         for idx in range(x.size(0)):
             f = self.rand.randrange(0, F)
             f0 = self.rand.randrange(0, x.size(2) - f)
@@ -269,13 +327,16 @@ class SpecAugmentTransform(AugmentModule):
         return x
 
     @torch.no_grad()
-    def augment(self, param, x, **kwargs):
+    def augment(self, param, examples, **kwargs):
+        """Apply SpecAugmentTransform"""
         with torch.no_grad():
             if param.name == "sa_freq":
-                return self.fmask(x, param.magnitude)
+                augmented_examples = self.fmask(examples, param.magnitude)
             elif param.name == "sa_time":
-                return self.tmask(x, param.magnitude)
-        return x
+                augmented_examples = self.tmask(examples, param.magnitude)
+            else:
+                raise RuntimeError(f"Invalid parameter name for SpecAugmentTransform: {param.name}")
+        return augmented_examples
 
 
 # BEGIN LICENSED BLOCK ##########
@@ -309,8 +370,17 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 
 
-def create_vtlp_fb_matrix(n_freqs, f_min, f_max, n_mels, sample_rate, alpha, f_hi=4800, training=True):
-    # type: (int, float, float, int, int, float, int, bool) -> torch.Tensor
+def create_vtlp_fb_matrix(
+    n_freqs: int,
+    f_min: float,
+    f_max: float,
+    n_mels: int,
+    sample_rate: int,
+    alpha: float,
+    f_hi: int = 4800,
+    training: bool = True,
+) -> torch.Tensor:
+    """create_vtlp_fb_matrix"""
     # freq bins
     # Equivalent filterbank construction by Librosa
     S = sample_rate
@@ -341,10 +411,13 @@ def create_vtlp_fb_matrix(n_freqs, f_min, f_max, n_mels, sample_rate, alpha, f_h
 
 
 class VtlpMelScale(nn.Module):
+    """VtlpMelScale"""
 
     __constants__ = ["n_mels", "sample_rate", "f_min", "f_max"]
 
     def __init__(self, n_mels=128, sample_rate=16000, f_min=0.0, f_max=None, n_stft=None):
+        """__init__"""
+        # pylint: disable=unused-argument
         super().__init__()
         self.n_mels = n_mels
         self.sample_rate = sample_rate
@@ -354,6 +427,7 @@ class VtlpMelScale(nn.Module):
         assert f_min <= self.f_max, "Require f_min: %f < f_max: %f" % (f_min, self.f_max)
 
     def forward(self, specgram):
+        """forward"""
         # pack batch
         shape = specgram.size()
         specgram = specgram.reshape(-1, shape[-2], shape[-1])
@@ -379,6 +453,7 @@ class VtlpMelScale(nn.Module):
 
 
 def apply_vtlp(mel_spectrogram: MelSpectrogram):
+    """apply_vtlp"""
     s = mel_spectrogram
     s.mel_scale = VtlpMelScale(s.n_mels, s.sample_rate, s.f_min, s.f_max, s.n_fft // 2 + 1)
     return s

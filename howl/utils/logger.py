@@ -71,6 +71,14 @@ class Logger:
             Logger.LOGGER = setup_logger(Logger.NAME)
 
     @staticmethod
+    def heading(msg: str, level: int = 1):
+        """log for INFO level with additional > * level prefixes"""
+        Logger.init_logger_if_missing()
+        prefix = "> " * level
+        updated_msg = f"{prefix} {msg}"
+        Logger.LOGGER.info(updated_msg)
+
+    @staticmethod
     def info(msg: str):
         """log for INFO level"""
         Logger.init_logger_if_missing()

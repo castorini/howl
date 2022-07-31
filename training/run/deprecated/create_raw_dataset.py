@@ -1,5 +1,4 @@
 import logging
-import os
 from pathlib import Path
 
 from howl.context import InferenceContext
@@ -9,8 +8,9 @@ from howl.data.dataset.dataset_writer import AudioDatasetWriter
 from howl.dataset.audio_dataset_constants import AudioDatasetType
 from howl.dataset_loader.dataset_loader_factory import get_dataset_loader
 from howl.settings import SETTINGS
-from howl.utils import hash_utils, logging_utils
+from howl.utils import hash_utils
 from howl.utils.args_utils import ArgOption, ArgumentParserBuilder
+from howl.utils.logger import Logger
 
 
 # TODO: to be replaced to dataset.print_stats
@@ -82,7 +82,6 @@ def main():
         ),
     )
     args = apb.parser.parse_args()
-    logger = logging_utils.setup_logger(os.path.basename(__file__))
 
     dataset_type = AudioDatasetType(args.dataset_type)
     dataset_loader = get_dataset_loader(dataset_type, Path(args.input_audio_dataset_path))
@@ -97,8 +96,8 @@ def main():
 
     word_searcher = ctx.searcher if ctx.token_type == "word" else None
     for dataset in train_ds, dev_ds, test_ds:
-        dataset.print_stats(logger, word_searcher=word_searcher, compute_length=True)
-        logger.info(f"Generating {dataset.split.value} dataset")
+        dataset.print_stats(word_searcher=word_searcher, compute_length=True)
+        Logger.info(f"Generating {dataset.split.value} dataset")
         AudioDatasetWriter(dataset, AudioDatasetType.RAW).write(Path(SETTINGS.dataset.dataset_path))
 
 

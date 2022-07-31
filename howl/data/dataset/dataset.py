@@ -1,6 +1,5 @@
 import enum
 import functools
-import logging
 import multiprocessing
 from collections import Counter, defaultdict
 from copy import deepcopy
@@ -20,6 +19,7 @@ from howl.data.common.metadata import NEGATIVE_CLASS, AudioClipMetadata
 from howl.data.common.searcher import WordTranscriptSearcher
 from howl.settings import SETTINGS
 from howl.utils.audio_utils import silent_load
+from howl.utils.logger import Logger
 
 __all__ = [
     "DatasetType",
@@ -39,6 +39,14 @@ class AudioDatasetStatistics:
     num_examples: int
     audio_length_seconds: int
     vocab_counts: Counter
+
+    def __repr__(self):
+        """Prints the statistics"""
+        return (
+            f"num_examples: {self.num_examples}\t"
+            f"audio_length_seconds: {round(self.audio_length_seconds,4)}\t"
+            f"vocab_counts: {self.vocab_counts}"
+        )
 
 
 class DatasetType(enum.Enum):
@@ -211,12 +219,11 @@ class AudioDataset(tud.Dataset, Generic[GenericTypeT]):
         return AudioDatasetStatistics(len(self), total_seconds, total_vocab_count)
 
     def print_stats(
-        self, logger: logging.Logger = None, header: str = None, **compute_statistics_kwargs,
+        self, header: str = None, **compute_statistics_kwargs,
     ):
         """Print statistics of the dataset
 
         Args:
-            logger: logger to use
             header: additional text message to prepend
             **compute_statistics_kwargs: other arguments passed to compute_statistics
         """
@@ -226,7 +233,7 @@ class AudioDataset(tud.Dataset, Generic[GenericTypeT]):
             log_msg = header + " "
         log_msg += f"({self.dataset_split.value}) - {self.compute_statistics(**compute_statistics_kwargs)}"
 
-        logger.info(log_msg)
+        Logger.info(log_msg)
 
 
 # TODO: to be replaced by RawAudioDataset

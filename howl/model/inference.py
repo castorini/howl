@@ -189,9 +189,8 @@ class InferenceEngine:
         delta_ms = int(audio_data.size(-1) / self.sample_rate * 1000)
         self.std = self.std.to(audio_data.device)
         # TODO: compute lengths as in FrameInferenceEngine.ingest_frame
-        predictions = self.model(
-            self.zmuv(self.std(audio_data.unsqueeze(0))), lengths=None
-        )  # [num_frames x 1 (batch size) x num_labels]
+        transformed_frame = self.zmuv(self.std(audio_data.unsqueeze(0)))
+        predictions = self.model(transformed_frame, lengths=None)  # [num_frames x 1 (batch size) x num_labels]
         predictions = F.softmax(predictions, -1).squeeze(1)  # [num_frames x num_labels]
         sequence_present = False
         delta_ms /= len(predictions)
@@ -256,8 +255,6 @@ class FrameInferenceEngine(InferenceEngine):
             predicted label
         """
         self.std = self.std.to(frame.device)
-        frame = self.zmuv(self.std(frame.unsqueeze(0)))
-
         lengths = torch.tensor([frame.size(-1)]).to(frame.device)
         transformed_lengths = self.std.compute_lengths(lengths)
         transformed_frame = self.zmuv(self.std(frame.unsqueeze(0)))

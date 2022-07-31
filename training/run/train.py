@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 
 import torch
@@ -10,18 +9,27 @@ from tqdm import tqdm, trange
 from howl.context import InferenceContext
 from howl.data.common.tokenizer import WakeWordTokenizer
 from howl.data.dataloader import StandardAudioDataLoaderBuilder
-from howl.data.dataset.dataset import DatasetType, WakeWordDataset
+from howl.data.dataset.dataset import DatasetSplit, DatasetType, WakeWordDataset
 from howl.data.dataset.dataset_loader import RecursiveNoiseDatasetLoader, WakeWordDatasetLoader
 from howl.data.transform.batchifier import AudioSequenceBatchifier, WakeWordFrameBatchifier
 from howl.data.transform.operator import ZmuvTransform, batchify, compose
-from howl.data.transform.transform import DatasetMixer, NoiseTransform, StandardAudioTransform
+from howl.data.transform.transform import (
+    DatasetMixer,
+    NoiseTransform,
+    SpecAugmentTransform,
+    StandardAudioTransform,
+    TimeshiftTransform,
+    TimestretchTransform,
+)
+from howl.dataset.audio_dataset_constants import AudioDatasetType
+from howl.dataset_loader.howl_audio_dataset_loader import HowlAudioDatasetLoader
 from howl.model import ConfusionMatrix, ConvertedStaticModel, RegisteredModel
 from howl.model.inference import FrameInferenceEngine, InferenceEngine
 from howl.settings import SETTINGS
-from howl.utils import hash_utils, logging_utils, random_utils
+from howl.utils import hash_utils, random_utils
 from howl.utils.args_utils import ArgOption, ArgumentParserBuilder
+from howl.utils.logger import Logger
 from howl.workspace import Workspace
-from training.run.deprecated.create_raw_dataset import print_stats
 
 
 def main():
@@ -72,11 +80,11 @@ def main():
             conf_matrix.increment(seq_present, positive_set)
             pbar.set_postfix(dict(mcc=f"{conf_matrix.mcc}", c=f"{conf_matrix}"))
 
-        logger.info(f"{conf_matrix}")
-        if save and not args.eval:
+        Logger.info(f"{conf_matrix}")
+        if save and not args.eval and positive_set:
             # TODO: evaluate_engine must be moved outside of the main
             # pylint: disable=undefined-loop-variable
-            writer.add_scalar(f"{prefix}/Metric/tp", conf_matrix.tp, epoch_idx)
+            writer.add_scalar(f"{prefix}/Metric/tp_rate", conf_matrix.tp / len(dataset), epoch_idx)
             workspace.increment_model(model, conf_matrix.tp)
         if args.eval:
             threshold = engine.threshold
@@ -108,15 +116,15 @@ def main():
         ArgOption("--workspace", type=str, default=str(Path("workspaces") / "default")),
         ArgOption("--load-weights", action="store_true"),
         ArgOption("--load-last", action="store_true"),
-        ArgOption("--no-dev-per-epoch", action="store_false", dest="dev_per_epoch"),
         ArgOption("--dataset-paths", "-i", type=str, nargs="+", default=[SETTINGS.dataset.dataset_path],),
+        ArgOption("--eval-freq", type=int, default=10),
         ArgOption("--eval", action="store_true"),
+        ArgOption("--use-stitched-datasets", action="store_true"),
     )
     args = apb.parser.parse_args()
 
     # region prepare training environment
     random_utils.set_random_seed(SETTINGS.training.seed)
-    logger = logging_utils.setup_logger(os.path.basename(__file__))
     use_frame = SETTINGS.training.objective == "frame"
     workspace = Workspace(Path(args.workspace), delete_existing=not args.eval)
     writer = workspace.summary_writer
@@ -124,6 +132,7 @@ def main():
     # endregion prepare training environment
 
     # region load datasets
+    Logger.heading("Loading datasets")
     ctx = InferenceContext(
         vocab=SETTINGS.training.vocab, token_type=SETTINGS.training.token_type, use_blank=not use_frame,
     )
@@ -131,9 +140,11 @@ def main():
     ds_kwargs = dict(sample_rate=SETTINGS.audio.sample_rate, mono=SETTINGS.audio.use_mono, frame_labeler=ctx.labeler,)
 
     ww_train_ds, ww_dev_ds, ww_test_ds = (
-        WakeWordDataset(metadata_list=[], set_type=DatasetType.TRAINING, **ds_kwargs),
-        WakeWordDataset(metadata_list=[], set_type=DatasetType.DEV, **ds_kwargs),
-        WakeWordDataset(metadata_list=[], set_type=DatasetType.TEST, **ds_kwargs),
+        WakeWordDataset(
+            metadata_list=[], set_type=DatasetType.TRAINING, dataset_split=DatasetSplit.TRAINING, **ds_kwargs
+        ),
+        WakeWordDataset(metadata_list=[], set_type=DatasetType.DEV, dataset_split=DatasetSplit.DEV, **ds_kwargs),
+        WakeWordDataset(metadata_list=[], set_type=DatasetType.TEST, dataset_split=DatasetSplit.TEST, **ds_kwargs),
     )
     for ds_path in args.dataset_paths:
         ds_path = Path(ds_path)
@@ -141,16 +152,40 @@ def main():
         ww_train_ds.extend(train_ds)
         ww_dev_ds.extend(dev_ds)
         ww_test_ds.extend(test_ds)
-    print_stats("Wake word dataset", ctx, ww_train_ds, ww_dev_ds, ww_test_ds)
+
+    ww_train_ds.print_stats(word_searcher=ctx.searcher, compute_length=True)
+    ww_dev_ds.print_stats(word_searcher=ctx.searcher, compute_length=True)
+    ww_test_ds.print_stats(word_searcher=ctx.searcher, compute_length=True)
+
+    if args.use_stitched_datasets:
+        Logger.heading("Loading stitched datasets")
+        ds_kwargs.pop("frame_labeler")
+        ds_kwargs["labeler"] = ctx.labeler
+        for ds_path in args.dataset_paths:
+            ds_path = Path(ds_path)
+            dataset_loader = HowlAudioDatasetLoader(AudioDatasetType.STITCHED, ds_path)
+            try:
+                train_ds, dev_ds, test_ds = dataset_loader.load_splits(**ds_kwargs)
+                ww_train_ds.extend(train_ds)
+                ww_dev_ds.extend(dev_ds)
+                ww_test_ds.extend(test_ds)
+            except FileNotFoundError as file_not_found_error:
+                Logger.error(f"Stitched dataset is missing for {ds_path}: {file_not_found_error}")
+
+        header = "w/ stitched"
+        ww_train_ds.print_stats(header=header, word_searcher=ctx.searcher, compute_length=True)
+        ww_dev_ds.print_stats(header=header, word_searcher=ctx.searcher, compute_length=True)
+        ww_test_ds.print_stats(header=header, word_searcher=ctx.searcher, compute_length=True)
 
     ww_dev_pos_ds = ww_dev_ds.filter(lambda x: ctx.searcher.search(x.transcription), clone=True)
-    print_stats("Dev pos dataset", ctx, ww_dev_pos_ds)
+    ww_dev_pos_ds.print_stats(header="dev_pos", word_searcher=ctx.searcher, compute_length=True)
     ww_dev_neg_ds = ww_dev_ds.filter(lambda x: not ctx.searcher.search(x.transcription), clone=True)
-    print_stats("Dev neg dataset", ctx, ww_dev_neg_ds)
+    ww_dev_pos_ds.print_stats(header="dev_neg", word_searcher=ctx.searcher, compute_length=True)
     ww_test_pos_ds = ww_test_ds.filter(lambda x: ctx.searcher.search(x.transcription), clone=True)
-    print_stats("Test pos dataset", ctx, ww_test_pos_ds)
+    ww_test_pos_ds.print_stats(header="test_neg", word_searcher=ctx.searcher, compute_length=True)
     ww_test_neg_ds = ww_test_ds.filter(lambda x: not ctx.searcher.search(x.transcription), clone=True)
-    print_stats("Test neg dataset", ctx, ww_test_neg_ds)
+    ww_test_neg_ds.print_stats(header="test_neg", word_searcher=ctx.searcher, compute_length=True)
+
     # endregion load datasets
 
     # region create dataloaders with audio preprocessor
@@ -163,7 +198,13 @@ def main():
     else:
         tokenizer = WakeWordTokenizer(ctx.vocab, ignore_oov=False)
         batchifier = AudioSequenceBatchifier(ctx.negative_label, tokenizer)
-    train_comp = (NoiseTransform().train(), batchifier)
+
+    audio_augmentations = (
+        TimestretchTransform().train(),
+        TimeshiftTransform().train(),
+        NoiseTransform().train(),
+        batchifier,
+    )
 
     if SETTINGS.training.use_noise_dataset:
         noise_ds = RecursiveNoiseDatasetLoader().load(
@@ -171,20 +212,23 @@ def main():
             sample_rate=SETTINGS.audio.sample_rate,
             mono=SETTINGS.audio.use_mono,
         )
-        logger.info(f"Loaded {len(noise_ds.metadata_list)} noise files.")
+        Logger.info(f"Loaded {len(noise_ds.metadata_list)} noise files.")
         noise_ds_train, noise_ds_dev = noise_ds.split(hash_utils.Sha256Splitter(80))
         noise_ds_dev, noise_ds_test = noise_ds_dev.split(hash_utils.Sha256Splitter(50))
-        train_comp = (DatasetMixer(noise_ds_train).train(),) + train_comp
+        audio_augmentations = (DatasetMixer(noise_ds_train).train(),) + audio_augmentations
         dev_mixer = DatasetMixer(noise_ds_dev, seed=0, do_replace=False)
         test_mixer = DatasetMixer(noise_ds_test, seed=0, do_replace=False)
-    train_comp = compose(*train_comp)
+    audio_augmentations = compose(*audio_augmentations)
 
     prep_dl = StandardAudioDataLoaderBuilder(ww_train_ds, collate_fn=batchify).build(1)
     prep_dl.shuffle = True
-    train_dl = StandardAudioDataLoaderBuilder(ww_train_ds, collate_fn=train_comp).build(SETTINGS.training.batch_size)
+    train_dl = StandardAudioDataLoaderBuilder(ww_train_ds, collate_fn=audio_augmentations).build(
+        SETTINGS.training.batch_size
+    )
     # endregion initialize audio pre-processors
 
     # region prepare model for zmuv normalization
+    Logger.heading("ZMUV normalization")
     if (workspace.path / "zmuv.pt.bin").exists():
         zmuv_transform.load_state_dict(torch.load(str(workspace.path / "zmuv.pt.bin")))
     else:
@@ -193,11 +237,12 @@ def main():
             zmuv_transform.update(audio_transform(batch.audio_data))
             if idx == 2000:  # TODO: quick debugging, remove later
                 break
-        logger.info(dict(zmuv_mean=zmuv_transform.mean, zmuv_std=zmuv_transform.std))
+        Logger.info(dict(zmuv_mean=zmuv_transform.mean, zmuv_std=zmuv_transform.std))
     torch.save(zmuv_transform.state_dict(), str(workspace.path / "zmuv.pt.bin"))
     # endregion prepare model for zmuv normalization
 
     # region prepare model training
+    Logger.heading("Model preparation")
     model = RegisteredModel.find_registered_class(args.model)(ctx.num_labels).to(device).streaming()
     if SETTINGS.training.convert_static:
         model = ConvertedStaticModel(model, 40, 10)
@@ -209,62 +254,70 @@ def main():
 
     params = list(filter(lambda x: x.requires_grad, model.parameters()))
     optimizer = AdamW(params, SETTINGS.training.learning_rate, weight_decay=SETTINGS.training.weight_decay,)
-    logger.info(f"{sum(p.numel() for p in params)} parameters")
+    Logger.info(f"{sum(p.numel() for p in params)} parameters")
 
     if args.load_weights:
         workspace.load_model(model, best=not args.load_last)
     # endregion prepare model training
 
     if args.eval:
+        Logger.heading("Model evaluation")
         workspace.load_model(model, best=not args.load_last)
         do_evaluate()
         return
 
     # region train model
+    Logger.heading("Model training")
     workspace.write_args(args)
     workspace.save_settings(SETTINGS)
     writer.add_scalar("Meta/Parameters", sum(p.numel() for p in params))
-    for epoch_idx in trange(SETTINGS.training.num_epochs, position=0, leave=True):
+
+    spectrogram_augmentations = (SpecAugmentTransform().train(),)
+    spectrogram_augmentations = compose(*spectrogram_augmentations)
+
+    pbar = trange(SETTINGS.training.num_epochs, position=0, desc="Training", leave=True)
+    for epoch_idx in pbar:
         model.train()
         audio_transform.train()
         model.streaming_state = None
-        pbar = tqdm(train_dl, total=len(train_dl), position=1, desc="Training", leave=True)
         total_loss = torch.Tensor([0.0]).to(device)
-        for batch in pbar:
+        for batch in train_dl:
             batch.to(device)
+            audio_length = audio_transform.compute_lengths(batch.lengths)
+            zmuv_audio_data = zmuv_transform(audio_transform(batch.audio_data))
+            augmented_audio_data = spectrogram_augmentations(zmuv_audio_data)
             if use_frame:
-                scores = model(
-                    zmuv_transform(audio_transform(batch.audio_data)), audio_transform.compute_lengths(batch.lengths),
-                )
+                scores = model(augmented_audio_data, audio_length)
                 loss = criterion(scores, batch.labels)
             else:
-                lengths = audio_transform.compute_lengths(batch.audio_lengths)
-                scores = model(zmuv_transform(audio_transform(batch.audio_data)), lengths)
+                scores = model(augmented_audio_data, audio_length)
                 scores = F.log_softmax(scores, -1)  # [num_frames x batch_size x num_labels]
-                lengths = torch.tensor([model.compute_length(x.item()) for x in lengths]).to(device)
-                loss = criterion(scores, batch.labels, lengths, batch.label_lengths)
+                audio_length = torch.tensor([model.compute_length(x.item()) for x in audio_length]).to(device)
+                loss = criterion(scores, batch.labels, audio_length, batch.label_lengths)
             optimizer.zero_grad()
             model.zero_grad()
             loss.backward()
             optimizer.step()
-            pbar.set_postfix(dict(loss=f"{loss.item():.3}"))
             with torch.no_grad():
                 total_loss += loss
 
         for group in optimizer.param_groups:
             group["lr"] *= SETTINGS.training.lr_decay
 
-        mean = total_loss / len(train_dl)
-        writer.add_scalar("Training/Loss", mean.item(), epoch_idx)
+        mean_loss = total_loss / len(train_dl)
+        pbar.set_postfix(dict(loss=f"{mean_loss.item():.3}"))
+
+        writer.add_scalar("Training/Loss", mean_loss.item(), epoch_idx)
         # TODO: group["lr"] is invalid
         # pylint: disable=undefined-loop-variable
         writer.add_scalar("Training/LearningRate", group["lr"], epoch_idx)
 
-        if args.dev_per_epoch:
+        if epoch_idx % args.eval_freq == 0 and epoch_idx != 0:
             evaluate_engine(
                 ww_dev_pos_ds, "Dev positive", positive_set=True, save=True, write_errors=False,
             )
 
+    Logger.heading("Model evaluation")
     do_evaluate()
     # endregion train model
 
