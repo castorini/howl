@@ -262,6 +262,6 @@ class FrameInferenceEngine(InferenceEngine):
 
         prediction *= self.inference_weights
         prediction = prediction / prediction.sum()
-        Logger.debug(([f"{probability:.3f}" for probability in prediction.tolist()], np.argmax(prediction)))
+        # Logger.info(([f"{probability:.3f}" for probability in prediction.tolist()], np.argmax(prediction)))
         label = self._append_probability_frame(prediction, curr_time=curr_time)
         return label

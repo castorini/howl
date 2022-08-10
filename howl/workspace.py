@@ -18,7 +18,7 @@ class Workspace:
 
     path: Path
     best_quality: float = float("-inf")
-    delete_existing: bool = True
+    delete_existing: bool = False
 
     def __post_init__(self):
         """Initialize Workspace by creating the directory and summary writer"""

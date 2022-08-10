@@ -50,6 +50,8 @@ def main():
         """Evaluate the current model on the given dataset"""
         audio_transform.eval()
 
+        print(f"max_window_size_ms: {int(SETTINGS.training.max_window_size_seconds * 1000)}")
+        print(f"eval_stride_size_ms: {int(SETTINGS.training.eval_stride_size_seconds * 1000)}")
         if use_frame:
             engine = FrameInferenceEngine(
                 int(SETTINGS.training.max_window_size_seconds * 1000),
