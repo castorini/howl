@@ -1,0 +1,11 @@
+<map id="howl.data.dataset.dataset_loader.PathDatasetLoader" name="howl.data.dataset.dataset_loader.PathDatasetLoader">
+<area shape="rect" id="node1" title=" " alt="" coords="5,242,184,283"/>
+<area shape="rect" id="node2" href="$classhowl_1_1data_1_1dataset_1_1dataset__loader_1_1RegisteredPathDatasetLoader.html" title=" " alt="" coords="232,209,473,250"/>
+<area shape="rect" id="node9" href="$classhowl_1_1data_1_1dataset_1_1dataset__loader_1_1WakeWordDatasetLoader.html" title=" " alt="" coords="245,274,460,315"/>
+<area shape="rect" id="node3" href="$classhowl_1_1data_1_1dataset_1_1common__voice__dataset__loader_1_1MozillaCommonVoiceLoader.html" title=" " alt="" coords="521,5,768,61"/>
+<area shape="rect" id="node4" href="$classhowl_1_1data_1_1dataset_1_1common__voice__dataset__loader_1_1MozillaKeywordLoader.html" title=" " alt="" coords="522,85,767,141"/>
+<area shape="rect" id="node5" href="$classhowl_1_1data_1_1dataset_1_1common__voice__dataset__loader_1_1MozillaWakeWordLoader.html" title=" " alt="" coords="531,165,759,221"/>
+<area shape="rect" id="node6" href="$classhowl_1_1data_1_1dataset_1_1dataset__loader_1_1AudioClipDatasetLoader.html" title=" " alt="" coords="541,245,748,286"/>
+<area shape="rect" id="node7" href="$classhowl_1_1data_1_1dataset_1_1gsc__dataset__loader_1_1GoogleSpeechCommandsDatasetLoader.html" title=" " alt="" coords="543,309,746,365"/>
+<area shape="rect" id="node8" href="$classhowl_1_1data_1_1dataset_1_1hey__snips__dataset__loader_1_1HeySnipsWakeWordLoader.html" title=" " alt="" coords="539,389,750,445"/>
+</map>

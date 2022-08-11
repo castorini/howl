@@ -1,0 +1,14 @@
+<map id="howl.model.base.RegisteredModel" name="howl.model.base.RegisteredModel">
+<area shape="rect" id="node1" title=" " alt="" coords="216,231,399,272"/>
+<area shape="rect" id="node4" href="$classhowl_1_1model_1_1base_1_1ConvertedStaticModel.html" title=" " alt="" coords="458,5,638,47"/>
+<area shape="rect" id="node5" href="$classhowl_1_1model_1_1cnn_1_1MobileNetClassifier.html" title=" " alt="" coords="461,71,635,112"/>
+<area shape="rect" id="node6" href="$classhowl_1_1model_1_1cnn_1_1Res8.html" title=" " alt="" coords="476,137,620,163"/>
+<area shape="rect" id="node7" href="$classhowl_1_1model_1_1cnn_1_1SequentialCnn.html" title=" " alt="" coords="449,187,647,214"/>
+<area shape="rect" id="node8" href="$classhowl_1_1model_1_1cnn_1_1SmallCnn.html" title=" " alt="" coords="463,238,633,265"/>
+<area shape="rect" id="node9" href="$classhowl_1_1model_1_1rnn_1_1LASClassifier.html" title=" " alt="" coords="453,289,643,315"/>
+<area shape="rect" id="node10" href="$classhowl_1_1model_1_1rnn_1_1SequentialLstm.html" title=" " alt="" coords="447,339,649,366"/>
+<area shape="rect" id="node11" href="$classhowl_1_1model_1_1rnn_1_1SimpleGru.html" title=" " alt="" coords="462,390,634,417"/>
+<area shape="rect" id="node12" href="$classhowl_1_1model_1_1rnn_1_1SimpleLstm.html" title=" " alt="" coords="457,441,639,467"/>
+<area shape="rect" id="node2" title=" " alt="" coords="46,209,127,235"/>
+<area shape="rect" id="node3" href="$classhowl_1_1utils_1_1class__registry_1_1ClassRegistry.html" title=" " alt="" coords="5,260,168,301"/>
+</map>

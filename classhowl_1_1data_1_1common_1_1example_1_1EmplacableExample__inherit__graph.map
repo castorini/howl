@@ -1,0 +1,6 @@
+<map id="howl.data.common.example.EmplacableExample" name="howl.data.common.example.EmplacableExample">
+<area shape="rect" id="node1" title=" " alt="" coords="5,39,189,80"/>
+<area shape="rect" id="node2" href="$classhowl_1_1data_1_1common_1_1example_1_1AudioClipExample.html" title=" " alt="" coords="237,39,421,80"/>
+<area shape="rect" id="node3" href="$classhowl_1_1data_1_1common_1_1example_1_1ClassificationClipExample.html" title=" " alt="" coords="469,5,653,47"/>
+<area shape="rect" id="node4" href="$classhowl_1_1data_1_1common_1_1example_1_1WakeWordClipExample.html" title=" " alt="" coords="469,71,653,112"/>
+</map>

@@ -1,0 +1,12 @@
+<map id="howl.data.dataset.dataset.AudioDataset" name="howl.data.dataset.dataset.AudioDataset">
+<area shape="rect" id="node1" title=" " alt="" coords="156,136,328,177"/>
+<area shape="rect" id="node5" href="$classhowl_1_1data_1_1dataset_1_1dataset_1_1AudioClassificationDataset.html" title=" " alt="" coords="379,5,556,47"/>
+<area shape="rect" id="node7" href="$classhowl_1_1data_1_1dataset_1_1dataset_1_1AudioClipDataset.html" title=" " alt="" coords="381,71,553,112"/>
+<area shape="rect" id="node8" href="$classhowl_1_1data_1_1dataset_1_1dataset_1_1WakeWordDataset.html" title=" " alt="" coords="381,136,553,177"/>
+<area shape="rect" id="node9" href="$classhowl_1_1dataset_1_1howl__audio__dataset_1_1HowlAudioDataset.html" title=" " alt="" coords="376,201,559,243"/>
+<area shape="rect" id="node10" href="$classhowl_1_1utils_1_1test__utils_1_1TestDataset.html" title=" " alt="" coords="387,267,548,308"/>
+<area shape="rect" id="node2" title=" " alt="" coords="11,93,102,119"/>
+<area shape="rect" id="node3" title=" " alt="" coords="23,143,90,170"/>
+<area shape="rect" id="node4" title=" " alt="" coords="5,194,108,221"/>
+<area shape="rect" id="node6" href="$classhowl_1_1data_1_1dataset_1_1dataset_1_1HonkSpeechCommandsDataset.html" title=" " alt="" coords="607,5,815,47"/>
+</map>

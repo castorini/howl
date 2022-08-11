@@ -1,0 +1,39 @@
+<map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
+<area shape="rect" id="node1" href="$classhowl_1_1utils_1_1class__registry_1_1ClassRegistry.html" title=" " alt="" coords="19,500,182,541"/>
+<area shape="rect" id="node2" href="$classhowl_1_1data_1_1dataset_1_1dataset__loader_1_1RegisteredPathDatasetLoader.html" title=" " alt="" coords="244,224,485,265"/>
+<area shape="rect" id="node9" href="$classhowl_1_1model_1_1base_1_1RegisteredModel.html" title=" " alt="" coords="273,696,456,737"/>
+<area shape="rect" id="node3" href="$classhowl_1_1data_1_1dataset_1_1common__voice__dataset__loader_1_1MozillaCommonVoiceLoader.html" title=" " alt="" coords="533,230,780,286"/>
+<area shape="rect" id="node4" href="$classhowl_1_1data_1_1dataset_1_1common__voice__dataset__loader_1_1MozillaKeywordLoader.html" title=" " alt="" coords="534,310,779,366"/>
+<area shape="rect" id="node5" href="$classhowl_1_1data_1_1dataset_1_1common__voice__dataset__loader_1_1MozillaWakeWordLoader.html" title=" " alt="" coords="543,390,771,446"/>
+<area shape="rect" id="node6" href="$classhowl_1_1data_1_1dataset_1_1dataset__loader_1_1AudioClipDatasetLoader.html" title=" " alt="" coords="553,5,760,47"/>
+<area shape="rect" id="node7" href="$classhowl_1_1data_1_1dataset_1_1gsc__dataset__loader_1_1GoogleSpeechCommandsDatasetLoader.html" title=" " alt="" coords="555,70,758,126"/>
+<area shape="rect" id="node8" href="$classhowl_1_1data_1_1dataset_1_1hey__snips__dataset__loader_1_1HeySnipsWakeWordLoader.html" title=" " alt="" coords="551,150,762,206"/>
+<area shape="rect" id="node10" href="$classhowl_1_1model_1_1base_1_1ConvertedStaticModel.html" title=" " alt="" coords="567,521,747,563"/>
+<area shape="rect" id="node11" href="$classhowl_1_1model_1_1cnn_1_1MobileNetClassifier.html" title=" " alt="" coords="570,587,743,628"/>
+<area shape="rect" id="node12" href="$classhowl_1_1model_1_1cnn_1_1Res8.html" title=" " alt="" coords="585,653,729,679"/>
+<area shape="rect" id="node13" href="$classhowl_1_1model_1_1cnn_1_1SequentialCnn.html" title=" " alt="" coords="557,703,756,730"/>
+<area shape="rect" id="node14" href="$classhowl_1_1model_1_1cnn_1_1SmallCnn.html" title=" " alt="" coords="571,754,742,781"/>
+<area shape="rect" id="node15" href="$classhowl_1_1model_1_1rnn_1_1LASClassifier.html" title=" " alt="" coords="561,805,752,831"/>
+<area shape="rect" id="node16" href="$classhowl_1_1model_1_1rnn_1_1SequentialLstm.html" title=" " alt="" coords="555,855,758,882"/>
+<area shape="rect" id="node17" href="$classhowl_1_1model_1_1rnn_1_1SimpleGru.html" title=" " alt="" coords="571,906,743,933"/>
+<area shape="rect" id="node18" href="$classhowl_1_1model_1_1rnn_1_1SimpleLstm.html" title=" " alt="" coords="566,470,747,497"/>
+<area shape="rect" id="node19" href="$classhowl_1_1data_1_1dataset_1_1dataset__loader_1_1MetadataLoaderMixin.html" title=" " alt="" coords="5,119,196,160"/>
+<area shape="rect" id="node20" href="$classhowl_1_1data_1_1dataset_1_1dataset__loader_1_1WakeWordDatasetLoader.html" title=" " alt="" coords="257,132,472,173"/>
+<area shape="rect" id="node21" title=" " alt="" coords="60,1029,141,1055"/>
+<area shape="rect" id="node22" href="$classhowl_1_1data_1_1transform_1_1operator_1_1Composition.html" title=" " alt="" coords="271,924,459,965"/>
+<area shape="rect" id="node23" href="$classhowl_1_1data_1_1transform_1_1operator_1_1IdentityTransform.html" title=" " alt="" coords="271,989,459,1031"/>
+<area shape="rect" id="node24" href="$classhowl_1_1data_1_1transform_1_1operator_1_1ZmuvTransform.html" title=" " alt="" coords="271,1055,459,1096"/>
+<area shape="rect" id="node25" href="$classhowl_1_1data_1_1transform_1_1transform_1_1AugmentModule.html" title=" " alt="" coords="267,1120,463,1161"/>
+<area shape="rect" id="node33" href="$classhowl_1_1data_1_1transform_1_1transform_1_1VtlpMelScale.html" title=" " alt="" coords="267,1185,463,1227"/>
+<area shape="rect" id="node34" href="$classhowl_1_1model_1_1rnn_1_1FixedAttentionModule.html" title=" " alt="" coords="267,1251,462,1292"/>
+<area shape="rect" id="node35" href="$classhowl_1_1model_1_1rnn_1_1LASEncoder.html" title=" " alt="" coords="273,873,457,899"/>
+<area shape="rect" id="node26" href="$classhowl_1_1data_1_1transform_1_1transform_1_1DatasetMixer.html" title=" " alt="" coords="559,1153,755,1195"/>
+<area shape="rect" id="node27" href="$classhowl_1_1data_1_1transform_1_1transform_1_1NegativeSampleTransform.html" title=" " alt="" coords="559,1219,755,1260"/>
+<area shape="rect" id="node28" href="$classhowl_1_1data_1_1transform_1_1transform_1_1NoiseTransform.html" title=" " alt="" coords="559,1284,755,1325"/>
+<area shape="rect" id="node29" href="$classhowl_1_1data_1_1transform_1_1transform_1_1SpecAugmentTransform.html" title=" " alt="" coords="559,1349,755,1391"/>
+<area shape="rect" id="node30" href="$classhowl_1_1data_1_1transform_1_1transform_1_1StandardAudioTransform.html" title=" " alt="" coords="559,957,755,999"/>
+<area shape="rect" id="node31" href="$classhowl_1_1data_1_1transform_1_1transform_1_1TimeshiftTransform.html" title=" " alt="" coords="559,1023,755,1064"/>
+<area shape="rect" id="node32" href="$classhowl_1_1data_1_1transform_1_1transform_1_1TimestretchTransform.html" title=" " alt="" coords="559,1088,755,1129"/>
+<area shape="rect" id="node36" title=" " alt="" coords="337,529,392,555"/>
+<area shape="rect" id="node37" href="$classhowl_1_1data_1_1dataset_1_1dataset__loader_1_1PathDatasetLoader.html" title=" " alt="" coords="11,211,190,252"/>
+</map>
