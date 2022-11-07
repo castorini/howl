@@ -1,5 +1,6 @@
 coloredlogs
 dataclasses;python_version<"3.7"
+devtools
 librosa>=0.8.0
 numpy>=1.18.3
 pandas>=1.0.3

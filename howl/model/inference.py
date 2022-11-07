@@ -214,10 +214,10 @@ class InferenceEngine:
 class FrameInferenceEngine(InferenceEngine):
     """InferenceEngine that evaluates the given audio data by generating predictions frame by frame"""
 
-    def __init__(self, max_window_size_ms: int, eval_stride_size_ms: int, *args):
+    def __init__(self, window_ms: int, eval_stride_size_ms: int, *args):
         """Initialize FrameInferenceEngine"""
         super().__init__(*args)
-        self.max_window_size_ms, self.eval_stride_size_ms = max_window_size_ms, eval_stride_size_ms
+        self.window_ms, self.eval_stride_size_ms = window_ms, eval_stride_size_ms
 
     @torch.no_grad()
     def infer(self, audio_data: torch.Tensor) -> bool:
@@ -231,9 +231,7 @@ class FrameInferenceEngine(InferenceEngine):
             return True if wake word presents in the last window
         """
         sequence_present = False
-        for window in audio_utils.stride(
-            audio_data, self.max_window_size_ms, self.eval_stride_size_ms, self.sample_rate
-        ):
+        for window in audio_utils.stride(audio_data, self.window_ms, self.eval_stride_size_ms, self.sample_rate):
             if window.size(-1) < 1000:
                 break
             self.ingest_frame(window.squeeze(0), self.curr_time)

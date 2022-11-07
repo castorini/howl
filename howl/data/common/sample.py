@@ -31,13 +31,3 @@ class Sample:
     def pin_memory(self):
         """Pin audio data in memory"""
         self.audio_data.pin_memory()
-
-    def update_data(self, audio_data: torch.Tensor, label: FrameLabelData = None):
-        """Update audio data and label
-
-        Args:
-            audio_data: new audio data
-            label: new label
-        """
-        self.audio_data = audio_data
-        self.label = label
