@@ -28,9 +28,10 @@ from howl.data.transform.transform import (
     TimeshiftTransform,
     TimestretchTransform,
 )
-from howl.dataset.audio_dataset_constants import AudioDatasetType
+from howl.dataset.audio_dataset_constants import AudioDatasetType, SampleType
 from howl.dataset_loader.howl_audio_dataset_loader import HowlAudioDatasetLoader
-from howl.model import RegisteredModel
+from howl.model import ConfusionMatrix, RegisteredModel
+from howl.model.inference import FrameInferenceEngine, InferenceEngine
 from howl.utils import hash_utils
 from howl.utils.logger import Logger
 from howl.workspace import Workspace
@@ -54,31 +55,44 @@ class Trainer:
         print_debug(training_cfg)
         self.training_cfg = training_cfg
         self.context_cfg = training_cfg.context_config
-        self.context = InferenceContext.load_from_config(self.context_cfg)
-
+        self.inference_engine_cfg = training_cfg.inference_engine_config
         self.device = torch.device(self.training_cfg.device)
 
+        self.inference_engine_cfg.per_frame = self.training_cfg.objective == "frame"
+        self.context_cfg.use_blank = self.training_cfg.objective == "ctc"
+        self.context = InferenceContext.load_from_config(self.context_cfg)
+
         # TODO: Ideally, WakeWordDataset needs to be deprecated
-        self.datasets: Dict[str, WakeWordDataset] = {
-            DatasetSplit.TRAINING: WakeWordDataset(
-                metadata_list=[],
-                set_type=DatasetType.TRAINING,
-                dataset_split=DatasetSplit.TRAINING,
-                frame_labeler=self.context.labeler,
-            ),
-            DatasetSplit.DEV: WakeWordDataset(
-                metadata_list=[],
-                set_type=DatasetType.DEV,
-                dataset_split=DatasetSplit.TRAINING,
-                frame_labeler=self.context.labeler,
-            ),
-            DatasetSplit.TEST: WakeWordDataset(
-                metadata_list=[],
-                set_type=DatasetType.TEST,
-                dataset_split=DatasetSplit.TRAINING,
-                frame_labeler=self.context.labeler,
-            ),
-        }
+        self.train_dataset: WakeWordDataset = WakeWordDataset(
+            metadata_list=[],
+            set_type=DatasetType.TRAINING,
+            dataset_split=DatasetSplit.TRAINING,
+            frame_labeler=self.context.labeler,
+        )
+        self.dev_pos_dataset: WakeWordDataset = WakeWordDataset(
+            metadata_list=[],
+            set_type=DatasetType.DEV,
+            dataset_split=DatasetSplit.TRAINING,
+            frame_labeler=self.context.labeler,
+        )
+        self.dev_neg_dataset: WakeWordDataset = WakeWordDataset(
+            metadata_list=[],
+            set_type=DatasetType.DEV,
+            dataset_split=DatasetSplit.TRAINING,
+            frame_labeler=self.context.labeler,
+        )
+        self.test_pos_dataset: WakeWordDataset = WakeWordDataset(
+            metadata_list=[],
+            set_type=DatasetType.TEST,
+            dataset_split=DatasetSplit.TEST,
+            frame_labeler=self.context.labeler,
+        )
+        self.test_neg_dataset: WakeWordDataset = WakeWordDataset(
+            metadata_list=[],
+            set_type=DatasetType.TEST,
+            dataset_split=DatasetSplit.TEST,
+            frame_labeler=self.context.labeler,
+        )
 
         self.noise_datasets: Dict[str, AudioClipDataset] = {
             DatasetSplit.TRAINING: None,
@@ -86,10 +100,7 @@ class Trainer:
             DatasetSplit.TEST: None,
         }
 
-        self.use_frame = self.training_cfg.objective == "frame"
-        self.ctx = InferenceContext(
-            vocab=self.context_cfg.vocab, token_type=self.context_cfg.token_type, use_blank=(not self.use_frame),
-        )
+        self.inference_engine: InferenceEngine = None
 
         self.audio_transform: StandardAudioTransform = None
         self.zmuv_transform: ZmuvTransform = None
@@ -102,26 +113,51 @@ class Trainer:
         """Load a dataset given dataset config"""
         dataset_loader = HowlAudioDatasetLoader(AudioDatasetType.ALIGNED, Path(dataset_cfg.path).expanduser())
         ds_kwargs = dataset_cfg.audio_config.dict()
-        ds_kwargs["labeler"] = self.ctx.labeler
+        ds_kwargs["labeler"] = self.context.labeler
         dataset = dataset_loader.load_split(dataset_split, **ds_kwargs)
-        # dataset.print_stats(header=dataset_cfg.path, word_searcher=self.ctx.searcher, compute_length=True)
+        # dataset.print_stats(header=dataset_cfg.path, word_searcher=self.context.searcher, compute_length=True)
 
         return dataset
 
-    def _prepare_dataset(self, dataset_split: DatasetSplit = DatasetSplit.TRAINING):
-        """Load datasets for the given dataset split type"""
-        dataset_cfgs = self.training_cfg.train_datasets
-        if dataset_split == DatasetSplit.DEV:
-            dataset_cfgs = self.training_cfg.val_datasets
-        elif dataset_split == DatasetSplit.TEST:
-            dataset_cfgs = self.training_cfg.test_datasets
+    def _prepare_train_dataset(self):
+        """Load train datasets"""
+        for dataset_cfg in self.training_cfg.train_datasets:
+            dataset = self._load_dataset(DatasetSplit.TRAINING, dataset_cfg)
+            self.train_dataset.extend(dataset)
 
-        Logger.info(f"Loading {dataset_split.value} datasets")
+    def _prepare_dev_dataset(self):
+        """Load dev datasets and store them into appropriate variable (positive, negative)"""
+        for dataset_cfg in self.training_cfg.train_datasets:
+            dataset = self._load_dataset(DatasetSplit.DEV, dataset_cfg)
 
-        for dataset_cfg in dataset_cfgs:
-            dataset = self._load_dataset(dataset_split, dataset_cfg)
+            if SampleType.POSITIVE in dataset_cfg.path:
+                self.dev_pos_dataset.extend(dataset)
+            elif SampleType.NEGATIVE in dataset_cfg.path:
+                self.dev_neg_dataset.extend(dataset)
+            else:
+                dev_pos_dataset = dataset.filter(lambda x: self.context.searcher.search(x.transcription), clone=True)
+                self.dev_pos_dataset.extend(dev_pos_dataset)
+                dev_neg_dataset = dataset.filter(
+                    lambda x: not self.context.searcher.search(x.transcription), clone=True
+                )
+                self.dev_neg_dataset.extend(dev_neg_dataset)
 
-            self.datasets[dataset_split].extend(dataset)
+    def _prepare_test_dataset(self):
+        """Load test datasets and store them into appropriate variable (positive, negative)"""
+        for dataset_cfg in self.training_cfg.train_datasets:
+            dataset = self._load_dataset(DatasetSplit.DEV, dataset_cfg)
+
+            if SampleType.POSITIVE in dataset_cfg.path:
+                self.test_pos_dataset.extend(dataset)
+            elif SampleType.NEGATIVE in dataset_cfg.path:
+                self.test_neg_dataset.extend(dataset)
+            else:
+                test_pos_dataset = dataset.filter(lambda x: self.context.searcher.search(x.transcription), clone=True)
+                self.test_pos_dataset.extend(test_pos_dataset)
+                test_neg_dataset = dataset.filter(
+                    lambda x: not self.context.searcher.search(x.transcription), clone=True
+                )
+                self.test_neg_dataset.extend(test_neg_dataset)
 
     def _prepare_noise_dataset(self):
         """Load noise dataset for audio augmentation"""
@@ -155,13 +191,13 @@ class Trainer:
         self.audio_transform = StandardAudioTransform().to(self.device).eval()
         self.zmuv_transform = ZmuvTransform().to(self.device)
 
-        if self.use_frame:
+        if self.training_cfg.objective == "frame":
             batchifier = WakeWordFrameBatchifier(
-                self.ctx.negative_label, window_size_ms=self.training_cfg.inference_engine_config.window_ms
+                self.context.negative_label, window_size_ms=self.inference_engine_cfg.window_ms
             )
         else:
-            tokenizer = WakeWordTokenizer(self.ctx.vocab, ignore_oov=False)
-            batchifier = AudioSequenceBatchifier(self.ctx.negative_label, tokenizer)
+            tokenizer = WakeWordTokenizer(self.context.vocab, ignore_oov=False)
+            batchifier = AudioSequenceBatchifier(self.context.negative_label, tokenizer)
 
         if self.training_cfg.use_noise_dataset:
             self.audio_augmentations = [DatasetMixer(self.noise_datasets[DatasetSplit.TRAINING]).train()]
@@ -176,7 +212,7 @@ class Trainer:
 
     def _train_zmuv_model(self, workspace: Workspace, num_batch_to_consider: int = 2000):
         """Train or load ZMUV model"""
-        zmuv_dl = StandardAudioDataLoaderBuilder(self.datasets[DatasetSplit.TRAINING], collate_fn=batchify).build(1)
+        zmuv_dl = StandardAudioDataLoaderBuilder(self.train_dataset, collate_fn=batchify).build(1)
         zmuv_dl.shuffle = True
 
         load_pretrained_model = Path(workspace.zmuv_model_path()).exists()
@@ -203,11 +239,26 @@ class Trainer:
         if not load_pretrained_model:
             torch.save(self.zmuv_transform.state_dict(), workspace.zmuv_model_path())
 
+    def _prepare_models(self, workspace: Workspace, load_pretrained_model: bool = False):
+        # model for normalization
+        self._train_zmuv_model(workspace)
+
+        # model for kws
+        self.model = (
+            RegisteredModel.find_registered_class(self.training_cfg.model_config.architecture)(self.context.num_labels)
+            .to(self.device)
+            .streaming()
+        )
+
+        if load_pretrained_model:
+            workspace.load_model(self.model, best=False)
+
     def train(self, load_dataset: bool = True, continue_training: bool = False, debug: bool = False):
         """
         Train the model on train datasets.
         """
         # pylint: disable=too-many-statements
+        # pylint: disable=too-many-branches
 
         if debug:
             self.training_cfg.workspace_path = (
@@ -231,9 +282,12 @@ class Trainer:
         # Prepare datasets
         Logger.heading("Dataset preparation")
         if load_dataset:
-            self._prepare_dataset(DatasetSplit.TRAINING)
-            self._prepare_dataset(DatasetSplit.DEV)
-            self._prepare_dataset(DatasetSplit.TEST)
+            self._prepare_train_dataset()
+            self._prepare_dev_dataset()
+            self._prepare_test_dataset()
+
+        # TODO: print dataset stats
+        # ww_dev_pos_ds.print_stats(header="dev_pos", word_searcher=ctx.searcher, compute_length=True)
 
         if self.training_cfg.use_noise_dataset:
             self._prepare_noise_dataset()
@@ -246,28 +300,29 @@ class Trainer:
         self._prepare_spectrogram_augmentations()
         spec_aug_comp = compose(*self.spectrogram_augmentations)
 
-        # model for normalization
-        Logger.heading("ZMUV model preparation")
-        self._train_zmuv_model(workspace)
+        # prepare_models
+        Logger.heading("Model preparation")
+        self._prepare_models(workspace, load_pretrained_model=continue_training)
 
-        # model for kws
-        Logger.heading("KWS model preparation")
-        self.model = (
-            RegisteredModel.find_registered_class(self.training_cfg.model_config.architecture)(self.ctx.num_labels)
-            .to(self.device)
-            .streaming()
-        )
-
-        if continue_training:
-            workspace.load_model(self.model, best=False)
+        # prepare inference engine
+        if self.inference_engine_cfg.per_frame:
+            self.inference_engine = FrameInferenceEngine(
+                self.inference_engine_cfg.window_ms,
+                self.inference_engine_cfg.stride_ms,
+                self.model,
+                self.zmuv_transform,
+                self.context,
+            )
+        else:
+            self.inference_engine = InferenceEngine(self.model, self.zmuv_transform, self.context)
 
         # Training kws model
         Logger.heading("Model training")
 
-        if self.use_frame:
+        if self.training_cfg.objective == "frame":
             criterion = nn.CrossEntropyLoss()
         else:
-            criterion = nn.CTCLoss(self.ctx.blank_label)
+            criterion = nn.CTCLoss(self.context.blank_label)
 
         params = list(filter(lambda x: x.requires_grad, self.model.parameters()))
         optimizer = AdamW(params, self.training_cfg.learning_rate, weight_decay=self.training_cfg.weight_decay)
@@ -275,9 +330,9 @@ class Trainer:
 
         Logger.info(f"Total number of parameters: {sum(p.numel() for p in params)}")
 
-        train_dl = StandardAudioDataLoaderBuilder(
-            self.datasets[DatasetSplit.TRAINING], collate_fn=audio_aug_comp
-        ).build(self.training_cfg.batch_size)
+        train_dl = StandardAudioDataLoaderBuilder(self.train_dataset, collate_fn=audio_aug_comp).build(
+            self.training_cfg.batch_size
+        )
 
         workspace.save_config(self.training_cfg)
         writer.add_scalar("Meta/Parameters", sum(p.numel() for p in params))
@@ -285,7 +340,7 @@ class Trainer:
         pbar = trange(self.training_cfg.num_epochs, position=0, desc="Training", leave=True)
         for epoch_idx in pbar:
             self.model.train()
-            audio_aug_comp.train()
+            self.audio_transform.train()
             self.model.streaming_state = None
             total_loss = torch.Tensor([0.0]).to(self.device)
             for batch in train_dl:
@@ -293,7 +348,7 @@ class Trainer:
                 audio_length = self.audio_transform.compute_lengths(batch.lengths)
                 zmuv_audio_data = self.zmuv_transform(self.audio_transform(batch.audio_data))
                 augmented_audio_data = spec_aug_comp(zmuv_audio_data)
-                if self.use_frame:
+                if self.training_cfg.objective == "frame":
                     scores = self.model(augmented_audio_data, audio_length)
                     loss = criterion(scores, batch.labels)
                 else:
@@ -317,12 +372,85 @@ class Trainer:
             pbar.set_postfix(dict(loss=f"{mean_loss.item():.3}"))
             writer.add_scalar("Training/Loss", mean_loss.item(), epoch_idx)
 
-            # TODO: evaluate the performance on dev set
-            # if epoch_idx % args.eval_freq == 0 and epoch_idx != 0:
-            #     evaluate_engine(
-            #         ww_dev_pos_ds, "Dev positive", positive_set=True, save=True, write_errors=False,
-            #     )
+            if epoch_idx % self.training_cfg.eval_frequency == 0 and epoch_idx != 0:
+                prefix = "Dev positive"
+                conf_matrix = self.evaluate_on_dataset(self.dev_pos_dataset, workspace, prefix, positive_set=True)
+
+                writer.add_scalar(f"{prefix}/Metric/tp_rate", conf_matrix.tp / len(self.dev_pos_dataset), epoch_idx)
+                workspace.increment_model(self.model, conf_matrix.tp)
 
         Logger.heading("Model evaluation")
-        # endregion train model
-        # TODO: evaluate the final model
+        self.evaluate(workspace, evaluate_on_noisy_dataset=True)
+
+    def evaluate(self, workspace: Workspace, evaluate_on_noisy_dataset: bool = False):
+        """Evaluate the model on every dev/test dataset"""
+        self.evaluate_on_dataset(
+            self.dev_pos_dataset, workspace, "Dev positive", positive_set=True, record_false_detections=True
+        )
+        self.evaluate_on_dataset(self.dev_neg_dataset, workspace, "Dev negative", positive_set=False)
+        if evaluate_on_noisy_dataset:
+            dev_mixer = DatasetMixer(self.noise_datasets[DatasetSplit.DEV], seed=0, do_replace=False)
+            self.evaluate_on_dataset(
+                self.dev_pos_dataset,
+                workspace,
+                "Dev noisy positive",
+                positive_set=True,
+                mixer=dev_mixer,
+                record_false_detections=True,
+            )
+            self.evaluate_on_dataset(
+                self.dev_neg_dataset, workspace, "Dev noisy negative", positive_set=False, mixer=dev_mixer
+            )
+        self.evaluate_on_dataset(
+            self.test_pos_dataset, workspace, "Test positive", positive_set=True, record_false_detections=True
+        )
+        self.evaluate_on_dataset(self.test_neg_dataset, workspace, "Test negative", positive_set=False)
+        if evaluate_on_noisy_dataset:
+            test_mixer = DatasetMixer(self.noise_datasets[DatasetSplit.TEST], seed=0, do_replace=False)
+            self.evaluate_on_dataset(
+                self.test_pos_dataset,
+                workspace,
+                "Test noisy positive",
+                positive_set=True,
+                mixer=test_mixer,
+                record_false_detections=True,
+            )
+            self.evaluate_on_dataset(
+                self.test_neg_dataset, workspace, "Test noisy negative", positive_set=False, mixer=test_mixer,
+            )
+
+    def evaluate_on_dataset(
+        self,
+        dataset,
+        workspace: Workspace,
+        prefix: str,
+        positive_set: bool = False,
+        mixer: DatasetMixer = None,
+        record_false_detections: bool = False,
+    ):
+        """Evaluate the model on the given dataset"""
+        self.audio_transform.eval()
+        self.model.eval()
+
+        conf_matrix = ConfusionMatrix()
+        pbar = tqdm(dataset, desc=prefix)
+
+        for _, sample in enumerate(pbar):
+            if mixer is not None:
+                (sample,) = mixer([sample])
+            audio_data = sample.audio_data.to(self.device)
+            self.inference_engine.reset()
+            seq_present = self.inference_engine.infer(audio_data)
+            if seq_present != positive_set and record_false_detections:
+                with (workspace.path / f"{prefix}_errors.tsv").open("a") as error_file:
+                    error_file.write(
+                        f"{sample.metadata.transcription}"
+                        f"\t{int(seq_present)}"
+                        f"\t{int(positive_set)}"
+                        f"\t{sample.metadata.path}\n"
+                    )
+            conf_matrix.increment(seq_present, positive_set)
+            pbar.set_postfix(dict(mcc=f"{conf_matrix.mcc}", c=f"{conf_matrix}"))
+
+        Logger.info(f"{conf_matrix}")
+        return conf_matrix

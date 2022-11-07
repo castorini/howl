@@ -30,6 +30,8 @@ class ContextConfig(BaseModel):
     token_type: str = "word"
     # phone dictionary file path
     phone_dictionary_path: str = None
+    # if True, [BLANK] token will be added to vocab (used for CTC loss)
+    use_blank: bool = False
 
 
 class InferenceEngineConfig(BaseModel):
@@ -41,15 +43,17 @@ class InferenceEngineConfig(BaseModel):
     inference_weights: List[float] = None
     # window size for a single prediction
     window_ms: int = 500
+    # stride size
+    stride_ms: int = 50
     # InferenceEngine says wake word is present
     # if a sequence of predictions from the last INFERENCE_WINDOW_MS audio data matches the target sequence
     inference_window_ms: int = 2000
     # predictions are smoothed over SMOOTHING_WINDOW_MS before the final labels are computed
-    smoothing_window_ms: int = 50
+    smoothing_window_ms: int = 200
     # negative labels are ignored as long as they don't last for TOLERANCE_WINDOW_MS
     tolerance_window_ms: int = 500
     # prediction probability for positive labels must be above this threshold
-    inference_threshold: int = 0
+    inference_threshold: float = 0.5
 
 
 class AudioTransformConfig(BaseModel):
@@ -81,6 +85,7 @@ class TrainingConfig(BaseModel):
     batch_size: int = 16
     learning_rate: float = 0.01
     num_epochs: int = 10
+    eval_frequency: int = 5
     lr_decay: float = 0.955
     weight_decay: float = 0.00001
     use_noise_dataset: bool = False
