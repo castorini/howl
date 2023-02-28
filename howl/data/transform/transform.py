@@ -9,7 +9,8 @@ import torch
 import torch.nn as nn
 from torchaudio.transforms import ComputeDeltas, MelSpectrogram
 
-from howl.data.common.example import EmplacableExample, WakeWordClipExample
+from howl.data.common.example import EmplacableExample
+from howl.data.common.sample import Sample
 from howl.data.dataset.dataset import AudioClipDataset
 from howl.data.transform.meyda import MeydaMelSpectrogram
 from howl.settings import SETTINGS
@@ -24,11 +25,16 @@ __all__ = [
     "DatasetMixer",
     "StandardAudioTransform",
     "SpecAugmentTransform",
-    "NegativeSampleTransform",
 ]
 
 
 # pylint: disable=invalid-name
+# pylint: disable=unused-argument
+
+# TODO: this file needs to be separated into three
+#  1) audio augmentation
+#  2) spectrogram augmentation
+#  3) standard audio to spectrogram transform
 
 
 @dataclass
@@ -84,37 +90,23 @@ class AugmentModule(nn.Module):
 
     def passthrough(self, examples, **kwargs):
         """Skips the augmentation"""
-        # pylint: disable=unused-argument
         return examples
 
     def forward(self, x, **kwargs):
         """Apply augmentation in training model, otherwise skips the augmentation"""
         for param in self.augment_params:
             if param.enabled and self.rand.random() < param.prob and self.training:
-                x = self.augment(param, x, **kwargs)
+                if isinstance(x[0], Sample):
+                    for sample in x:
+                        self.augment_sample(param, sample, **kwargs)
+                        # sample.audio_data = self.augment_audio_data(param, sample.audio_data, **kwargs)
+                        # if sample.label is not None:
+                        #     sample.label = self.augment_label(param, sample.label, **kwargs)
+                else:  # Example augmentation, to be deprecated
+                    x = self.augment(param, x, **kwargs)
             else:
                 x = self.passthrough(x, **kwargs)
         return x
-
-
-class NegativeSampleTransform(AugmentModule):
-    """NegativeSampleTransform"""
-
-    @property
-    def default_params(self):
-        """default_params"""
-        return (AugmentationParameter([0.2, 0.3, 0.4, 0.5], "chunk_size", 1, prob=0.3),)
-
-    @torch.no_grad()
-    def augment(self, param: AugmentationParameter, examples: Sequence[WakeWordClipExample], **kwargs):
-        """augment"""
-        new_examples = []
-        for example in examples:
-            audio_data = example.audio_data[..., : int(example.audio_data.size(-1) * param.magnitude)]
-            example = example.update_audio_data(audio_data)
-            example.contains_wake_word = False
-            new_examples.append(example)
-        return new_examples
 
 
 class TimeshiftTransform(AugmentModule):
@@ -142,6 +134,30 @@ class TimeshiftTransform(AugmentModule):
             new_examples.append(example.update_audio_data(audio_data))
         return new_examples
 
+    def augment_sample(self, param: AugmentationParameter, sample: Sample, **kwargs):
+        """Apply time shift (roll audio data)"""
+
+        audio_data_size = sample.audio_data.size(-1)
+
+        time_shift_mag = int(self.rand.random() * param.magnitude * self.sr)
+        if sample.audio_data.size(-1) < 2 * time_shift_mag:
+            time_shift_mag = int(0.5 * audio_data_size)
+
+        # direction
+        time_shift = time_shift_mag
+        if self.rand.random() < 0.5:
+            time_shift *= -1
+
+        sample.audio_data = torch.roll(sample.audio_data, time_shift)
+
+        # TODO: update labels if necessary
+        # new_timestamp_label_map = {}
+        # for timestamp, label in self.label_data.timestamp_label_map.items():
+        #     new_timestamp = max(0, min(timestamp + time_shift, audio_data_size-1))
+        #     new_timestamp_label_map[new_timestamp] = label
+        #
+        # sample.label.timestamp_label_map = new_timestamp_label_map
+
 
 class TimestretchTransform(AugmentModule):
     """Time-stretch the audio data"""
@@ -163,6 +179,25 @@ class TimestretchTransform(AugmentModule):
             )
             new_examples.append(example.update_audio_data(audio, scale=1 / rate))
         return new_examples
+
+    @torch.no_grad()
+    def augment_sample(self, param: AugmentationParameter, sample: Sample, **kwargs):
+        """Apply time stretch"""
+
+        # Stretch factor. If rate > 1, then the signal is sped up. If rate < 1, then the signal is slowed down.
+        stretch_rate = np.clip(np.random.normal(1.0, param.magnitude), 0.3, 1.7)
+
+        sample.audio_data = torch.from_numpy(
+            librosa.effects.time_stretch(sample.audio_data.squeeze().cpu().numpy(), rate=stretch_rate)
+        )
+
+        # # TODO: update labels if necessary
+        # audio_data_size = sample.audio_data.size(-1)
+        # scale = 1 / stretch_rate
+        # new_timestamp_label_map = {}
+        # for timestamp, label in self.label_data.timestamp_label_map.items():
+        #     new_timestamp = min(scale*timestamp, audio_data_size-1)
+        #     new_timestamp_label_map[new_timestamp] = label
 
 
 class NoiseTransform(AugmentModule):
@@ -194,6 +229,20 @@ class NoiseTransform(AugmentModule):
             waveform = (waveform + noise_mask).clamp_(-1, 1)
             new_examples.append(example.update_audio_data(waveform))
         return new_examples
+
+    @torch.no_grad()
+    def augment_sample(self, param: AugmentationParameter, sample: Sample, **kwargs):
+        """Apply noise"""
+        if param.name == "white":
+            strength = param.magnitude * self.rand.random()
+            noise_mask = torch.empty_like(sample.audio_data).normal_(0, strength)
+        else:
+            prob = param.magnitude * self.rand.random()
+            noise_mask = torch.empty_like(sample.audio_data).bernoulli_(prob / 2) - torch.empty_like(
+                sample.audio_data
+            ).bernoulli_(prob / 2)
+        noise_mask.clamp_(-1, 1)
+        sample.audio_data = (sample.audio_data + noise_mask).clamp_(-1, 1)
 
 
 class DatasetMixer(AugmentModule):
@@ -229,6 +278,18 @@ class DatasetMixer(AugmentModule):
             ex = example.update_audio_data(mixed_wf, new=alpha == 1)
             new_examples.append(ex)
         return new_examples
+
+    @torch.no_grad()
+    def augment_sample(self, param: AugmentationParameter, sample: Sample, **kwargs):
+        """Add background noise"""
+        bg_ex = self.rand.choice(self.dataset).audio_data.to(sample.audio_data.device)
+        while bg_ex.size(-1) < sample.audio_data.size(-1):
+            bg_ex = self.rand.choice(self.dataset).audio_data.to(sample.audio_data.device)
+        b = self.rand.randint(sample.audio_data.size(-1), bg_ex.size(-1))
+        a = b - sample.audio_data.size(-1)
+        bg_audio = bg_ex[..., a:b]
+        alpha = 1 if param.name == "replace" else self.rand.random() * param.magnitude
+        sample.audio_data = sample.audio_data * (1 - alpha) + bg_audio * alpha
 
 
 class StandardAudioTransform(AugmentModule):
@@ -417,7 +478,6 @@ class VtlpMelScale(nn.Module):
 
     def __init__(self, n_mels=128, sample_rate=16000, f_min=0.0, f_max=None, n_stft=None):
         """__init__"""
-        # pylint: disable=unused-argument
         super().__init__()
         self.n_mels = n_mels
         self.sample_rate = sample_rate

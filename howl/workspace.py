@@ -10,6 +10,7 @@ from torch.utils.tensorboard import SummaryWriter
 from howl.config import TrainingConfig
 from howl.settings import KEY_TO_SETTINGS_CLASS, SETTINGS, HowlSettings
 from howl.utils.dataclass import gather_dict
+from howl.utils.logger import Logger
 
 
 @dataclass
@@ -22,11 +23,18 @@ class Workspace:
 
     def __post_init__(self):
         """Initialize Workspace by creating the directory and summary writer"""
+        if self.path.exists():
+            if self.delete_existing:
+                shutil.move(str(self.path), f"/tmp/{self.path.name}")
+            else:
+                Logger.warning(f"Workspace already exists: {self.path}")
         self.path.mkdir(parents=True, exist_ok=True)
         log_path = self.path / "logs"
-        if self.delete_existing:
-            shutil.rmtree(str(log_path), ignore_errors=True)
         self.summary_writer = SummaryWriter(str(log_path))
+
+    def zmuv_model_path(self):
+        """Path of the trained zmuv .pt file"""
+        return str(self.path / "zmuv.pt.bin")
 
     def model_path(self, best=False):
         """Path of the trained .pt file"""

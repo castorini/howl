@@ -4,28 +4,33 @@
   },
   "batch_size": 16,
   "learning_rate": 0.01,
-  "num_epochs": 10,
+  "num_epochs": 4,
+  "eval_frequency": 2,
   "lr_decay": 0.955,
   "weight_decay": 0.00001,
-  "use_noise_dataset": false,
+  "use_noise_dataset": true,
   "noise_datasets": [
     {
-      "path": "/data/MS-SNSD"
+      "path": "~/data/kws/hey-ff/hey-ff-noise/MS-SNSD"
     }
   ],
   "train_datasets": [
     {
-      "path": "/data/speaker-id-split-medium"
+      "path": "~/data/kws/hey-ff/hey-ff-data/speaker-id-split-medium"
+    },
+    {
+      "path": "~/personal/howl/datasets/fire_fox/positive"
     }
   ],
   "val_datasets": [
     {
-      "path": "/data/speaker-id-split-medium"
+      "path": "~/data/kws/hey-ff/hey-ff-data/speaker-id-split-medium"
     }
   ],
   "test_datasets": [
     {
-      "path": "/data/speaker-id-split-medium"
+      "path": "~/data/kws/hey-ff/hey-ff-data/speaker-id-split-medium"
     }
-  ]
+  ],
+  "device": "cuda"
 }

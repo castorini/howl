@@ -12,4 +12,5 @@ class TrainerTest(unittest.TestCase):
         """Test instantiation of Trainer"""
         training_config_path = test_utils.test_data_path() / "test_training_config.json"
         training_cfg = TrainingConfig.parse_file(training_config_path)
-        Trainer(training_cfg)
+        trainer = Trainer(training_cfg)
+        trainer.train(debug=True)

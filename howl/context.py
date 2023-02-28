@@ -122,4 +122,5 @@ class InferenceContext:
             token_type=config.token_type,
             phone_dictionary_path=config.phone_dictionary_path,
             seed=config.seed,
+            use_blank=config.use_blank,
         )

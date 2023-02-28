@@ -122,7 +122,7 @@ class AudioDataset(tud.Dataset, Generic[GenericTypeT]):
         dataset_1 = deepcopy(self)
         dataset_2 = deepcopy(self)
         for metadata in self.metadata_list:
-            data_list = data_list2 if predicate_fn(metadata) else data_list1
+            data_list = data_list1 if predicate_fn(metadata) else data_list2
             data_list.append(metadata)
         dataset_1.metadata_list = data_list1
         dataset_2.metadata_list = data_list2
