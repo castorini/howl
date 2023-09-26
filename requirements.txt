@@ -8,6 +8,7 @@ praat-textgrids==1.3.1
 protobuf==3.19.4 # Protobuf 4.21.0 contains a breaking change for Python, as explained here: https://developers.google.com/protocol-buffers/docs/news/2022-05-06#python-updates
 pyaudio
 pydantic>=1.7.3
+pydantic_settings
 pytest==6.2.3
 pytest-timeout==2.1.0
 soundfile==0.10.3.post1

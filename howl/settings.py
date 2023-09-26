@@ -1,7 +1,7 @@
 import multiprocessing
 from typing import List
 
-from pydantic import BaseSettings
+from pydantic_settings import BaseSettings
 
 __all__ = ["AudioSettings", "DatasetSettings", "SETTINGS"]
 
