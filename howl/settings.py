@@ -1,5 +1,5 @@
 import multiprocessing
-from typing import List
+from typing import List, Optional
 
 from pydantic_settings import BaseSettings
 
@@ -38,7 +38,7 @@ class AudioTransformSettings(BaseSettings):
 class InferenceEngineSettings(BaseSettings):
     """Base settings for inference engine"""
 
-    inference_weights: List[float] = None
+    inference_weights: Optional[List[float]] = None
     inference_sequence: List[int] = [0]
     inference_window_ms: float = 2000  # look at last of these seconds
     smoothing_window_ms: float = 50  # prediction smoothed
@@ -66,9 +66,9 @@ class TrainingSettings(BaseSettings):
     objective: str = "frame"  # frame or ctc
     # TODO: support phone token_type
     token_type: str = "word"
-    phone_dictionary: str = None
+    phone_dictionary: Optional[str] = None
     use_noise_dataset: bool = False
-    noise_dataset_path: str = None
+    noise_dataset_path: Optional[str] = None
 
 
 class DatasetSettings(BaseSettings):

@@ -109,7 +109,7 @@ class HowlClient:
         return data_ok
 
     def _normalize_audio(self, audio_data):
-        return np.frombuffer(audio_data, dtype=np.int16).astype(np.float) / self._audio_float_size
+        return np.frombuffer(audio_data, dtype=np.int16).astype(float) / self._audio_float_size
 
     def start(self):
         """Start the audio stream for inference"""
