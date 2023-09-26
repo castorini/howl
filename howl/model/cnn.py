@@ -1,6 +1,6 @@
 from typing import Tuple
 
-from pydantic import BaseSettings
+from pydantic_settings import BaseSettings
 from torchvision.models import MobileNetV2, mobilenet_v2
 import torch
 import torch.nn as nn
