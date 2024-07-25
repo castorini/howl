@@ -12,7 +12,7 @@ pytest==6.2.3
 pytest-timeout==2.1.0
 soundfile==0.10.3.post1
 tensorboard==2.8.0
-torch==1.10.1
+torch==2.2.0
 torchaudio>=0.5.0
 torchvision>=0.6.0
 tqdm
